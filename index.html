@@ -221,7 +221,7 @@ html[data-size="l"] #bar .wrap,html[data-size="xl"] #bar .wrap{flex-direction:co
 .hero{display:flex;justify-content:center;margin-bottom:.75rem;color:var(--md-secondary)}
 .hero .ic{width:2rem;height:2rem}
 .hero + h2{text-align:center}
-@media (prefers-reduced-motion:reduce){.sheet,.layer.dialog .sheet,.btn,.icon-btn,.row,.same{transition:none}.nudge,#toast{animation:none}}
+@media (prefers-reduced-motion:reduce){.sheet,.layer.dialog .sheet,.btn,.icon-btn,.row,.same,.tf > span,.level span{transition:none}.nudge,#toast{animation:none}}
 .acts{display:flex;flex-direction:column;gap:.6rem;margin-top:1.25rem}
 /* a sheet in two parts: the list scrolls, the buttons under it always stay in view */
 .sheet.split{display:flex;flex-direction:column;overflow:hidden;padding:0}
@@ -262,10 +262,18 @@ html[data-size="l"] #bar .wrap,html[data-size="xl"] #bar .wrap{flex-direction:co
 .sizehead .nm{font:var(--t-headline-s)}
 .sizehead .q{display:block;font:var(--t-body-l);color:var(--md-on-surface-variant)}
 
-/* voice */
+/* voice: recorded, played back, then sent as a sound file */
 .micbig{width:100%;min-height:5rem;font-size:1.25rem;background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
 .micbig .ic{width:1.75rem;height:1.75rem}
-.micbig.on{background:var(--md-error-container);color:var(--md-on-error-container)}
+.micbig.on,#testRec.on{background:var(--md-error-container);color:var(--md-on-error-container);box-shadow:none}
+.vmsg{margin:0 .25rem 1rem}
+/* a bar that moves with the voice, so the parent sees the phone is hearing them */
+.level{height:.6rem;margin:.9rem .25rem 0;border-radius:999px;background:var(--md-surface-container-highest);overflow:hidden}
+.level span{display:block;width:0;height:100%;border-radius:inherit;background:var(--md-error);transition:width .08s linear}
+.vdone{display:flex;flex-direction:column;gap:.6rem}
+.vdone .btn.outlined{min-height:3.25rem}
+.step .play{color:var(--md-on-surface-variant);box-shadow:inset 0 0 0 1px var(--md-outline)}
+.row.sel .step .play{color:var(--md-on-primary-container);box-shadow:inset 0 0 0 1px var(--md-on-primary-container)}
 .dot{display:inline-block;flex:none;width:1rem;height:1rem;border-radius:50%;background:var(--md-error);animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.25}}
 .msg{min-height:1.5rem;margin:.75rem .25rem 0;font:var(--t-body-l);color:var(--md-on-surface-variant)}
@@ -375,8 +383,8 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <p class="note">絵文字は スマホに よって 絵が かわります。いつも 買う 品物の 写真を とっておくと、いちばん 分かりやすく なります（「写真で そろえる」で 続けて とれます）。ボタンの 場所は 勝手には 変わりません。↑↓ で ならべかえられます。</p>
     <div id="sItems"></div>
 
-    <h2 class="sh">声で たのまれたもの</h2>
-    <p class="note">よく出てくるものは「ボタンにする」と、次から 押すだけで たのめます。</p>
+    <h2 class="sh">文字で たのまれたもの</h2>
+    <p class="note">文字で 入れたもので よく出てくるものは「ボタンにする」と、次から 押すだけで たのめます。</p>
     <ul id="sExtras" class="slist"></ul>
 
     <h2 class="sh">文字の大きさ</h2>
@@ -386,7 +394,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 
     <h2 class="sh">送り方</h2>
     <div class="seg" id="sendSeg"><button type="button" class="sl" data-v="line"><span data-ic="check"></span>LINEを ひらく</button><button type="button" class="sl" data-v="share"><span data-ic="check"></span>共有メニュー</button></div>
-    <p class="note">「LINEで 送る」を 押したときの 動き方です。LINE が うまく ひらかないときは「共有メニュー」に して、出てきた中から LINE を えらんでください。</p>
+    <p class="note">「LINEで 送る」を 押したときの 動き方です。LINE が うまく ひらかないときは「共有メニュー」に して、出てきた中から LINE を えらんでください。声の メッセージが あるときは、音声ファイルを 渡すため いつも 共有メニューで 送ります。</p>
     <a id="testSend" class="btn outlined sl" href="#" target="_blank" rel="noopener"><span data-ic="send"></span>ためしに 送ってみる</a>
     <label class="tf" style="margin-top:1.4rem"><input id="toName" type="text" maxlength="20" autocomplete="off" placeholder=" "><span>送る相手の 名前（LINEに 出る 名前）</span><small>送る前の 画面に「①（この名前）を 押す ② 送信を 押す」と 出ます。LINEで この人を お気に入りに しておくと、見つけやすく なります。</small></label>
 
@@ -395,10 +403,13 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <p class="note">お年寄りには「明るい」が 読みやすいことが 多いです（黒い 画面の 白い 文字は、白内障や 乱視が あると にじんで 見えやすい）。「自動」は スマホの 設定に 合わせます。</p>
 
     <h2 class="sh">声で たのむ</h2>
-    <p class="note" id="srState"></p>
-    <button type="button" id="testMic" class="btn outlined sl"></button>
-    <p class="msg" id="testMicMsg" aria-live="polite"></p>
-    <label class="tf" id="testMicBox" hidden><textarea id="testMicOut" rows="2" placeholder=" "></textarea><span>ためしの 結果</span></label>
+    <p class="note" id="recNote"></p>
+    <button type="button" id="testRec" class="btn outlined sl"></button>
+    <p class="msg" id="testRecMsg" aria-live="polite"></p>
+    <div class="btnrow" id="testRecDone" hidden style="margin-top:.6rem">
+      <button type="button" id="testRecPlay" class="btn tonal sl"></button>
+      <button type="button" id="testVoiceSend" class="btn outlined sl"><span data-ic="send"></span>この声を ためしに 送る</button>
+    </div>
 
     <h2 class="sh">ホーム画面に アイコンを 置く</h2>
     <p class="note" id="installNote"></p>
@@ -410,7 +421,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <input type="file" id="importFile" accept=".json,application/json" hidden>
     <p class="note" id="usage"></p>
 
-    <p class="ver">かいものメモ 1.2</p>
+    <p class="ver">かいものメモ 1.3</p>
   </div>
 </section>
 
@@ -451,15 +462,19 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 <div class="layer" id="sh-voice" hidden role="dialog" aria-modal="true" aria-labelledby="vTitle">
   <div class="scrim" data-close></div>
   <div class="sheet"><div class="wrap">
-    <h2 id="vTitle">ほかに ほしいもの</h2>
-    <button type="button" id="micBtn" class="btn micbig sl"></button>
-    <p class="msg" id="voiceMsg" aria-live="polite"></p>
-    <label class="tf" style="margin-top:.9rem;margin-bottom:.75rem"><textarea id="voiceText" rows="3" placeholder=" "></textarea><span>ほしいもの</span></label>
-    <button type="button" id="voiceRedo" class="btn outlined sl" hidden><span data-ic="restart_alt"></span>けして もう一度 話す</button>
-    <p class="note" id="kbHint" hidden>キーボードの マイクを 押しても、声で 入れられます。</p>
+    <h2 id="vTitle">声で たのむ</h2>
+    <p class="msg vmsg" id="voiceMsg" aria-live="polite"></p>
+    <button type="button" id="recBtn" class="btn micbig sl"></button>
+    <div class="level" id="recLevel" hidden><span></span></div>
+    <div class="vdone" id="recDone" hidden>
+      <button type="button" id="recPlay" class="btn tonal big sl"></button>
+      <button type="button" id="recAgain" class="btn outlined sl"><span data-ic="restart_alt"></span>とりなおす</button>
+    </div>
+    <div id="typeBox" hidden><label class="tf" style="margin:1rem 0 0"><textarea id="voiceText" rows="3" placeholder=" "></textarea><span>ほしいもの（文字で）</span></label></div>
     <div class="acts">
       <button type="button" id="voiceAdd" class="btn filled big sl"><span data-ic="add"></span>リストに 入れる</button>
       <button type="button" class="btn outlined big sl" data-close>やめる</button>
+      <button type="button" id="typeToggle" class="btn text quiet sl"><span data-ic="keyboard"></span>文字で 入れるときは こちら</button>
     </div>
   </div></div>
 </div>
@@ -584,6 +599,8 @@ const ICONS = {
   edit: 'M200-200h57l391-391-57-57-391 391v57Zm-40 80q-17 0-28.5-11.5T120-160v-97q0-16 6-30.5t17-25.5l505-504q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L313-143q-11 11-25.5 17t-30.5 6h-97Zm600-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z',
   restart_alt: 'M393-132q-103-29-168-113.5T160-440q0-57 19-108.5t54-94.5q11-12 27-12.5t29 12.5q11 11 11.5 27T290-586q-24 31-37 68t-13 78q0 81 47.5 144.5T410-209q13 4 21.5 15t8.5 24q0 20-14 31.5t-33 6.5Zm174 0q-19 5-33-7t-14-32q0-12 8.5-23t21.5-15q75-24 122.5-87T720-440q0-100-70-170t-170-70h-3l16 16q11 11 11 28t-11 28q-11 11-28 11t-28-11l-84-84q-6-6-8.5-13t-2.5-15q0-8 2.5-15t8.5-13l84-84q11-11 28-11t28 11q11 11 11 28t-11 28l-16 16h3q134 0 227 93t93 227q0 109-65 194T567-132Z',
   arrow_forward: 'M647-440H200q-17 0-28.5-11.5T160-480q0-17 11.5-28.5T200-520h447L451-716q-12-12-11.5-28t12.5-28q12-11 28-11.5t28 11.5l264 264q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L508-188q-11 11-27.5 11T452-188q-12-12-12-28.5t12-28.5l195-195Z',
+  play_arrow: 'M320-273v-414q0-17 12-28.5t28-11.5q5 0 10.5 1.5T381-721l326 207q9 6 13.5 15t4.5 19q0 10-4.5 19T707-446L381-239q-5 3-10.5 4.5T360-233q-16 0-28-11.5T320-273Z',
+  keyboard: 'M160-200q-33 0-56.5-23.5T80-280v-400q0-33 23.5-56.5T160-760h640q33 0 56.5 23.5T880-680v400q0 33-23.5 56.5T800-200H160Zm0-80h640v-400H160v400Zm200-40h240q17 0 28.5-11.5T640-360q0-17-11.5-28.5T600-400H360q-17 0-28.5 11.5T320-360q0 17 11.5 28.5T360-320Zm-200 40v-400 400Zm80-280q17 0 28.5-11.5T280-600q0-17-11.5-28.5T240-640q-17 0-28.5 11.5T200-600q0 17 11.5 28.5T240-560Zm120 0q17 0 28.5-11.5T400-600q0-17-11.5-28.5T360-640q-17 0-28.5 11.5T320-600q0 17 11.5 28.5T360-560Zm120 0q17 0 28.5-11.5T520-600q0-17-11.5-28.5T480-640q-17 0-28.5 11.5T440-600q0 17 11.5 28.5T480-560Zm120 0q17 0 28.5-11.5T640-600q0-17-11.5-28.5T600-640q-17 0-28.5 11.5T560-600q0 17 11.5 28.5T600-560Zm120 0q17 0 28.5-11.5T760-600q0-17-11.5-28.5T720-640q-17 0-28.5 11.5T680-600q0 17 11.5 28.5T720-560ZM240-440q17 0 28.5-11.5T280-480q0-17-11.5-28.5T240-520q-17 0-28.5 11.5T200-480q0 17 11.5 28.5T240-440Zm120 0q17 0 28.5-11.5T400-480q0-17-11.5-28.5T360-520q-17 0-28.5 11.5T320-480q0 17 11.5 28.5T360-440Zm120 0q17 0 28.5-11.5T520-480q0-17-11.5-28.5T480-520q-17 0-28.5 11.5T440-480q0 17 11.5 28.5T480-440Zm120 0q17 0 28.5-11.5T640-480q0-17-11.5-28.5T600-520q-17 0-28.5 11.5T560-480q0 17 11.5 28.5T600-440Zm120 0q17 0 28.5-11.5T760-480q0-17-11.5-28.5T720-520q-17 0-28.5 11.5T680-480q0 17 11.5 28.5T720-440Z',
 };
 const ic = (name, cls = '') => `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 -960 960 960" aria-hidden="true" focusable="false"><path d="${ICONS[name]}"/></svg>`;
 // static markup names its icons with data-ic; they are drawn once here
@@ -700,7 +717,9 @@ function fixCart(c) {
   c = c && typeof c === 'object' ? c : {};
   const lines = {};
   if (c.lines && typeof c.lines === 'object') for (const [k, v] of Object.entries(c.lines)) if (+v > 0) lines[k] = +v;
-  const extras = Array.isArray(c.extras) ? c.extras.filter(x => x && String(x.text || '').trim()).map(x => ({ id: String(x.id || uid()), text: String(x.text).slice(0, 200) })) : [];
+  // an extra is typed words, or a recording kept in IndexedDB under its id
+  const extras = Array.isArray(c.extras) ? c.extras.filter(x => x && (x.voice || String(x.text || '').trim()))
+    .map(x => x.voice ? { id: String(x.id || uid()), voice: true, sec: Math.max(0, +x.sec || 0) } : { id: String(x.id || uid()), text: String(x.text).slice(0, 200) }) : [];
   return { lines, extras, when: WHEN.includes(c.when) ? c.when : '' };
 }
 function okHist(h) { return h && typeof h === 'object' && +h.at > 0 && Array.isArray(h.lines); }
@@ -775,7 +794,10 @@ function picHTML(it, cls = '', photo) {
   if (it.emoji) return `<span class="pic emo ${cls}" aria-hidden="true">${esc(it.emoji)}</span>`;
   return `<span class="pic ini ${cls}" aria-hidden="true">${esc([...(it.name || '？')][0])}</span>`;
 }
-const notePic = (cls = '') => `<span class="pic memo ${cls}" aria-hidden="true">${ic('edit_note')}</span>`;
+const notePic = (cls = '', icon = 'edit_note') => `<span class="pic memo ${cls}" aria-hidden="true">${ic(icon)}</span>`;
+const VOICE_LABEL = '声の メッセージ';
+const secText = s => `${Math.max(1, Math.round(s))}びょう`;
+const hasVoice = (c = cart) => c.extras.some(x => x.voice);
 
 /* ---------- dates ---------- */
 const WD = '日月火水木金土';
@@ -990,18 +1012,33 @@ groupsEl.addEventListener('click', e => {
 
 function renderExtras() {
   $('#extrasSec').hidden = !cart.extras.length;
-  $('#extrasList').innerHTML = cart.extras.map(x =>
-    `<li class="row sel" data-x="${esc(x.id)}"><span class="picbox">${notePic()}</span><span class="txt"><span class="nm">${esc(x.text)}</span></span>`
-    + `<span class="step"><button type="button" class="del btn outlined sl" aria-label="${esc(x.text)}を けす">${ic('delete')}けす</button></span></li>`).join('');
+  $('#extrasList').innerHTML = cart.extras.map(x => {
+    const name = x.voice ? VOICE_LABEL : x.text;
+    return `<li class="row sel" data-x="${esc(x.id)}"><span class="picbox">${notePic('', x.voice ? 'mic' : 'edit_note')}</span>`
+      + `<span class="txt"><span class="nm">${esc(name)}</span>${x.voice ? `<span class="sub">${secText(x.sec)}</span>` : ''}</span><span class="step">`
+      + (x.voice ? `<button type="button" class="play icon-btn sl" aria-label="${VOICE_LABEL}を 聞く">${ic('play_arrow')}</button>` : '')
+      + `<button type="button" class="del btn outlined sl" aria-label="${esc(name)}を けす">${ic('delete')}けす</button></span></li>`;
+  }).join('');
 }
-$('#extrasList').addEventListener('click', e => {
-  const b = e.target.closest('.del');
+$('#extrasList').addEventListener('click', async e => {
+  const b = e.target.closest('.del, .play');
   if (!b) return;
-  const i = cart.extras.findIndex(x => x.id === b.closest('[data-x]').dataset.x);
+  const id = b.closest('[data-x]').dataset.x;
+  const i = cart.extras.findIndex(x => x.id === id);
   if (i < 0) return;
-  const [x] = cart.extras.splice(i, 1);
+  const x = cart.extras[i];
+  if (b.classList.contains('play')) {
+    if (playing && playing.btn === b) { stopPlay(); return; }
+    const blob = await clipGet(id);
+    if (blob) playBlob(blob, b, ic('play_arrow'), ic('stop')); else toast('声が 見つかりませんでした。');
+    return;
+  }
+  stopPlay();
+  cart.extras.splice(i, 1);
   saveCart(); renderExtras(); renderBar();
-  toast(`「${x.text}」を けしました`, 'もとに もどす', () => { cart.extras.splice(i, 0, x); saveCart(); renderExtras(); renderBar(); });
+  // a recording stays in IndexedDB until no list refers to it, so もとに もどす can bring it back
+  toast(`${x.voice ? VOICE_LABEL : `「${x.text}」`}を けしました`, 'もとに もどす', () => { cart.extras.splice(i, 0, x); saveCart(); renderExtras(); renderBar(); });
+  setTimeout(pruneClips, 16000);
 });
 
 function renderBar() {
@@ -1040,104 +1077,224 @@ $('#sizeRows').addEventListener('click', e => {
 });
 $('#sh-size').addEventListener('closed', () => renderHome());
 
-/* ---------- voice ---------- */
-// Chrome on Android has speech recognition; iPhone home-screen apps don't, so the keyboard's mic is the fallback there
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-const SR_ERRORS = {
-  'no-speech': '声が きこえませんでした。もういちど マイクを 押して、話してください。',
-  'audio-capture': 'マイクが 見つかりませんでした。',
-  'not-allowed': 'マイクが 許可されていません。ご家族に「家族の設定」で ためしてもらってください。',
-  'service-not-allowed': 'この スマホでは、アプリの マイクが 使えません。',
-  'network': 'インターネットに つながらないため、声で 入れられません。',
-  'language-not-supported': '日本語の 声の入力が 使えませんでした。',
+/* ---------- 声で たのむ ---------- */
+// LINE's own voice messages can only be recorded inside LINE, so the parent's voice is recorded here and goes to LINE
+// as a sound file next to the list. It is WAV, which every phone plays (the family's iPhone included).
+const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+const VOICE_MAX = 60;
+const REC_ERRORS = {
+  NotAllowedError: 'マイクが 許可されていません。ご家族に「家族の設定」の「ためしに 録音してみる」を 押してもらって ください。',
+  NotFoundError: 'マイクが 見つかりませんでした。',
+  NotReadableError: 'マイクを 使えませんでした。ほかの アプリを 閉じてから、もういちど 押して ください。',
 };
-const MIC_IDLE = `${ic('mic')}<span>押して 話す</span>`;
-const MIC_BUSY = `<span class="dot"></span><span>きいています（おわったら 押す）</span>`;
-const MIC_TEST = `${ic('mic')}<span>ためしに 話してみる</span>`;
-const VOICE_DONE = 'これで よければ、下の「リストに 入れる」を 押してください。';
-let session = null;
-function paintMic(btn, busy, idle) {
-  if (!btn) return;
-  btn.classList.toggle('on', busy);
-  btn.innerHTML = busy ? MIC_BUSY : idle;
+
+// recordings wait in IndexedDB until they are sent, so closing the app does not lose them
+let voiceDB = null;
+function clipStore(mode) {
+  voiceDB = voiceDB || new Promise((res, rej) => {
+    const q = indexedDB.open('kaimono-voice', 1);
+    q.onupgradeneeded = () => q.result.createObjectStore('clips');
+    q.onsuccess = () => res(q.result);
+    q.onerror = () => rej(q.error);
+  });
+  return voiceDB.then(db => db.transaction('clips', mode).objectStore('clips'));
 }
-const joinHeard = (...parts) => parts.map(p => p.trim()).filter(Boolean).join('、');
-// Chrome stops listening at the first pause, and older speakers pause between things: each time it stops by itself
-// it starts again, until おわる is pressed, a minute has passed, or nothing has been heard twice in a row
-function listen({ field, say, btn, idle = MIC_IDLE, done }) {
-  if (session) { finishListen(); return; }
-  if (!SR) { say('この スマホでは、アプリの マイクが 使えません。キーボードの マイクを 使ってください。'); $('#kbHint').hidden = false; return; }
-  session = { field, say, btn, idle, done, base: field.value.trim(), heard: '', quiet: 0, failed: false, until: Date.now() + 60000, rec: null };
-  paintMic(btn, true, idle);
-  say('きいています。ゆっくりで だいじょうぶです。おわったら 上の ボタンを 押して ください。');
-  hearRound(session);
+const idbDo = req => new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+const clipPut = async (id, blob) => idbDo((await clipStore('readwrite')).put(blob, id));
+async function clipGet(id) { try { return await idbDo((await clipStore('readonly')).get(id)); } catch (e) { return null; } }
+async function clipDel(id) { try { await idbDo((await clipStore('readwrite')).delete(id)); } catch (e) {} }
+// recordings that no list refers to any more (sent, or taken out and not brought back) are thrown away
+async function pruneClips() {
+  try {
+    const keep = new Set([...cart.extras, ...(pending ? fixCart(pending.cart).extras : [])].filter(x => x.voice).map(x => x.id));
+    const keys = await idbDo((await clipStore('readonly')).getAllKeys());
+    for (const k of keys) if (!keep.has(k)) await clipDel(k);
+  } catch (e) {}
 }
-function hearRound(s) {
-  let r;
-  try { r = new SR(); } catch (e) { s.failed = true; s.say('声の入力を はじめられませんでした。'); finishListen(); return; }
-  r.lang = 'ja-JP'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
-  let now = '';
-  r.onresult = e => {
-    now = '';
-    for (let i = 0; i < e.results.length; i++) now += e.results[i][0].transcript;
-    s.quiet = 0;
-    s.field.value = joinHeard(s.base, s.heard, now);
-    s.field.dispatchEvent(new Event('input'));
-  };
-  r.onerror = e => {
-    if (e.error === 'no-speech') { s.quiet++; return; }
-    if (e.error === 'aborted') return;
-    s.failed = true;
-    if (SR_ERRORS[e.error]) s.say(SR_ERRORS[e.error]);
-    $('#kbHint').hidden = false;
-  };
-  r.onend = () => {
-    s.heard = joinHeard(s.heard, now);
-    if (session !== s) return;
-    if (s.failed || s.quiet >= 2 || Date.now() > s.until) { finishListen(); return; }
-    hearRound(s);
-  };
-  s.rec = r;
-  try { r.start(); } catch (e) { s.failed = true; s.say('もういちど 押してください。'); finishListen(); }
+
+// the browser decodes the recording, mixes it down to one 16 kHz channel (plenty for a voice) and it is written as WAV
+async function toWav(blob) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  let audio;
+  try { audio = await ctx.decodeAudioData(await blob.arrayBuffer()); } finally { ctx.close().catch(() => {}); }
+  const rate = 16000;
+  const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(audio.duration * rate)), rate);
+  const src = off.createBufferSource();
+  src.buffer = audio; src.connect(off.destination); src.start();
+  const f = (await off.startRendering()).getChannelData(0);
+  const pcm = new Int16Array(f.length);
+  for (let i = 0; i < f.length; i++) { const v = Math.max(-1, Math.min(1, f[i])); pcm[i] = v < 0 ? v * 0x8000 : v * 0x7fff; }
+  return { blob: wavOf([pcm]), sec: audio.duration };
 }
-// stop() keeps what was heard; abort() drops it (used when the sheet closes or the words are cleared)
-function finishListen(discard) {
-  const s = session;
-  if (!s) return;
-  session = null;
-  paintMic(s.btn, false, s.idle);
-  try { discard ? s.rec.abort() : s.rec.stop(); } catch (e) {}
-  if (discard || s.failed) return;
-  s.say(s.field.value.trim() !== s.base ? s.done : '声が きこえませんでした。もういちど 押して、話して ください。');
+function wavOf(parts, rate = 16000) {
+  const n = parts.reduce((s, p) => s + p.length, 0);
+  const h = new DataView(new ArrayBuffer(44));
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) h.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); h.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+  h.setUint32(16, 16, true); h.setUint16(20, 1, true); h.setUint16(22, 1, true); h.setUint32(24, rate, true);
+  h.setUint32(28, rate * 2, true); h.setUint16(32, 2, true); h.setUint16(34, 16, true);
+  str(36, 'data'); h.setUint32(40, n * 2, true);
+  return new Blob([h, ...parts], { type: 'audio/wav' });
 }
+// several recordings go as one file, with a short pause between them
+async function joinWavs(blobs) {
+  const gap = new Int16Array(9600);
+  const parts = [];
+  for (const [i, b] of blobs.entries()) { if (i) parts.push(gap); parts.push(new Int16Array((await b.arrayBuffer()).slice(44))); }
+  return wavOf(parts);
+}
+
+let recorder = null;
+function watchLevel(stream, bar) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const an = ctx.createAnalyser();
+    an.fftSize = 512;
+    ctx.createMediaStreamSource(stream).connect(an);
+    const data = new Uint8Array(an.fftSize);
+    let raf = 0;
+    const tick = () => {
+      an.getByteTimeDomainData(data);
+      let peak = 0;
+      for (const v of data) peak = Math.max(peak, Math.abs(v - 128));
+      bar.style.width = Math.min(100, peak * 1.6) + '%';
+      raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => { cancelAnimationFrame(raf); ctx.close().catch(() => {}); bar.style.width = '0'; };
+  } catch (e) { return () => {}; }
+}
+async function recStart({ bar, onTick, onMax }) {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+  const mr = new MediaRecorder(stream);
+  const r = { stream, mr, chunks: [], t0: Date.now() };
+  mr.ondataavailable = e => { if (e.data && e.data.size) r.chunks.push(e.data); };
+  r.stopped = new Promise(res => { mr.onstop = res; });
+  r.unwatch = bar ? watchLevel(stream, bar) : () => {};
+  r.timer = setInterval(() => { const s = (Date.now() - r.t0) / 1000; if (onTick) onTick(s); if (s >= VOICE_MAX && onMax) onMax(); }, 250);
+  mr.start(250);
+  recorder = r;
+}
+// gives { blob, sec } as WAV, or null when nothing (or under 0.7 seconds) was recorded
+async function recStop(discard) {
+  const r = recorder;
+  if (!r) return null;
+  recorder = null;
+  clearInterval(r.timer);
+  r.unwatch();
+  if (r.mr.state !== 'inactive') { r.mr.stop(); await r.stopped; }
+  r.stream.getTracks().forEach(t => t.stop());
+  if (discard || !r.chunks.length || Date.now() - r.t0 < 700) return null;
+  return toWav(new Blob(r.chunks, { type: r.mr.mimeType || 'audio/webm' }));
+}
+
+// one player for every 聞く button
+const player = new Audio();
+let playing = null;
+function playBlob(blob, btn, idleHTML, busyHTML) {
+  stopPlay();
+  const url = URL.createObjectURL(blob);
+  playing = { btn, url, idleHTML };
+  btn.innerHTML = busyHTML;
+  player.src = url;
+  player.play().catch(() => stopPlay());
+}
+function stopPlay() {
+  if (!playing) return;
+  player.pause();
+  URL.revokeObjectURL(playing.url);
+  playing.btn.innerHTML = playing.idleHTML;
+  playing = null;
+}
+player.addEventListener('ended', stopPlay);
+
+// the sheet: press to record, press again to finish, listen back, then put it on the list
+const REC_IDLE = `${ic('mic')}<span>押して 録音する</span>`;
+const recBusy = s => `<span class="dot"></span><span>おわる（${secText(s)}）</span>`;
+const playIdle = sec => `${ic('play_arrow')}<span>聞いてみる（${secText(sec)}）</span>`;
+const PLAY_BUSY = `${ic('stop')}<span>とめる</span>`;
+let voiceTake = null, voiceBusy = false;
 const voiceSay = m => { $('#voiceMsg').textContent = m; };
-const voiceRedoState = () => { $('#voiceRedo').hidden = !SR || !$('#voiceText').value.trim(); };
-paintMic($('#micBtn'), false, MIC_IDLE);
-paintMic($('#testMic'), false, MIC_TEST);
+function voiceState(state) {
+  const rb = $('#recBtn');
+  rb.hidden = state === 'done' || state === 'nomic';
+  rb.classList.toggle('on', state === 'rec');
+  if (state !== 'rec') rb.innerHTML = REC_IDLE;
+  $('#recLevel').hidden = state !== 'rec';
+  $('#recDone').hidden = state !== 'done';
+  if (state === 'done') $('#recPlay').innerHTML = playIdle(voiceTake.sec);
+}
 $('#voiceBtn').addEventListener('click', () => {
+  voiceTake = null;
   $('#voiceText').value = '';
-  voiceRedoState();
-  voiceSay(SR ? 'マイクを 押して、ほしいものを 話してください。' : '下に 入れてください。');
-  $('#micBtn').hidden = !SR;
-  $('#kbHint').hidden = !!SR;
+  $('#typeBox').hidden = canRecord;
+  $('#typeToggle').hidden = !canRecord;
+  voiceState(canRecord ? 'idle' : 'nomic');
+  voiceSay(canRecord ? '下の ボタンを 押して、ほしいものを 話して ください。話し おわったら、もう一度 押します。'
+    : 'この スマホでは 録音できません。下に 文字で 入れて ください。');
   openSheet('sh-voice');
 });
-const startVoice = () => listen({ field: $('#voiceText'), say: voiceSay, btn: $('#micBtn'), done: VOICE_DONE });
-$('#micBtn').addEventListener('click', startVoice);
-$('#voiceText').addEventListener('input', voiceRedoState);
-// misheard words can't be put right without typing, so they are cleared and said again
-$('#voiceRedo').addEventListener('click', () => { finishListen(true); $('#voiceText').value = ''; voiceRedoState(); startVoice(); });
-$('#sh-voice').addEventListener('closed', () => finishListen(true));
+async function recordToggle() {
+  if (voiceBusy) return;
+  if (recorder) { await finishTake(); return; }
+  voiceBusy = true;
+  stopPlay();
+  try {
+    await recStart({ bar: $('#recLevel span'), onTick: s => { $('#recBtn').innerHTML = recBusy(s); }, onMax: () => finishTake('1ぷん たったので、録音を おわりました。') });
+  } catch (e) {
+    voiceSay(REC_ERRORS[e && e.name] || '録音を はじめられませんでした。');
+    $('#typeBox').hidden = false;
+    $('#typeToggle').hidden = true;
+    return;
+  } finally { voiceBusy = false; }
+  voiceState('rec');
+  $('#recBtn').innerHTML = recBusy(0);
+  voiceSay('録音中です。話し おわったら、上の ボタンを 押して ください。');
+  buzz();
+}
+async function finishTake(note) {
+  if (voiceBusy || !recorder) return;
+  voiceBusy = true;
+  voiceSay('まとめています…');
+  let take = null;
+  try { take = await recStop(); } catch (e) { take = null; }
+  voiceBusy = false;
+  if (!take) { voiceState('idle'); voiceSay('声が 入りませんでした。もういちど 押して、話して ください。'); return; }
+  voiceTake = take;
+  voiceState('done');
+  voiceSay(note || '録音 できました。「聞いてみる」で たしかめて、よければ「リストに 入れる」を 押して ください。');
+  buzz();
+}
+// a second, trembling tap must not stop the recording it has just started
+$('#recBtn').addEventListener('click', e => { if (!tooFast(e.currentTarget)) recordToggle(); });
+$('#recPlay').addEventListener('click', () => {
+  if (playing) { stopPlay(); return; }
+  if (voiceTake) playBlob(voiceTake.blob, $('#recPlay'), playIdle(voiceTake.sec), PLAY_BUSY);
+});
+$('#recAgain').addEventListener('click', () => { stopPlay(); voiceTake = null; voiceState('idle'); recordToggle(); });
+$('#typeToggle').addEventListener('click', () => { $('#typeBox').hidden = false; $('#typeToggle').hidden = true; $('#voiceText').focus(); });
+function stopVoice() { stopPlay(); if (recorder) recStop(true); }
+$('#sh-voice').addEventListener('closed', stopVoice);
 $('#voiceAdd').addEventListener('click', async () => {
+  if (recorder) await finishTake();
   const t = $('#voiceText').value.replace(/\s+/g, ' ').trim();
-  if (!t) { voiceSay(SR ? 'まだ 何も 入っていません。マイクを 押して 話してください。' : 'まだ 何も 入っていません。'); return; }
-  finishListen(true);
-  cart.extras.push({ id: uid(), text: t.slice(0, 200) });
+  if (!voiceTake && !t) { voiceSay(canRecord ? 'まだ 録音して いません。上の ボタンを 押して、話して ください。' : 'まだ 何も 入って いません。'); return; }
+  stopPlay();
+  const added = [];
+  if (voiceTake) {
+    const id = uid();
+    try { await clipPut(id, voiceTake.blob); }
+    catch (e) { voiceSay('声を 保存できませんでした。スマホの 空きが 足りないかもしれません。'); return; }
+    cart.extras.push({ id, voice: true, sec: Math.round(voiceTake.sec * 10) / 10 });
+    added.push(VOICE_LABEL);
+  }
+  if (t) { cart.extras.push({ id: uid(), text: t.slice(0, 200) }); added.push(`「${t}」`); }
+  voiceTake = null;
   saveCart();
   await closeSheet();
   renderHome();
   $('#extrasSec').scrollIntoView({ block: 'center' });
-  toast(`「${t}」を 入れました`);
+  toast(`${added.join('と ')}を 入れました`);
 });
 
 /* ---------- 送る ---------- */
@@ -1149,10 +1306,12 @@ function buildText(c = cart) {
     itemLines.push(`・${it.name}${det ? `（${det}）` : ''} ${l.qty}${it.unit}`);
   }
   out.push(...itemLines);
-  if (c.extras.length) {
+  const texts = c.extras.filter(x => !x.voice);
+  if (texts.length) {
     if (itemLines.length) out.push('', 'ほかに');
-    c.extras.forEach(x => out.push(`・${x.text}`));
+    texts.forEach(x => out.push(`・${x.text}`));
   }
+  if (hasVoice(c)) out.push('', '🎤 声の メッセージも あります（いっしょに 届いた 音声ファイルを 押すと 聞けます）');
   if (c.when) out.push('', `いつ：${c.when}`);
   return out.join('\n');
 }
@@ -1168,15 +1327,30 @@ function renderConfirm() {
     const det = detailOf(it, l.size);
     rows.push(`<li>${picHTML(it, 'sm')}<span class="cn">${esc(it.name)}${det ? `<small>${esc(det)}</small>` : ''}</span><span class="cq">${qtyHTML(it, l.qty)}</span></li>`);
   }
-  cart.extras.forEach(x => rows.push(`<li>${notePic('sm')}<span class="cn">${esc(x.text)}</span></li>`));
+  cart.extras.forEach(x => rows.push(x.voice
+    ? `<li>${notePic('sm', 'mic')}<span class="cn">${VOICE_LABEL}<small>${secText(x.sec)}・音声ファイルで 送ります</small></span></li>`
+    : `<li>${notePic('sm')}<span class="cn">${esc(x.text)}</span></li>`));
   $('#clist').innerHTML = rows.join('');
   renderWhen();
   renderSteps();
+  prepareVoice();
+}
+// navigator.share has to get the file at the moment of the tap, so it is put together as soon as the sheet opens
+let voiceFile = null, voiceFileFor = '';
+async function prepareVoice() {
+  const ids = cart.extras.filter(x => x.voice).map(x => x.id), key = ids.join(',');
+  if (key === voiceFileFor && (voiceFile || !ids.length)) return;
+  voiceFile = null; voiceFileFor = key;
+  if (!ids.length) return;
+  const blobs = (await Promise.all(ids.map(clipGet))).filter(Boolean);
+  if (voiceFileFor !== key || !blobs.length) return;
+  voiceFile = new File([await joinWavs(blobs)], `声のメッセージ（${md(Date.now())}）.wav`, { type: 'audio/wav' });
 }
 // LINE's own screens are new to the parent, so the sheet says beforehand what to press there, with the name to look for
 function renderSteps() {
   const who = settings.to ? `「${esc(settings.to)}」を 押す` : '送る相手を 押す';
-  const viaShare = settings.send === 'share' && navigator.share;
+  // a recording can only go through the phone's share menu (the LINE link carries text alone)
+  const viaShare = hasVoice() || (settings.send === 'share' && navigator.share);
   const steps = viaShare ? ['「LINE」を 押す', who, '「送信」を 押す'] : [who, '「送信」を 押す'];
   $('#stepsT').textContent = viaShare ? 'つぎの 画面で：' : 'LINEが ひらいたら：';
   $('#steps').innerHTML = steps.map((s, i) => `<li><b>${i + 1}</b>${s}</li>`).join('');
@@ -1206,19 +1380,26 @@ function markPending(text) {
   askTimer = setTimeout(() => { if (pending && !wentAway && document.visibilityState === 'visible') askSent(); }, 4000);
 }
 function clearPending() { pending = null; drop('pending'); clearTimeout(askTimer); }
+function shareNow(data, text) {
+  markPending(text);
+  navigator.share(data).then(() => {
+    setTimeout(() => { if (pending && document.visibilityState === 'visible') askSent(); }, 500);
+  }).catch(err => {
+    clearPending();
+    toast(err && err.name === 'AbortError' ? '送るのを やめました。' : '送れませんでした。もういちど 押してください。');
+  });
+}
 $('#lineSend').addEventListener('click', e => {
   const text = buildText();
-  if (settings.send === 'share' && navigator.share) {
+  if (hasVoice()) {
     e.preventDefault();
-    markPending(text);
-    navigator.share({ text }).then(() => {
-      setTimeout(() => { if (pending && document.visibilityState === 'visible') askSent(); }, 500);
-    }).catch(err => {
-      clearPending();
-      toast(err && err.name === 'AbortError' ? '送るのを やめました。' : '送れませんでした。もういちど 押してください。');
-    });
+    if (!voiceFile) { toast('声を 用意しています。もういちど 押して ください。'); prepareVoice(); return; }
+    const data = { files: [voiceFile], text };
+    if (!navigator.canShare || !navigator.canShare(data)) { toast('この スマホでは 声を いっしょに 送れません。声を けして、文字で 送って ください。'); return; }
+    shareNow(data, text);
     return;
   }
+  if (settings.send === 'share' && navigator.share) { e.preventDefault(); shareNow({ text }, text); return; }
   e.currentTarget.href = lineURL(text);
   markPending(text);
 });
@@ -1248,7 +1429,8 @@ function markSent() {
   const lines = [];
   for (const g of GROUPS) for (const it of inGroup(g.key)) for (const l of linesOf(it, c)) lines.push({ id: it.id, name: it.name, size: l.size, unit: it.unit, qty: l.qty });
   const before = { cart: clone(cart), hist: hist.slice(), stats: items.map(it => [it.id, it.count, it.lastAt]) };
-  hist.unshift({ at: now, lines, extras: c.extras.map(x => x.text), when: c.when });
+  // a recording is not kept in the history: まえと おなじ must never send an old voice again
+  hist.unshift({ at: now, lines, extras: c.extras.filter(x => !x.voice).map(x => x.text), when: c.when });
   hist = hist.slice(0, 60);
   save('history', hist);
   const ids = new Set(lines.map(l => l.id));
@@ -1259,6 +1441,7 @@ function markSent() {
   clearPending();
   renderHome();
   window.scrollTo(0, 0);
+  setTimeout(pruneClips, 16000);
   toast('送りました。おつかれさまでした。', 'もとに もどす', () => {
     cart = fixCart(before.cart); saveCart();
     hist = before.hist; save('history', hist);
@@ -1274,6 +1457,7 @@ $('#clearAll').addEventListener('click', async () => {
   saveCart(); clearPending();
   await closeSheet();
   renderHome();
+  setTimeout(pruneClips, 16000);
   toast('ぜんぶ けしました。', 'もとに もどす', () => { cart = fixCart(before); saveCart(); renderHome(); });
 });
 
@@ -1327,7 +1511,8 @@ function openSettings() {
   document.documentElement.classList.add('insettings');
   window.scrollTo(0, 0);
   pushLayer('settings', () => {
-    finishListen(true);
+    stopVoice();
+    testRecReset();
     $('#settings').hidden = true;
     document.documentElement.classList.remove('insettings');
     $('#home').hidden = bar.hidden = false;
@@ -1359,10 +1544,11 @@ function renderSettings() {
   setSeg('#themeSeg', settings.theme);
   $('#toName').value = settings.to || '';
   $('#testSend').href = lineURL(TEST_TEXT);
-  $('#srState').textContent = SR
-    ? 'この スマホでは、アプリの マイクで 声を 入れられます。はじめて 使うとき「マイクの 使用を 許可しますか？」と 出たら「許可」を 押してください。ここで いちど ためしておくと 安心です。'
-    : 'この ブラウザでは アプリの マイクが 使えません。かわりに キーボードの マイクで 声を 入れられます。';
-  $('#testMic').hidden = !SR;
+  $('#recNote').textContent = canRecord
+    ? '親が 話した 声を 録音して、LINE に 音声ファイルとして 送ります。はじめて 録音するとき「マイクの 使用を 許可しますか？」と 出たら「許可」を 押して ください。ここで いちど 録音して、「この声を ためしに 送る」で LINE に 文と 声の ファイルが 両方 届くか たしかめて おくと 安心です。'
+    : 'この ブラウザでは 録音できません。Android の Chrome で ひらいて ください。';
+  $('#testRec').hidden = !canRecord;
+  if (!recorder) $('#testRec').innerHTML = TEST_REC;
   $('#installBtn').hidden = !installEvt;
   $('#installNote').textContent = standalone() ? 'いま ホーム画面の アイコンから ひらいています。'
     : installEvt ? '下の ボタンを 押すと、ホーム画面に アイコンが できます。'
@@ -1416,11 +1602,46 @@ const TEST_TEXT = 'かいものメモの ためしです。\nこれが 届いた
 $('#testSend').addEventListener('click', e => {
   if (settings.send === 'share' && navigator.share) { e.preventDefault(); navigator.share({ text: TEST_TEXT }).catch(() => {}); }
 });
-$('#testMic').addEventListener('click', () => {
-  const out = $('#testMicOut');
-  $('#testMicBox').hidden = false;
-  if (!session) out.value = '';
-  listen({ field: out, say: m => { $('#testMicMsg').textContent = m; }, btn: $('#testMic'), idle: MIC_TEST, done: '聞きとれました。これで だいじょうぶです。' });
+// the family's check: record, hear it back, and send it once to see how LINE receives the list and the sound file
+const TEST_REC = `${ic('mic')}<span>ためしに 録音してみる</span>`;
+let testTake = null, testBusy = false;
+const testSay = m => { $('#testRecMsg').textContent = m; };
+function testRecReset() {
+  $('#testRec').classList.remove('on');
+  $('#testRec').innerHTML = TEST_REC;
+}
+$('#testRec').addEventListener('click', async () => {
+  const btn = $('#testRec');
+  if (testBusy) return;
+  testBusy = true;
+  try {
+    if (recorder) {
+      testRecReset();
+      testSay('まとめています…');
+      testTake = await recStop().catch(() => null);
+      if (!testTake) { testSay('声が 入りませんでした。もういちど ためして ください。'); return; }
+      testSay(`録音 できました（${secText(testTake.sec)}）。聞こえるか たしかめて ください。`);
+      $('#testRecDone').hidden = false;
+      playBlob(testTake.blob, $('#testRecPlay'), playIdle(testTake.sec), PLAY_BUSY);
+      return;
+    }
+    stopPlay();
+    try { await recStart({ onTick: s => { btn.innerHTML = recBusy(s); }, onMax: () => btn.click() }); }
+    catch (e) { testSay(REC_ERRORS[e && e.name] || '録音を はじめられませんでした。'); return; }
+    btn.classList.add('on');
+    btn.innerHTML = recBusy(0);
+    testSay('録音中です。なにか 話して、もう一度 押して ください。');
+  } finally { testBusy = false; }
+});
+$('#testRecPlay').addEventListener('click', () => {
+  if (playing) { stopPlay(); return; }
+  if (testTake) playBlob(testTake.blob, $('#testRecPlay'), playIdle(testTake.sec), PLAY_BUSY);
+});
+$('#testVoiceSend').addEventListener('click', () => {
+  if (!testTake) return;
+  const data = { files: [new File([testTake.blob], 'ためしの声.wav', { type: 'audio/wav' })], text: TEST_TEXT + '\n🎤 声の ファイルも いっしょに 届いて いれば、声の 送り方も だいじょうぶです。' };
+  if (!navigator.canShare || !navigator.canShare(data)) { toast('この スマホでは 声を 送れません。'); return; }
+  navigator.share(data).catch(() => {});
 });
 
 $('#sItems').addEventListener('click', e => {
@@ -1708,6 +1929,13 @@ applySize();
 applyTheme();
 renderHome();
 if (pending) setTimeout(askSent, 700);
+// a recording the phone has lost (its storage cleared) leaves the list, rather than being sent empty
+(async () => {
+  const lost = [];
+  for (const x of cart.extras) if (x.voice && !(await clipGet(x.id))) lost.push(x.id);
+  if (lost.length) { cart.extras = cart.extras.filter(x => !lost.includes(x.id)); saveCart(); renderHome(); }
+  pruneClips();
+})();
 if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {});
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
