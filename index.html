@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>かいものメモ</title>
 <meta name="description" content="ほしいものを押すだけで、買い物のお願いをLINEで送れるメモ">
-<meta name="theme-color" content="#ecefe6" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#10140f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ecefe6" id="themeColor">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="かいもの">
@@ -18,8 +17,8 @@
    2025 Expressive parts: a segmented list whose picked row rounds out, round buttons that square off while pressed,
    a docked toolbar in place of the bottom app bar, a connected button group in place of segmented buttons.
    It is made for a parent in their 80s who finds typing hard, so M3's sizes are scaled up: a 20px root (Body Large
-   16sp at 125%; 23 and 26 from 家族の設定), targets of 52px or more, no swipes or long presses, and rows that never
-   move by themselves, because the parent finds things by where they were last time. */
+   16sp at 125%; 23 and 26 from 家族の設定), targets of 52px or more, no swipes, a long press that counts as a press,
+   and rows that never move by themselves, because the parent finds things by where they were last time. */
 :root{
   /* M3 colour roles: the Tonal Spot scheme of seed #3E8E41, from Google's material-color-utilities 0.3.0 */
   --md-primary:#3b693a;--md-on-primary:#ffffff;--md-primary-container:#bcf0b4;--md-on-primary-container:#235024;
@@ -49,19 +48,19 @@
   --barH:5.5rem;
   color-scheme:light;font-size:20px;
 }
-@media (prefers-color-scheme:dark){
-  :root{
-    --md-primary:#a1d39a;--md-on-primary:#0a390f;--md-primary-container:#235024;--md-on-primary-container:#bcf0b4;
-    --md-secondary:#baccb3;--md-on-secondary:#253423;--md-secondary-container:#3b4b38;--md-on-secondary-container:#d5e8cf;
-    --md-tertiary:#a0cfd4;--md-on-tertiary:#00363b;--md-tertiary-container:#1f4d52;--md-on-tertiary-container:#bcebf0;
-    --md-error:#ffb4ab;--md-on-error:#690005;--md-error-container:#93000a;--md-on-error-container:#ffdad6;
-    --md-surface:#10140f;--md-surface-container-lowest:#0b0f0a;--md-surface-container-low:#191d17;--md-surface-container:#1d211b;
-    --md-surface-container-high:#272b25;--md-surface-container-highest:#323630;
-    --md-on-surface:#e0e4db;--md-on-surface-variant:#c2c9bd;--md-outline:#8c9388;--md-outline-variant:#424940;
-    --md-inverse-surface:#e0e4db;--md-inverse-on-surface:#2d322c;--md-inverse-primary:#3b693a;
-    --page:var(--md-surface);--item:var(--md-surface-container-high);--bar:var(--md-surface-container);--picbg:var(--md-surface-container-highest);
-    color-scheme:dark;
-  }
+/* dark colours only when 家族の設定 asks for them: light text on black blurs for eyes with cataracts or astigmatism,
+   so the light scheme stays even when the phone itself is dark ("自動" follows the phone) */
+html[data-theme="dark"]{
+  --md-primary:#a1d39a;--md-on-primary:#0a390f;--md-primary-container:#235024;--md-on-primary-container:#bcf0b4;
+  --md-secondary:#baccb3;--md-on-secondary:#253423;--md-secondary-container:#3b4b38;--md-on-secondary-container:#d5e8cf;
+  --md-tertiary:#a0cfd4;--md-on-tertiary:#00363b;--md-tertiary-container:#1f4d52;--md-on-tertiary-container:#bcebf0;
+  --md-error:#ffb4ab;--md-on-error:#690005;--md-error-container:#93000a;--md-on-error-container:#ffdad6;
+  --md-surface:#10140f;--md-surface-container-lowest:#0b0f0a;--md-surface-container-low:#191d17;--md-surface-container:#1d211b;
+  --md-surface-container-high:#272b25;--md-surface-container-highest:#323630;
+  --md-on-surface:#e0e4db;--md-on-surface-variant:#c2c9bd;--md-outline:#8c9388;--md-outline-variant:#424940;
+  --md-inverse-surface:#e0e4db;--md-inverse-on-surface:#2d322c;--md-inverse-primary:#3b693a;
+  --page:var(--md-surface);--item:var(--md-surface-container-high);--bar:var(--md-surface-container);--picbg:var(--md-surface-container-highest);
+  color-scheme:dark;
 }
 html[data-size="l"]{font-size:23px}
 html[data-size="xl"]{font-size:26px}
@@ -71,10 +70,13 @@ html.insettings{font-size:20px}
 html{background:var(--page);-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior-y:none}
 /* the text is written with spaces between phrases, so lines break only there and never mid-word */
 body{margin:0;background:var(--page);color:var(--md-on-surface);font:var(--t-body-l);overscroll-behavior-y:none;word-break:keep-all;overflow-wrap:anywhere}
+/* a slow press must not start selecting text or open a menu; only the fields keep text selection */
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 html.lock,html.lock body{overflow:hidden}
 button,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
-a{-webkit-tap-highlight-color:transparent}
+a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 :focus-visible{outline:3px solid var(--md-secondary);outline-offset:2px}
 /* rules like `.row { display: grid }` would otherwise beat the hidden attribute */
 [hidden]{display:none!important}
@@ -116,8 +118,8 @@ a{-webkit-tap-highlight-color:transparent}
 .appbar h1{margin:0;font:var(--t-headline);white-space:nowrap}
 .appbar .sub{margin:.1rem 0 0;font:var(--t-title-m);color:var(--md-on-surface-variant)}
 .how{margin:.6rem auto 0;font:var(--t-body-l);color:var(--md-on-surface-variant)}
-.how .k{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;vertical-align:-.4rem;background:var(--md-primary);color:var(--md-on-primary)}
-.how .k .ic{width:1.2rem;height:1.2rem}
+.how .k{display:inline-flex;align-items:center;gap:.15rem;padding:0 .65rem 0 .4rem;border-radius:999px;vertical-align:-.15rem;background:var(--md-primary);color:var(--md-on-primary);font:var(--t-label-l);line-height:1.65}
+.how .k .ic{width:1.1rem;height:1.1rem}
 .how .g{display:inline-flex;align-items:center;gap:.25rem;padding:0 .65rem 0 .5rem;border-radius:999px;vertical-align:-.15rem;background:var(--md-primary);color:var(--md-on-primary);font:var(--t-label-l);line-height:1.65}
 .how .g .ic{width:1rem;height:1rem}
 .same{display:flex;align-items:center;gap:.8rem;width:100%;min-height:4.2rem;margin:.8rem 0 .2rem;padding:.6rem .75rem .6rem 1rem;border:0;border-radius:var(--sh-l);
@@ -135,21 +137,23 @@ a{-webkit-tap-highlight-color:transparent}
 .rows > :first-child,.clist > :first-child,.slist > :first-child{border-top-left-radius:var(--sh-l);border-top-right-radius:var(--sh-l)}
 .rows > :last-child,.clist > :last-child,.slist > :last-child{border-bottom-left-radius:var(--sh-l);border-bottom-right-radius:var(--sh-l)}
 /* one row per item: the picture, the name, and under the name a ＋ that never moves (− and the count appear to its left) */
-.row{position:relative;display:grid;grid-template-columns:3.5rem 1fr;grid-template-areas:"pic txt" "pic step";
+.row{position:relative;display:grid;grid-template-columns:4.25rem 1fr;grid-template-areas:"pic txt" "pic step";
   column-gap:1rem;row-gap:.35rem;align-items:center;padding:.75rem .9rem .75rem 1rem;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:border-radius .25s var(--ease),background-color .2s var(--ease)}
-.rows > .row.sel{border-radius:var(--sh-l);background:var(--md-primary-container);color:var(--md-on-primary-container)}
-/* the whole row is a ＋, for fingers that miss the button; screen readers get the real buttons */
+/* a picked row is told apart by more than a tint (the tint alone is 1.3:1 against white): a 3px primary edge (6.4:1),
+   a big check on the picture and a big count */
+.rows > .row.sel{border-radius:var(--sh-l);background:var(--md-primary-container);color:var(--md-on-primary-container);box-shadow:inset 0 0 0 3px var(--md-primary)}
+/* touching the row itself only points at its buttons: a look, or the start of a scroll, never adds anything */
 .hit{position:absolute;inset:0;z-index:1;margin:0;padding:0;border:0;border-radius:inherit;background:transparent}
-.picbox{grid-area:pic;position:relative;width:3.5rem;height:3.5rem}
-.pic{display:flex;align-items:center;justify-content:center;flex:none;width:3.5rem;height:3.5rem;border-radius:var(--sh-m);overflow:hidden;background:var(--picbg)}
-.pic.emo{font-size:2.25rem;line-height:1}
-.pic.ini{background:var(--md-secondary-container);color:var(--md-on-secondary-container);font:500 1.4rem/1 var(--font)}
+.picbox{grid-area:pic;position:relative;width:4.25rem;height:4.25rem}
+.pic{display:flex;align-items:center;justify-content:center;flex:none;width:4.25rem;height:4.25rem;border-radius:var(--sh-m);overflow:hidden;background:var(--picbg)}
+.pic.emo{font-size:2.8rem;line-height:1}
+.pic.ini{background:var(--md-secondary-container);color:var(--md-on-secondary-container);font:500 1.7rem/1 var(--font)}
 .pic.memo{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
-.pic.memo .ic{width:1.75rem;height:1.75rem}
+.pic.memo .ic{width:2.1rem;height:2.1rem}
 .pic img{width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none}
-.selmark{position:absolute;top:-.35rem;right:-.35rem;display:none;width:1.55rem;height:1.55rem;border-radius:50%;
-  background:var(--md-on-primary);color:var(--md-primary);box-shadow:0 0 0 2px var(--md-primary-container)}
+.selmark{position:absolute;top:-.5rem;right:-.5rem;display:none;width:2rem;height:2rem;border-radius:50%;
+  background:var(--md-on-primary);color:var(--md-primary);box-shadow:0 0 0 3px var(--md-primary-container)}
 .selmark .ic{width:100%;height:100%}
 .row.sel .selmark{display:block}
 .txt{grid-area:txt;min-width:0}
@@ -159,16 +163,24 @@ a{-webkit-tap-highlight-color:transparent}
 .sub{display:block;font:var(--t-body-m);color:var(--md-on-surface-variant)}
 .sub.last{color:var(--md-tertiary);font-weight:500}
 .row.sel .sub{color:var(--md-on-primary-container)}
-.step{grid-area:step;justify-self:end;position:relative;z-index:2;display:flex;align-items:center;gap:.5rem;pointer-events:none}
+.step{grid-area:step;justify-self:end;position:relative;z-index:2;display:flex;align-items:center;gap:.3rem;pointer-events:none}
 .step button{pointer-events:auto}
 .step .icon-btn{width:2.75rem;height:2.75rem}
 .step .icon-btn .ic{width:1.6rem;height:1.6rem}
 .step .minus{color:var(--md-on-surface-variant);box-shadow:inset 0 0 0 1px var(--md-outline)}
 .step .plus{background:var(--md-primary);color:var(--md-on-primary)}
+/* until something is picked the ＋ says 入れる, so its meaning is spelled out */
+.row:not(.sel) .step .plus{width:auto;gap:.2rem;padding:0 1.1rem 0 .8rem;border-radius:999px;font:var(--t-label-l)}
+.row:not(.sel) .step .plus:active{border-radius:var(--sh-m)}
+.step .plus .pl{display:none}
+.row:not(.sel) .step .plus .pl{display:inline}
 .row.sel .step .minus{color:var(--md-on-primary-container);box-shadow:inset 0 0 0 1px var(--md-on-primary-container)}
 .step .n{min-width:2.5rem;text-align:center;white-space:nowrap}
 .n b,.cq b{font:600 1.35rem/1 var(--font)}
+.step .n b{font-size:1.5rem}
 .n small,.cq small{margin-left:.1rem;font:var(--t-body-m)}
+.nudge{animation:nudge .5s var(--ease)}
+@keyframes nudge{30%{transform:scale(1.15)}60%{transform:scale(.95)}}
 .step .sum{text-align:right;font:var(--t-body-m);font-weight:600}
 .step .sum b{font-size:1.1rem}
 .step .del{min-height:2.75rem;padding:0 1rem 0 .8rem}
@@ -209,8 +221,27 @@ html[data-size="l"] #bar .wrap,html[data-size="xl"] #bar .wrap{flex-direction:co
 .hero{display:flex;justify-content:center;margin-bottom:.75rem;color:var(--md-secondary)}
 .hero .ic{width:2rem;height:2rem}
 .hero + h2{text-align:center}
-@media (prefers-reduced-motion:reduce){.sheet,.layer.dialog .sheet,.btn,.icon-btn,.row,.same{transition:none}}
+@media (prefers-reduced-motion:reduce){.sheet,.layer.dialog .sheet,.btn,.icon-btn,.row,.same{transition:none}.nudge,#toast{animation:none}}
 .acts{display:flex;flex-direction:column;gap:.6rem;margin-top:1.25rem}
+/* a sheet in two parts: the list scrolls, the buttons under it always stay in view */
+.sheet.split{display:flex;flex-direction:column;overflow:hidden;padding:0}
+.sheet-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:1.5rem 0 1.25rem}
+.sheet-foot{flex:none;padding:.9rem 0 calc(1rem + env(safe-area-inset-bottom));background:var(--sheet);box-shadow:0 -1px 0 var(--md-outline-variant),0 -8px 16px -8px rgba(0,0,0,.18)}
+.sheet-foot .acts{margin-top:0}
+/* what to press once LINE opens, with the family member's name */
+.steps-t{margin:0 .25rem .35rem;font:var(--t-body-m);color:var(--md-on-surface-variant)}
+.steps{list-style:none;margin:0 .25rem .8rem;padding:0;display:flex;flex-wrap:wrap;gap:.35rem .9rem;font:var(--t-title-m)}
+.steps li{display:inline-flex;align-items:center;gap:.4rem}
+.steps b{display:inline-flex;align-items:center;justify-content:center;flex:none;width:1.6rem;height:1.6rem;border-radius:50%;background:var(--md-primary);color:var(--md-on-primary);font:600 .95rem/1 var(--font)}
+/* 家族の設定 opens only after holding ひらく; the fill shows how long is left */
+.btn.hold::after{content:"";position:absolute;inset:0;z-index:-1;background:var(--md-primary);opacity:.25;transform:scaleX(0);transform-origin:left;pointer-events:none}
+.btn.hold.holding::after{transform:scaleX(1);transition:transform var(--hold,1.5s) linear}
+#sh-ask.gate .acts{flex-direction:column-reverse}
+/* 写真で そろえる */
+.photostep{display:flex;flex-direction:column;align-items:center;gap:.6rem;margin:.25rem 0}
+.photostep .pic.big{width:10rem;height:10rem;border-radius:var(--sh-xl);font-size:6rem}
+.photostep .pic.big.ini{font-size:4rem}
+.photostep .nm{font:var(--t-headline-s);text-align:center}
 .h3{margin:1.25rem .25rem .6rem;font:var(--t-title-m)}
 .h3 small{font:var(--t-body-m);color:var(--md-on-surface-variant)}
 .clist li{display:flex;align-items:center;gap:.9rem;min-height:4rem;padding:.6rem 1rem}
@@ -243,6 +274,8 @@ html[data-size="l"] #bar .wrap,html[data-size="xl"] #bar .wrap{flex-direction:co
 .tf input,.tf textarea{display:block;width:100%;min-height:3.5rem;margin:0;padding:0 1rem;border:0;border-radius:var(--sh-xs);outline:none;
   background:transparent;box-shadow:inset 0 0 0 1px var(--md-outline);font:var(--t-body-l);color:var(--md-on-surface)}
 .tf textarea{min-height:7rem;padding:1rem;resize:vertical;font-size:1.15rem}
+#voiceText{font-size:1.35rem;line-height:1.5}
+#settings .tf > span{background:var(--page)}
 .tf input:focus,.tf textarea:focus{box-shadow:inset 0 0 0 2px var(--md-primary)}
 .tf > span{position:absolute;left:.75rem;top:1.75rem;transform:translateY(-50%);padding:0 .25rem;background:var(--sheet);color:var(--md-on-surface-variant);
   font:var(--t-body-l);line-height:1.2;pointer-events:none;transition:top .15s var(--ease),font-size .15s var(--ease),color .15s}
@@ -250,14 +283,17 @@ html[data-size="l"] #bar .wrap,html[data-size="xl"] #bar .wrap{flex-direction:co
 .tf :focus + span{color:var(--md-primary)}
 .tf small{display:block;padding:.3rem 1rem 0;font:var(--t-body-m);color:var(--md-on-surface-variant)}
 
-/* snackbar: above the toolbar, or at the top while a sheet is open */
+/* snackbar: above the toolbar, or at the top while a sheet is open; bigger than M3's, and it rises in so it is noticed */
 #toast{position:fixed;left:.75rem;right:.75rem;bottom:calc(var(--barH) + .75rem);z-index:90;max-width:600px;margin:0 auto;
-  display:flex;align-items:center;gap:.5rem;min-height:3.5rem;padding:.55rem .5rem .55rem 1rem;border-radius:var(--sh-xs);
-  background:var(--md-inverse-surface);color:var(--md-inverse-on-surface);font:var(--t-body-l);box-shadow:0 3px 10px rgba(0,0,0,.3)}
+  display:flex;align-items:center;gap:.35rem;min-height:4rem;padding:.6rem .35rem .6rem 1.1rem;border-radius:var(--sh-xs);
+  background:var(--md-inverse-surface);color:var(--md-inverse-on-surface);font:var(--t-body-l);font-size:1.1rem;box-shadow:0 4px 14px rgba(0,0,0,.35);
+  animation:toastIn .3s var(--ease-in)}
+@keyframes toastIn{from{opacity:0;transform:translateY(14px) scale(.96)}}
 html.lock #toast{top:calc(.75rem + env(safe-area-inset-top));bottom:auto}
 html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom))}
 #toast .tmsg{flex:1}
 #toast .tact{flex:none;min-height:3rem;padding:0 .8rem;border:0;border-radius:999px;background:transparent;color:var(--md-inverse-primary);font:var(--t-label-l)}
+#toast .tclose{color:var(--md-inverse-on-surface)}
 
 /* 家族の設定 */
 #settings{padding-bottom:3rem}
@@ -335,8 +371,8 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <p class="note">ここは ご家族（準備をする人）用の 画面です。</p>
 
     <h2 class="sh">品物</h2>
-    <div class="btnrow"><button type="button" id="addItem" class="btn filled sl"><span data-ic="add"></span>品物を ふやす</button><button type="button" id="sortFreq" class="btn outlined sl"><span data-ic="sort"></span>よく頼む順に ならべる</button></div>
-    <p class="note">ボタンの 場所は 勝手には 変わりません。↑↓ で ならべかえられます。</p>
+    <div class="btnrow"><button type="button" id="addItem" class="btn filled sl"><span data-ic="add"></span>品物を ふやす</button><button type="button" id="photoAll" class="btn tonal sl"><span data-ic="photo_camera"></span>写真で そろえる</button><button type="button" id="sortFreq" class="btn outlined sl"><span data-ic="sort"></span>よく頼む順に ならべる</button></div>
+    <p class="note">絵文字は スマホに よって 絵が かわります。いつも 買う 品物の 写真を とっておくと、いちばん 分かりやすく なります（「写真で そろえる」で 続けて とれます）。ボタンの 場所は 勝手には 変わりません。↑↓ で ならべかえられます。</p>
     <div id="sItems"></div>
 
     <h2 class="sh">声で たのまれたもの</h2>
@@ -352,6 +388,11 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <div class="seg" id="sendSeg"><button type="button" class="sl" data-v="line"><span data-ic="check"></span>LINEを ひらく</button><button type="button" class="sl" data-v="share"><span data-ic="check"></span>共有メニュー</button></div>
     <p class="note">「LINEで 送る」を 押したときの 動き方です。LINE が うまく ひらかないときは「共有メニュー」に して、出てきた中から LINE を えらんでください。</p>
     <a id="testSend" class="btn outlined sl" href="#" target="_blank" rel="noopener"><span data-ic="send"></span>ためしに 送ってみる</a>
+    <label class="tf" style="margin-top:1.4rem"><input id="toName" type="text" maxlength="20" autocomplete="off" placeholder=" "><span>送る相手の 名前（LINEに 出る 名前）</span><small>送る前の 画面に「①（この名前）を 押す ② 送信を 押す」と 出ます。LINEで この人を お気に入りに しておくと、見つけやすく なります。</small></label>
+
+    <h2 class="sh">画面の 色</h2>
+    <div class="seg" id="themeSeg"><button type="button" class="sl" data-v="light"><span data-ic="check"></span>明るい</button><button type="button" class="sl" data-v="dark"><span data-ic="check"></span>暗い</button><button type="button" class="sl" data-v="auto"><span data-ic="check"></span>自動</button></div>
+    <p class="note">お年寄りには「明るい」が 読みやすいことが 多いです（黒い 画面の 白い 文字は、白内障や 乱視が あると にじんで 見えやすい）。「自動」は スマホの 設定に 合わせます。</p>
 
     <h2 class="sh">声で たのむ</h2>
     <p class="note" id="srState"></p>
@@ -369,23 +410,29 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <input type="file" id="importFile" accept=".json,application/json" hidden>
     <p class="note" id="usage"></p>
 
-    <p class="ver">かいものメモ 1.1</p>
+    <p class="ver">かいものメモ 1.2</p>
   </div>
 </section>
 
 <div class="layer" id="sh-confirm" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
   <div class="scrim" data-close></div>
-  <div class="sheet"><div class="wrap">
-    <h2 id="cTitle">これを 送ります</h2>
-    <ul class="clist" id="clist"></ul>
-    <h3 class="h3">いつまでに？ <small>（えらばなくても だいじょうぶ）</small></h3>
-    <div class="chips" id="whenChips"></div>
-    <div class="acts">
-      <a id="lineSend" class="btn filled big sl" href="#" target="_blank" rel="noopener"><span data-ic="send"></span>LINEで 送る</a>
-      <button type="button" class="btn outlined big sl" data-close>もどって なおす</button>
-      <button type="button" id="clearAll" class="btn text danger-t sl"><span data-ic="delete"></span>えらんだものを ぜんぶ けす</button>
-    </div>
-  </div></div>
+  <div class="sheet split">
+    <div class="sheet-body"><div class="wrap">
+      <h2 id="cTitle">これを 送ります</h2>
+      <ul class="clist" id="clist"></ul>
+      <h3 class="h3">いつまでに？ <small>（えらばなくても だいじょうぶ）</small></h3>
+      <div class="chips" id="whenChips"></div>
+      <div class="acts"><button type="button" id="clearAll" class="btn text danger-t sl"><span data-ic="delete"></span>えらんだものを ぜんぶ けす</button></div>
+    </div></div>
+    <div class="sheet-foot"><div class="wrap">
+      <p class="steps-t" id="stepsT"></p>
+      <ol class="steps" id="steps"></ol>
+      <div class="acts">
+        <a id="lineSend" class="btn filled big sl" href="#" target="_blank" rel="noopener"><span data-ic="send"></span>LINEで 送る</a>
+        <button type="button" class="btn outlined big sl" data-close>もどって なおす</button>
+      </div>
+    </div></div>
+  </div>
 </div>
 
 <div class="layer dialog" id="sh-sent" hidden role="dialog" aria-modal="true" aria-labelledby="sentTitle">
@@ -407,7 +454,8 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <h2 id="vTitle">ほかに ほしいもの</h2>
     <button type="button" id="micBtn" class="btn micbig sl"></button>
     <p class="msg" id="voiceMsg" aria-live="polite"></p>
-    <label class="tf" style="margin-top:.9rem"><textarea id="voiceText" rows="3" placeholder=" "></textarea><span>ほしいもの</span></label>
+    <label class="tf" style="margin-top:.9rem;margin-bottom:.75rem"><textarea id="voiceText" rows="3" placeholder=" "></textarea><span>ほしいもの</span></label>
+    <button type="button" id="voiceRedo" class="btn outlined sl" hidden><span data-ic="restart_alt"></span>けして もう一度 話す</button>
     <p class="note" id="kbHint" hidden>キーボードの マイクを 押しても、声で 入れられます。</p>
     <div class="acts">
       <button type="button" id="voiceAdd" class="btn filled big sl"><span data-ic="add"></span>リストに 入れる</button>
@@ -427,14 +475,18 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 
 <div class="layer" id="sh-same" hidden role="dialog" aria-modal="true" aria-labelledby="sameTitle">
   <div class="scrim" data-close></div>
-  <div class="sheet"><div class="wrap">
-    <h2 id="sameTitle"></h2>
-    <ul class="clist" id="slist"></ul>
-    <div class="acts">
-      <button type="button" id="sameAdd" class="btn filled big sl"><span data-ic="history"></span>これを 入れる</button>
-      <button type="button" class="btn outlined big sl" data-close>やめる</button>
-    </div>
-  </div></div>
+  <div class="sheet split">
+    <div class="sheet-body"><div class="wrap">
+      <h2 id="sameTitle"></h2>
+      <ul class="clist" id="slist"></ul>
+    </div></div>
+    <div class="sheet-foot"><div class="wrap">
+      <div class="acts">
+        <button type="button" id="sameAdd" class="btn filled big sl"><span data-ic="history"></span>これを 入れる</button>
+        <button type="button" class="btn outlined big sl" data-close>やめる</button>
+      </div>
+    </div></div>
+  </div>
 </div>
 
 <div class="layer dialog" id="sh-ask" hidden role="dialog" aria-modal="true" aria-labelledby="askTitle">
@@ -451,7 +503,8 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 
 <div class="layer" id="sh-edit" hidden role="dialog" aria-modal="true" aria-labelledby="editTitle">
   <div class="scrim" data-close></div>
-  <div class="sheet"><div class="wrap">
+  <div class="sheet split">
+    <div class="sheet-body"><div class="wrap">
     <h2 id="editTitle"></h2>
     <label class="tf"><input id="fName" type="text" maxlength="30" autocomplete="off" placeholder=" "><span>なまえ</span></label>
     <div class="fl"><span class="fl-t">絵・写真</span>
@@ -472,10 +525,28 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
       <small class="fl-help">2つ 以上 入れると、押したときに「どれに しますか？」と 聞きます。</small>
     </div>
     <div class="fl"><span class="fl-t">グループ</span><div class="chips" id="fGroup"></div></div>
+    <div class="acts"><button type="button" id="fDelete" class="btn text danger-t sl"><span data-ic="delete"></span>この品物を けす</button></div>
+    </div></div>
+    <div class="sheet-foot"><div class="wrap">
+      <div class="acts">
+        <button type="button" id="fSave" class="btn filled big sl"><span data-ic="check"></span>保存する</button>
+        <button type="button" class="btn outlined big sl" data-close>やめる</button>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<div class="layer" id="sh-photo" hidden role="dialog" aria-modal="true" aria-labelledby="photoTitle">
+  <div class="scrim" data-close></div>
+  <div class="sheet"><div class="wrap">
+    <h2 id="photoTitle">写真で そろえる</h2>
+    <p class="note" id="photoCount"></p>
+    <div class="photostep" id="photoStep"></div>
+    <input id="photoFile" type="file" accept="image/*" capture="environment" hidden>
     <div class="acts">
-      <button type="button" id="fSave" class="btn filled big sl"><span data-ic="check"></span>保存する</button>
-      <button type="button" class="btn outlined big sl" data-close>やめる</button>
-      <button type="button" id="fDelete" class="btn text danger-t sl"><span data-ic="delete"></span>この品物を けす</button>
+      <button type="button" id="photoTake" class="btn filled big sl"><span data-ic="photo_camera"></span><span class="lbl">写真を とる</span></button>
+      <button type="button" id="photoNext" class="btn outlined big sl"><span data-ic="arrow_forward"></span>つぎの 品物へ</button>
+      <button type="button" class="btn text sl" data-close>おわる</button>
     </div>
   </div></div>
 </div>
@@ -511,6 +582,8 @@ const ICONS = {
   sort: 'M160-240q-17 0-28.5-11.5T120-280q0-17 11.5-28.5T160-320h160q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240H160Zm0-200q-17 0-28.5-11.5T120-480q0-17 11.5-28.5T160-520h400q17 0 28.5 11.5T600-480q0 17-11.5 28.5T560-440H160Zm0-200q-17 0-28.5-11.5T120-680q0-17 11.5-28.5T160-720h640q17 0 28.5 11.5T840-680q0 17-11.5 28.5T800-640H160Z',
   check_circle: 'm424-408-86-86q-11-11-28-11t-28 11q-11 11-11 28t11 28l114 114q12 12 28 12t28-12l226-226q11-11 11-28t-11-28q-11-11-28-11t-28 11L424-408Zm56 328q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z',
   edit: 'M200-200h57l391-391-57-57-391 391v57Zm-40 80q-17 0-28.5-11.5T120-160v-97q0-16 6-30.5t17-25.5l505-504q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L313-143q-11 11-25.5 17t-30.5 6h-97Zm600-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z',
+  restart_alt: 'M393-132q-103-29-168-113.5T160-440q0-57 19-108.5t54-94.5q11-12 27-12.5t29 12.5q11 11 11.5 27T290-586q-24 31-37 68t-13 78q0 81 47.5 144.5T410-209q13 4 21.5 15t8.5 24q0 20-14 31.5t-33 6.5Zm174 0q-19 5-33-7t-14-32q0-12 8.5-23t21.5-15q75-24 122.5-87T720-440q0-100-70-170t-170-70h-3l16 16q11 11 11 28t-11 28q-11 11-28 11t-28-11l-84-84q-6-6-8.5-13t-2.5-15q0-8 2.5-15t8.5-13l84-84q11-11 28-11t28 11q11 11 11 28t-11 28l-16 16h3q134 0 227 93t93 227q0 109-65 194T567-132Z',
+  arrow_forward: 'M647-440H200q-17 0-28.5-11.5T160-480q0-17 11.5-28.5T200-520h447L451-716q-12-12-11.5-28t12.5-28q12-11 28-11.5t28 11.5l264 264q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L508-188q-11 11-27.5 11T452-188q-12-12-12-28.5t12-28.5l195-195Z',
 };
 const ic = (name, cls = '') => `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 -960 960 960" aria-hidden="true" focusable="false"><path d="${ICONS[name]}"/></svg>`;
 // static markup names its icons with data-ic; they are drawn once here
@@ -558,7 +631,8 @@ let seq = 0;
 const uid = () => Date.now().toString(36) + (seq++).toString(36) + Math.random().toString(36).slice(2, 5);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const clone = o => JSON.parse(JSON.stringify(o));
-const buzz = () => { try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} };
+// long enough to be felt by older fingers, whose touch is less sensitive
+const buzz = () => { try { navigator.vibrate && navigator.vibrate(25); } catch (e) {} };
 
 // M3 ripple: a circle grows from the finger, so every press shows that it landed
 const calm = matchMedia('(prefers-reduced-motion: reduce)');
@@ -572,6 +646,25 @@ document.addEventListener('pointerdown', e => {
   el.appendChild(s);
   s.addEventListener('animationend', () => s.remove());
 }, { passive: true });
+
+// Chrome on Android turns a press of about half a second into a long press and drops the tap, and older fingers
+// press slowly: a long press on a button counts as pressing it (ひらく in the 家族の設定 question keeps its own hold)
+let longPress = null;
+document.addEventListener('contextmenu', e => {
+  if (e.pointerType && e.pointerType !== 'touch') return;
+  const el = e.target.closest('button, a.btn');
+  if (!el) return;
+  e.preventDefault();
+  if (el.classList.contains('hold') || el.disabled || el.closest('[hidden]')) return;
+  longPress = { el, t: performance.now() };
+  el.click();
+});
+document.addEventListener('click', e => {
+  // should the browser still send its own click after that long press, it is the same press
+  if (longPress && e.isTrusted && longPress.el.contains(e.target) && performance.now() - longPress.t < 1500) {
+    e.preventDefault(); e.stopPropagation(); longPress = null;
+  }
+}, true);
 
 /* ---------- storage (this phone only) ---------- */
 let warnedAt = 0;
@@ -627,7 +720,8 @@ items = items.filter(okItem).map(fixItem);
 let cart = fixCart(load('cart', null));
 let hist = load('history', []);
 hist = Array.isArray(hist) ? hist.filter(okHist).map(fixHist) : [];
-let settings = Object.assign({ size: 'm', send: 'line' }, load('settings', {}));
+// to: the family member's name as LINE shows it; theme: light unless the family picks dark or 自動
+let settings = Object.assign({ size: 'm', send: 'line', theme: 'light', to: '' }, load('settings', {}));
 let pending = load('pending', null);
 if (pending && !(Date.now() - (+pending.at || 0) < 3 * DAY)) { pending = null; drop('pending'); }
 const saveCart = () => save('cart', cart);
@@ -702,16 +796,20 @@ function ago(ts) {
 let toastTimer = 0;
 function toast(msg, actLabel, act) {
   const t = $('#toast');
-  t.innerHTML = '<span class="tmsg"></span>' + (actLabel ? '<button type="button" class="tact sl"></button>' : '');
+  t.innerHTML = '<span class="tmsg"></span>' + (actLabel ? '<button type="button" class="tact sl"></button>' : '')
+    + `<button type="button" class="tclose icon-btn sl" aria-label="とじる">${ic('close')}</button>`;
   $('.tmsg', t).textContent = msg;
   if (actLabel) {
     const b = $('.tact', t);
     b.textContent = actLabel;
     b.onclick = () => { hideToast(); act(); };
   }
-  t.hidden = false;
+  $('.tclose', t).onclick = hideToast;
+  // hidden and shown again, so the rise-in plays for each new message
+  t.hidden = true; void t.offsetWidth; t.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(hideToast, actLabel ? 7000 : 3500);
+  // older readers need time: ten seconds, fifteen when there is something to undo, or until × is pressed
+  toastTimer = setTimeout(hideToast, actLabel ? 15000 : 10000);
 }
 function hideToast() { $('#toast').hidden = true; }
 
@@ -750,7 +848,7 @@ function openSheet(id) {
   document.documentElement.classList.add('lock');
   el.getBoundingClientRect();
   el.classList.add('open');
-  el.querySelector('.sheet').scrollTop = 0;
+  (el.querySelector('.sheet-body') || el.querySelector('.sheet')).scrollTop = 0;
   pushLayer(id, () => {
     el.classList.remove('open');
     el.hidden = true;
@@ -763,20 +861,49 @@ function openSheet(id) {
 const closeSheet = () => popLayer();
 document.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeSheet(); });
 
-function ask(title, text, okLabel, noLabel = 'やめる', danger = false) {
+// gate: the safe answer is the filled button and comes first, and the other one has to be held for 1.5 seconds
+function ask(title, text, okLabel, noLabel = 'やめる', { danger = false, gate = false } = {}) {
   return new Promise(res => {
     let answered = false;
     $('#askTitle').textContent = title;
     $('#askText').textContent = text;
-    const ok = $('#askOk'), no = $('#askNo');
+    const ok = $('#askOk'), no = $('#askNo'), sh = $('#sh-ask');
     ok.textContent = okLabel; no.textContent = noLabel;
-    ok.className = 'btn big sl ' + (danger ? 'danger' : 'filled');
-    ok.onclick = async () => { answered = true; await closeSheet(); res(true); };
-    no.onclick = async () => { answered = true; await closeSheet(); res(false); };
-    const sh = $('#sh-ask');
+    ok.className = 'btn big sl ' + (gate ? 'outlined' : danger ? 'danger' : 'filled');
+    no.className = 'btn big sl ' + (gate ? 'filled' : 'outlined');
+    sh.classList.toggle('gate', gate);
+    // one answer only: a second one would close whatever lies under the question
+    const answer = v => async () => { if (answered) return; answered = true; await closeSheet(); res(v); };
+    ok.onpointerdown = ok.onpointerup = ok.onpointercancel = ok.onpointerleave = null;
+    if (gate) holdToConfirm(ok, 1500, answer(true)); else ok.onclick = answer(true);
+    no.onclick = answer(false);
     sh.addEventListener('closed', () => { if (!answered) res(false); }, { once: true });
     openSheet('sh-ask');
   });
+}
+// a parent who presses the coloured button out of habit stays where they were: this one opens only after a hold
+function holdToConfirm(btn, ms, done) {
+  let timer = 0, fired = false;
+  btn.classList.add('hold');
+  btn.style.setProperty('--hold', ms + 'ms');
+  btn.onpointerdown = () => {
+    fired = false;
+    clearTimeout(timer);
+    btn.classList.add('holding');
+    timer = setTimeout(() => {
+      btn.classList.remove('holding');
+      // the question may have been closed with the back button while the finger was still down
+      if (btn.closest('[hidden]')) return;
+      fired = true; buzz(); done();
+    }, ms);
+  };
+  btn.onpointerup = btn.onpointercancel = btn.onpointerleave = () => { clearTimeout(timer); btn.classList.remove('holding'); };
+  btn.onclick = e => {
+    if (fired) return;
+    // Enter or the space bar has no hold to give
+    if (e.detail === 0) { done(); return; }
+    toast('ひらくときは、ボタンを 押したまま 2びょう まって ください。');
+  };
 }
 
 /* ---------- home ---------- */
@@ -817,7 +944,7 @@ function rowEl(it, g) {
     + `<span class="picbox">${picHTML(it)}<span class="selmark">${ic('check_circle')}</span></span>`
     + `<span class="txt"><span class="nm">${nm}</span>${subs.join('')}</span>`
     + `<span class="step"><span class="sum"></span><button type="button" class="minus icon-btn sl" aria-label="${nm}を へらす">${ic('remove')}</button>`
-    + `<span class="n"></span><button type="button" class="plus icon-btn sl" aria-label="${nm}を ふやす">${ic('add')}</button></span>`;
+    + `<span class="n"></span><button type="button" class="plus icon-btn sl" aria-label="${nm}を ふやす">${ic('add')}<span class="pl">入れる</span></button></span>`;
   paintRow(li, it);
   return li;
 }
@@ -835,18 +962,25 @@ function paintRow(li, it) {
     n.innerHTML = on ? qtyHTML(it, ls[0].qty) : '';
   }
 }
-// a trembling finger can land twice in a row; the second tap within 180 ms is dropped
+// a trembling finger can land twice in a row; a second tap on the same button within 350 ms is dropped
 let lastTap = { el: null, t: 0 };
 function tooFast(el) {
-  const t = performance.now(), fast = lastTap.el === el && t - lastTap.t < 180;
+  const t = performance.now(), fast = lastTap.el === el && t - lastTap.t < 350;
   lastTap = { el, t };
   return fast;
+}
+// a touch on the row itself only points at the buttons: looking at a row, or starting to scroll, never adds anything
+function nudge(li) {
+  const p = $('.plus', li);
+  if (p) { p.classList.remove('nudge'); void p.offsetWidth; p.classList.add('nudge'); }
+  toast(li.classList.contains('sel') ? '数を かえるときは、−・＋ を 押してください。' : '入れるときは「＋ 入れる」を 押してください。');
 }
 groupsEl.addEventListener('click', e => {
   const b = e.target.closest('button');
   const li = b && b.closest('.row');
   const it = li && byId(li.dataset.id);
   if (!it || tooFast(b)) return;
+  if (b.classList.contains('hit')) { nudge(li); return; }
   if (b.classList.contains('minus')) { change(it, '', -1); paintRow(li, it); renderBar(); return; }
   if (sized(it)) { openSize(it); return; }
   change(it, '', 1);
@@ -877,7 +1011,7 @@ function renderBar() {
   $('#sendN').textContent = n;
   $('#how').innerHTML = n
     ? `えらび おわったら、下の <span class="g">${ic('send')}送る</span> を 押してください。`
-    : `ほしいものの <span class="k" role="img" aria-label="＋">${ic('add')}</span> を 押してください。`;
+    : `ほしいものの <span class="k">${ic('add')}入れる</span> を 押してください。`;
 }
 const bar = $('#bar');
 new ResizeObserver(() => { if (bar.offsetHeight) document.documentElement.style.setProperty('--barH', bar.offsetHeight + 'px'); }).observe(bar);
@@ -893,12 +1027,13 @@ function renderSize() {
     return `<li class="row np${q ? ' sel' : ''}" data-i="${i}"><button type="button" class="hit sl" tabindex="-1" aria-hidden="true"></button>`
       + `<span class="txt"><span class="nm">${esc(s)}</span></span><span class="step">`
       + (q ? `<button type="button" class="minus icon-btn sl" aria-label="${esc(s)}を へらす">${ic('remove')}</button><span class="n">${qtyHTML(it, q)}</span>` : '')
-      + `<button type="button" class="plus icon-btn sl" aria-label="${esc(s)}を ふやす">${ic('add')}</button></span></li>`;
+      + `<button type="button" class="plus icon-btn sl" aria-label="${esc(s)}を ふやす">${ic('add')}<span class="pl">入れる</span></button></span></li>`;
   }).join('');
 }
 $('#sizeRows').addEventListener('click', e => {
   const b = e.target.closest('button');
   if (!b || !sizeItem || tooFast(b)) return;
+  if (b.classList.contains('hit')) { nudge(b.closest('.row')); return; }
   const s = sizeItem.sizes[+b.closest('[data-i]').dataset.i];
   change(sizeItem, s, b.classList.contains('minus') ? -1 : 1);
   renderSize();
@@ -919,63 +1054,84 @@ const SR_ERRORS = {
 const MIC_IDLE = `${ic('mic')}<span>押して 話す</span>`;
 const MIC_BUSY = `<span class="dot"></span><span>きいています（おわったら 押す）</span>`;
 const MIC_TEST = `${ic('mic')}<span>ためしに 話してみる</span>`;
-let rec = null, recBtn = null, recIdle = MIC_IDLE;
+const VOICE_DONE = 'これで よければ、下の「リストに 入れる」を 押してください。';
+let session = null;
 function paintMic(btn, busy, idle) {
   if (!btn) return;
   btn.classList.toggle('on', busy);
   btn.innerHTML = busy ? MIC_BUSY : idle;
 }
+const joinHeard = (...parts) => parts.map(p => p.trim()).filter(Boolean).join('、');
+// Chrome stops listening at the first pause, and older speakers pause between things: each time it stops by itself
+// it starts again, until おわる is pressed, a minute has passed, or nothing has been heard twice in a row
 function listen({ field, say, btn, idle = MIC_IDLE, done }) {
-  if (rec) { stopListen(); return; }
+  if (session) { finishListen(); return; }
   if (!SR) { say('この スマホでは、アプリの マイクが 使えません。キーボードの マイクを 使ってください。'); $('#kbHint').hidden = false; return; }
+  session = { field, say, btn, idle, done, base: field.value.trim(), heard: '', quiet: 0, failed: false, until: Date.now() + 60000, rec: null };
+  paintMic(btn, true, idle);
+  say('きいています。ゆっくりで だいじょうぶです。おわったら 上の ボタンを 押して ください。');
+  hearRound(session);
+}
+function hearRound(s) {
   let r;
-  try { r = new SR(); } catch (e) { say('声の入力を はじめられませんでした。'); return; }
+  try { r = new SR(); } catch (e) { s.failed = true; s.say('声の入力を はじめられませんでした。'); finishListen(); return; }
   r.lang = 'ja-JP'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
-  const base = field.value.trim();
-  let failed = false;
+  let now = '';
   r.onresult = e => {
-    let t = '';
-    for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
-    field.value = (base ? base + '、' : '') + t.trim();
+    now = '';
+    for (let i = 0; i < e.results.length; i++) now += e.results[i][0].transcript;
+    s.quiet = 0;
+    s.field.value = joinHeard(s.base, s.heard, now);
+    s.field.dispatchEvent(new Event('input'));
   };
   r.onerror = e => {
-    failed = true;
-    if (SR_ERRORS[e.error]) say(SR_ERRORS[e.error]);
-    if (!['aborted', 'no-speech'].includes(e.error)) $('#kbHint').hidden = false;
+    if (e.error === 'no-speech') { s.quiet++; return; }
+    if (e.error === 'aborted') return;
+    s.failed = true;
+    if (SR_ERRORS[e.error]) s.say(SR_ERRORS[e.error]);
+    $('#kbHint').hidden = false;
   };
   r.onend = () => {
-    if (rec === r) { rec = null; paintMic(btn, false, idle); }
-    if (!failed && field.value.trim() !== base) say(done);
+    s.heard = joinHeard(s.heard, now);
+    if (session !== s) return;
+    if (s.failed || s.quiet >= 2 || Date.now() > s.until) { finishListen(); return; }
+    hearRound(s);
   };
-  rec = r; recBtn = btn; recIdle = idle;
-  paintMic(btn, true, idle);
-  say('きいています。ほしいものを 話してください。');
-  try { r.start(); } catch (e) { rec = null; paintMic(btn, false, idle); say('もういちど 押してください。'); }
+  s.rec = r;
+  try { r.start(); } catch (e) { s.failed = true; s.say('もういちど 押してください。'); finishListen(); }
 }
-// stop() keeps what was heard; abort() drops it (used when the sheet closes)
-function stopListen(discard) {
-  const r = rec;
-  if (!r) return;
-  rec = null;
-  paintMic(recBtn, false, recIdle);
-  try { discard ? r.abort() : r.stop(); } catch (e) {}
+// stop() keeps what was heard; abort() drops it (used when the sheet closes or the words are cleared)
+function finishListen(discard) {
+  const s = session;
+  if (!s) return;
+  session = null;
+  paintMic(s.btn, false, s.idle);
+  try { discard ? s.rec.abort() : s.rec.stop(); } catch (e) {}
+  if (discard || s.failed) return;
+  s.say(s.field.value.trim() !== s.base ? s.done : '声が きこえませんでした。もういちど 押して、話して ください。');
 }
 const voiceSay = m => { $('#voiceMsg').textContent = m; };
+const voiceRedoState = () => { $('#voiceRedo').hidden = !SR || !$('#voiceText').value.trim(); };
 paintMic($('#micBtn'), false, MIC_IDLE);
 paintMic($('#testMic'), false, MIC_TEST);
 $('#voiceBtn').addEventListener('click', () => {
   $('#voiceText').value = '';
+  voiceRedoState();
   voiceSay(SR ? 'マイクを 押して、ほしいものを 話してください。' : '下に 入れてください。');
   $('#micBtn').hidden = !SR;
   $('#kbHint').hidden = !!SR;
   openSheet('sh-voice');
 });
-$('#micBtn').addEventListener('click', () => listen({ field: $('#voiceText'), say: voiceSay, btn: $('#micBtn'), done: 'これで よければ、下の「リストに 入れる」を 押してください。' }));
-$('#sh-voice').addEventListener('closed', () => stopListen(true));
+const startVoice = () => listen({ field: $('#voiceText'), say: voiceSay, btn: $('#micBtn'), done: VOICE_DONE });
+$('#micBtn').addEventListener('click', startVoice);
+$('#voiceText').addEventListener('input', voiceRedoState);
+// misheard words can't be put right without typing, so they are cleared and said again
+$('#voiceRedo').addEventListener('click', () => { finishListen(true); $('#voiceText').value = ''; voiceRedoState(); startVoice(); });
+$('#sh-voice').addEventListener('closed', () => finishListen(true));
 $('#voiceAdd').addEventListener('click', async () => {
   const t = $('#voiceText').value.replace(/\s+/g, ' ').trim();
   if (!t) { voiceSay(SR ? 'まだ 何も 入っていません。マイクを 押して 話してください。' : 'まだ 何も 入っていません。'); return; }
-  stopListen(true);
+  finishListen(true);
   cart.extras.push({ id: uid(), text: t.slice(0, 200) });
   saveCart();
   await closeSheet();
@@ -1002,7 +1158,7 @@ function buildText(c = cart) {
 }
 const lineURL = text => 'https://line.me/R/share?text=' + encodeURIComponent(text);
 $('#sendBtn').addEventListener('click', () => {
-  if (!cartCount()) { toast('先に、ほしいものの ＋ を 押してください。'); return; }
+  if (!cartCount()) { toast('先に、ほしいものの「＋ 入れる」を 押してください。'); return; }
   renderConfirm();
   openSheet('sh-confirm');
 });
@@ -1015,6 +1171,15 @@ function renderConfirm() {
   cart.extras.forEach(x => rows.push(`<li>${notePic('sm')}<span class="cn">${esc(x.text)}</span></li>`));
   $('#clist').innerHTML = rows.join('');
   renderWhen();
+  renderSteps();
+}
+// LINE's own screens are new to the parent, so the sheet says beforehand what to press there, with the name to look for
+function renderSteps() {
+  const who = settings.to ? `「${esc(settings.to)}」を 押す` : '送る相手を 押す';
+  const viaShare = settings.send === 'share' && navigator.share;
+  const steps = viaShare ? ['「LINE」を 押す', who, '「送信」を 押す'] : [who, '「送信」を 押す'];
+  $('#stepsT').textContent = viaShare ? 'つぎの 画面で：' : 'LINEが ひらいたら：';
+  $('#steps').innerHTML = steps.map((s, i) => `<li><b>${i + 1}</b>${s}</li>`).join('');
 }
 function chipHTML(on, attr, label) {
   return `<button type="button" class="chip sl${on ? ' on' : ''}" aria-pressed="${on}" ${attr}>${on ? ic('check') : ''}${label}</button>`;
@@ -1103,7 +1268,7 @@ function markSent() {
   });
 }
 $('#clearAll').addEventListener('click', async () => {
-  if (!(await ask('ぜんぶ けしますか？', 'えらんだものが 空に なります。', 'ぜんぶ けす', 'やめる', true))) return;
+  if (!(await ask('ぜんぶ けしますか？', 'えらんだものが 空に なります。', 'ぜんぶ けす', 'やめる', { danger: true }))) return;
   const before = clone(cart);
   cart = fixCart(null);
   saveCart(); clearPending();
@@ -1152,7 +1317,7 @@ const standalone = () => matchMedia('(display-mode: standalone)').matches || nav
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 let homeScroll = 0;
 $('#openSettings').addEventListener('click', async () => {
-  if (await ask('ご家族用の 設定です', '品物の 登録や、送り方の 設定を します。ひらきますか？', 'ひらく', 'もどる')) openSettings();
+  if (await ask('ご家族用の 設定です', '品物の 登録や、送り方の 設定を します。ご家族の方は「ひらく」を 押したまま 2びょう まって ください。', 'ひらく（押したまま）', 'もどる', { gate: true })) openSettings();
 });
 function openSettings() {
   homeScroll = window.scrollY;
@@ -1162,7 +1327,7 @@ function openSettings() {
   document.documentElement.classList.add('insettings');
   window.scrollTo(0, 0);
   pushLayer('settings', () => {
-    stopListen(true);
+    finishListen(true);
     $('#settings').hidden = true;
     document.documentElement.classList.remove('insettings');
     $('#home').hidden = bar.hidden = false;
@@ -1191,6 +1356,8 @@ function renderSettings() {
   renderRecent();
   setSeg('#sizeSeg', settings.size);
   setSeg('#sendSeg', settings.send);
+  setSeg('#themeSeg', settings.theme);
+  $('#toName').value = settings.to || '';
   $('#testSend').href = lineURL(TEST_TEXT);
   $('#srState').textContent = SR
     ? 'この スマホでは、アプリの マイクで 声を 入れられます。はじめて 使うとき「マイクの 使用を 許可しますか？」と 出たら「許可」を 押してください。ここで いちど ためしておくと 安心です。'
@@ -1230,6 +1397,21 @@ function applySize() {
   document.documentElement.dataset.size = s;
   $('#sizePrev').style.fontSize = Math.round(SIZE_PX[s] * 1.2) + 'px';
 }
+// light unless the family chooses otherwise; 自動 follows the phone
+const darkPhone = matchMedia('(prefers-color-scheme: dark)');
+function applyTheme() {
+  const dark = settings.theme === 'dark' || (settings.theme === 'auto' && darkPhone.matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  $('#themeColor').content = dark ? '#10140f' : '#ecefe6';
+}
+darkPhone.addEventListener('change', () => { if (settings.theme === 'auto') applyTheme(); });
+$('#themeSeg').addEventListener('click', e => {
+  const b = e.target.closest('[data-v]');
+  if (!b) return;
+  settings.theme = b.dataset.v;
+  save('settings', settings); applyTheme(); setSeg('#themeSeg', settings.theme);
+});
+$('#toName').addEventListener('input', e => { settings.to = e.target.value.trim().slice(0, 20); save('settings', settings); });
 const TEST_TEXT = 'かいものメモの ためしです。\nこれが 届いたら、送り方は だいじょうぶです。';
 $('#testSend').addEventListener('click', e => {
   if (settings.send === 'share' && navigator.share) { e.preventDefault(); navigator.share({ text: TEST_TEXT }).catch(() => {}); }
@@ -1237,7 +1419,7 @@ $('#testSend').addEventListener('click', e => {
 $('#testMic').addEventListener('click', () => {
   const out = $('#testMicOut');
   $('#testMicBox').hidden = false;
-  if (!rec) out.value = '';
+  if (!session) out.value = '';
   listen({ field: out, say: m => { $('#testMicMsg').textContent = m; }, btn: $('#testMic'), idle: MIC_TEST, done: '聞きとれました。これで だいじょうぶです。' });
 });
 
@@ -1404,7 +1586,7 @@ $('#fSave').addEventListener('click', async () => {
 });
 $('#fDelete').addEventListener('click', async () => {
   const it = editing;
-  if (!it || !(await ask(`「${it.name}」を けしますか？`, '親の 画面から この ボタンが なくなります。', 'けす', 'やめる', true))) return;
+  if (!it || !(await ask(`「${it.name}」を けしますか？`, '親の 画面から この ボタンが なくなります。', 'けす', 'やめる', { danger: true }))) return;
   await closeSheet();
   const idx = items.indexOf(it), photo = photoOf(it);
   const keys = Object.entries(cart.lines).filter(([k]) => splitKey(k)[0] === it.id);
@@ -1421,6 +1603,43 @@ $('#fDelete').addEventListener('click', async () => {
     renderSettings();
   });
 });
+
+/* ---------- 写真で そろえる ---------- */
+// the family photographs the real things one after another: a photo is clearer than any emoji, and emoji differ by phone
+let photoQueue = [], photoAt = 0;
+$('#photoAll').addEventListener('click', () => {
+  const order = GROUPS.flatMap(g => inGroup(g.key));
+  photoQueue = [...order.filter(it => !it.photo), ...order.filter(it => it.photo)].map(it => it.id);
+  photoAt = 0;
+  renderPhotoStep();
+  openSheet('sh-photo');
+});
+function renderPhotoStep() {
+  const it = byId(photoQueue[photoAt]);
+  if (!it) { closeSheet().then(() => toast('写真を そろえ おわりました。')); return; }
+  $('#photoCount').textContent = `${photoAt + 1} / ${photoQueue.length}（写真が まだのものから 出ます）`;
+  $('#photoStep').innerHTML = `${picHTML(it, 'big')}<span class="nm">${esc(it.name)}</span>`;
+  $('#photoTake .lbl').textContent = it.photo ? '写真を とりなおす' : '写真を とる';
+  // once the photo is there, going on is the likely next step, so that button takes the colour
+  $('#photoTake').className = 'btn big sl ' + (it.photo ? 'outlined' : 'filled');
+  $('#photoNext').className = 'btn big sl ' + (it.photo ? 'filled' : 'outlined');
+}
+$('#photoTake').addEventListener('click', () => $('#photoFile').click());
+$('#photoNext').addEventListener('click', () => { photoAt++; renderPhotoStep(); });
+$('#photoFile').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  const it = byId(photoQueue[photoAt]);
+  if (!f || !it) return;
+  let data;
+  try { data = await shrink(f); } catch (err) { toast('写真を 読みこめませんでした。'); return; }
+  if (!setPhoto(it.id, data)) { toast('写真を 保存できませんでした。スマホの 空きが 足りないかもしれません。'); return; }
+  it.photo = true;
+  save('items', items);
+  renderPhotoStep();
+  toast(`「${it.name}」の 写真を 保存しました。`);
+});
+$('#sh-photo').addEventListener('closed', () => renderSettings());
 
 /* ---------- install and backup ---------- */
 let installEvt = null;
@@ -1476,14 +1695,17 @@ $('#importFile').addEventListener('change', async e => {
   const s = data.settings || {};
   if (['m', 'l', 'xl'].includes(s.size)) settings.size = s.size;
   if (['line', 'share'].includes(s.send)) settings.send = s.send;
+  if (['light', 'dark', 'auto'].includes(s.theme)) settings.theme = s.theme;
+  if (typeof s.to === 'string') settings.to = s.to.trim().slice(0, 20);
   save('items', items); save('history', hist); save('settings', settings);
-  applySize();
+  applySize(); applyTheme();
   renderSettings();
   toast(lost ? `読みこみました（写真 ${lost}まいは 入りませんでした）。` : '読みこみました。');
 });
 
 /* ---------- start ---------- */
 applySize();
+applyTheme();
 renderHome();
 if (pending) setTimeout(askSent, 700);
 if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {});
