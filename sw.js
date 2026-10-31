@@ -1,6 +1,9 @@
 // Offline copy of the app. The page is asked for fresh every time (a 304 when unchanged),
 // so a new version shows on the next open; icons come from the cache. Bump CACHE when icons change.
-const CACHE = 'kaimono-v1';
+// つみかさね lives at the root of the same address and shares this cache storage,
+// so only caches named kaimono-* are ever touched here.
+const PREFIX = 'kaimono-';
+const CACHE = PREFIX + 'v1';
 const INDEX = './index.html';
 const ASSETS = ['./', INDEX, './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png'];
 
@@ -10,7 +13,7 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
-    .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+    .then(keys => Promise.all(keys.filter(k => k.startsWith(PREFIX) && k !== CACHE).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 
@@ -29,10 +32,15 @@ self.addEventListener('fetch', e => {
         }
         return res;
       } catch (err) {
-        return (await caches.match(INDEX)) || (await caches.match('./')) || Response.error();
+        const c = await caches.open(CACHE);
+        return (await c.match(INDEX)) || (await c.match('./')) || Response.error();
       }
     })());
     return;
   }
-  e.respondWith(caches.match(req).then(r => r || fetch(req)));
+  // from this app's own cache only (never つみかさね's), filled again as things are used
+  e.respondWith(caches.open(CACHE).then(c => c.match(req).then(r => r || fetch(req).then(res => {
+    if (res.ok) c.put(req, res.clone());
+    return res;
+  }))));
 });
