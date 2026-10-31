@@ -1,0 +1,1340 @@
+<!doctype html>
+<html lang="ja" data-size="m">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>かいものメモ</title>
+<meta name="description" content="ほしいものを押すだけで、買い物のお願いをLINEで送れるメモ">
+<meta name="theme-color" content="#FFF9F0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="かいもの">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+/* Made for a parent in their 80s who finds typing on a phone hard: every request is pressed or spoken, never typed.
+   Big type (20px root; 23 and 26 from 家族の設定), targets of 52px or more, no swipes or long presses,
+   and rows that never move on their own, because the parent finds things by where they were last time.
+   The family (50s) prepares the items in 家族の設定 and receives the list as a LINE message. */
+:root{
+  --bg:#FFF9F0;--surface:#fff;--text:#1F1A14;--text2:#574C42;--line:#D9CEC0;
+  /* orange marks what is picked, green is the one way to send, blue is the voice path; all 4.5:1 or more */
+  --accent:#C2410C;--accentBg:#FFF0E3;--last:#8A4B12;
+  --go:#0B7D3E;--goPress:#08622F;--blue:#1D5FB4;--blueBg:#EEF4FC;--danger:#B42318;
+  --r:16px;--barH:5.2rem;
+  color-scheme:light;font-size:20px;
+}
+html[data-size="l"]{font-size:23px}
+html[data-size="xl"]{font-size:26px}
+/* the text size is for the parent's screen; 家族の設定 stays at the normal size */
+html.insettings{font-size:20px}
+*{box-sizing:border-box}
+html{background:var(--bg);-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior-y:none}
+/* the text is written with spaces between phrases, so lines break only there and never mid-word */
+body{margin:0;background:var(--bg);color:var(--text);line-height:1.5;overscroll-behavior-y:none;word-break:keep-all;overflow-wrap:anywhere;
+  font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP","Noto Sans CJK JP","Yu Gothic UI",sans-serif}
+html.lock,html.lock body{overflow:hidden}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+a{-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+/* rules like `.row { display: grid }` would otherwise beat the hidden attribute */
+[hidden]{display:none!important}
+.wrap{max-width:640px;margin:0 auto;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:3rem;padding:.45rem 1rem;
+  border-radius:14px;border:2px solid var(--text);background:var(--surface);color:var(--text);
+  font-size:1rem;font-weight:700;line-height:1.3;text-align:center;text-decoration:none}
+.btn:active{transform:scale(.98)}
+.btn.go{background:var(--go);border-color:var(--go);color:#fff}
+.btn.go:active{background:var(--goPress)}
+.btn.go[aria-disabled="true"]{background:#ADA49A;border-color:#ADA49A}
+.btn.big{width:100%;min-height:3.6rem;font-size:1.2rem}
+.btn.plain{border-color:var(--line)}
+.btn.redfill{background:var(--danger);border-color:var(--danger);color:#fff}
+.link{background:none;border:0;padding:.6rem .4rem;min-height:3rem;font-size:.9rem;font-weight:700;color:var(--text2);text-decoration:underline;text-underline-offset:3px}
+.link.danger{color:var(--danger)}
+.note{font-size:.85rem;color:var(--text2);margin:.3rem 0 .6rem;line-height:1.6}
+
+/* home */
+.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;column-gap:.5rem;padding-top:calc(.8rem + env(safe-area-inset-top))}
+.top h1{margin:0;font-size:1.45rem;line-height:1.2;white-space:nowrap}
+.today{margin:0;font-size:.95rem;font-weight:700;color:var(--text2);white-space:nowrap}
+.how{margin:.45rem auto .2rem;font-size:.95rem;font-weight:700;line-height:1.8}
+.how .k{display:inline-flex;align-items:center;justify-content:center;width:1.55rem;height:1.55rem;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;vertical-align:-.25rem}
+.how .g{display:inline-block;padding:0 .5rem;border-radius:8px;background:var(--go);color:#fff;line-height:1.5}
+.same{width:100%;margin:.5rem 0 .1rem;flex-direction:column;gap:0;border-color:var(--blue);color:var(--blue);min-height:3.6rem;font-size:1.05rem}
+.same small{font-size:.8rem;font-weight:700;color:var(--text2)}
+.gh{font-size:1.05rem;line-height:1.3;margin:1.1rem 0 .5rem;padding-left:.55rem;border-left:6px solid var(--accent)}
+.rows{list-style:none;margin:0;padding:0}
+
+/* one row per item: the picture, the name, and under the name a ＋ that never moves (− and the count appear to its left) */
+.row{position:relative;display:grid;grid-template-columns:3.6rem 1fr;grid-template-areas:"pic txt" "pic step";
+  column-gap:.75rem;row-gap:.3rem;align-items:center;margin:0 0 .6rem;padding:.55rem .7rem;
+  background:var(--surface);border:2px solid var(--line);border-radius:var(--r);
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.row.sel{border:3px solid var(--accent);background:var(--accentBg);padding:calc(.55rem - 1px) calc(.7rem - 1px)}
+.row.pop{animation:pop .18s ease-out}
+@keyframes pop{40%{transform:scale(.975)}}
+/* the whole row is a ＋, for fingers that miss the button; screen readers get the real buttons */
+.hit{position:absolute;inset:0;z-index:1;margin:0;padding:0;border:0;border-radius:inherit;background:transparent}
+.pic{grid-area:pic;width:3.6rem;height:3.6rem;display:flex;align-items:center;justify-content:center;flex:none;
+  border-radius:12px;overflow:hidden;background:#FBF3E8}
+.pic.emo{font-size:2.4rem;line-height:1}
+.pic.ini{background:#8A6E50;color:#fff;font-size:1.5rem;font-weight:800}
+.pic img{width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none}
+.txt{grid-area:txt;min-width:0}
+/* item names have no spaces, so they break between characters, but never before ー or a small kana */
+.nm,.cn,.stx b{word-break:normal;line-break:strict}
+.nm{display:block;font-size:1.15rem;font-weight:800;line-height:1.3}
+.sub{display:block;font-size:.8rem;font-weight:600;color:var(--text2);line-height:1.4}
+.sub.last{color:var(--last)}
+.step{grid-area:step;justify-self:end;position:relative;z-index:2;display:flex;align-items:center;gap:.45rem;pointer-events:none}
+.step button{pointer-events:auto;width:2.6rem;height:2.6rem;flex:none;display:flex;align-items:center;justify-content:center;
+  margin:0;padding:0;border-radius:50%;border:2px solid var(--text);background:var(--surface);font-size:1.5rem;font-weight:800;line-height:1}
+.step .plus{background:var(--accent);border-color:var(--accent);color:#fff}
+.step .n{min-width:2.4rem;text-align:center;color:var(--accent);font-weight:800;white-space:nowrap}
+.n b,.cq b{font-size:1.35rem}
+.n small,.cq small{font-size:.8rem;margin-left:.1rem}
+.step .sum{text-align:right;color:var(--accent);font-weight:800;font-size:.85rem;line-height:1.35}
+.step .del{width:auto;border-radius:12px;padding:0 .9rem;font-size:.95rem;border-color:var(--line)}
+/* bigger text: the buttons get their own line so the name keeps its width */
+html[data-size="l"] .row,html[data-size="xl"] .row{grid-template-areas:"pic txt" "step step"}
+html .row.np,html[data-size] .row.np{grid-template-columns:1fr auto;grid-template-areas:"txt step"}
+.foot{padding-top:1.2rem;padding-bottom:1rem;text-align:center}
+.empty{margin-top:1rem}
+
+/* the bar at the bottom: speak (blue) or send (green) */
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,249,240,.97);border-top:2px solid var(--line);
+  padding:.55rem 0 calc(.55rem + env(safe-area-inset-bottom))}
+#bar .wrap{display:flex;gap:.6rem}
+#bar .btn{flex:1;min-height:3.5rem;font-size:1.05rem;padding:.3rem .5rem}
+#voiceBtn{border-color:var(--blue);color:var(--blue);background:var(--blueBg)}
+#sendBtn{font-size:1.2rem}
+html[data-size="l"] #bar .wrap,html[data-size="xl"] #bar .wrap{flex-direction:column}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:1.7rem;height:1.7rem;padding:0 .35rem;
+  border-radius:999px;background:#fff;color:var(--go);font-size:1rem;font-weight:800}
+#home{padding-bottom:calc(var(--barH) + 1rem)}
+
+/* sheets slide up from the bottom; each has its own dimmed backdrop so they can stack */
+.layer{position:fixed;inset:0;z-index:40}
+.scrim{position:absolute;inset:0;background:rgba(31,26,20,.5)}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:92vh;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;
+  background:var(--bg);border-radius:22px 22px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.25);
+  padding:1.1rem 0 calc(1.1rem + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .2s ease-out}
+.layer.open .sheet{transform:none}
+@media (prefers-reduced-motion:reduce){.sheet{transition:none}.row.pop{animation:none}}
+.sheet h2{font-size:1.35rem;line-height:1.3;margin:0 0 .7rem}
+.sheet h2:focus{outline:none}
+.acts{display:flex;flex-direction:column;gap:.6rem;margin-top:1.1rem}
+.h3{font-size:1rem;margin:1rem 0 .5rem}
+.h3 small{font-weight:600;color:var(--text2);font-size:.8rem}
+.clist{list-style:none;margin:0;padding:0;border:2px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.clist li{display:flex;align-items:center;gap:.7rem;padding:.55rem .7rem;border-top:1px solid var(--line)}
+.clist li:first-child{border-top:0}
+.pic.sm{width:2.6rem;height:2.6rem;border-radius:10px}
+.pic.sm.emo{font-size:1.75rem}
+.pic.sm.ini{font-size:1.1rem}
+.cn{flex:1;min-width:0;font-size:1.1rem;font-weight:800;line-height:1.3;overflow-wrap:anywhere}
+.cn small{display:block;font-size:.8rem;font-weight:600;color:var(--text2)}
+.cq{flex:none;color:var(--accent);font-weight:800;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem}
+.chip{min-height:2.8rem;padding:.3rem .95rem;border-radius:999px;border:2px solid var(--line);background:var(--surface);font-size:1rem;font-weight:700}
+.chip.on{border-color:var(--accent);background:var(--accentBg);color:#8C2D04}
+.chip.on::before{content:"✓ "}
+.sizehead{display:flex;align-items:center;gap:.8rem;margin-bottom:.8rem}
+.sizehead .pic{grid-area:auto}
+.sizehead .nm{font-size:1.35rem}
+.sizehead .q{display:block;font-weight:700;color:var(--text2)}
+
+/* voice */
+.micbig{width:100%;min-height:5rem;border-radius:20px;border-color:var(--blue);color:var(--blue);background:var(--blueBg);font-size:1.3rem}
+.micbig.on{border-color:#B3261E;color:#B3261E;background:#FDECEC}
+.dot{display:inline-block;width:1rem;height:1rem;border-radius:50%;background:#D32F2F;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+textarea.big{display:block;width:100%;min-height:6rem;margin-top:.8rem;padding:.7rem;border:2px solid var(--line);border-radius:14px;background:#fff;font-size:1.2rem;font-weight:600;resize:vertical}
+.msg{min-height:1.5rem;margin:.6rem 0 0;font-weight:700;color:var(--text2);line-height:1.5}
+
+/* toast: above the bar, or at the top while a sheet is open */
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--barH) + .6rem);z-index:90;width:min(calc(100vw - 24px),600px);
+  display:flex;align-items:center;gap:.8rem;padding:.8rem 1rem;border-radius:16px;background:#2B241D;color:#fff;
+  font-size:1rem;font-weight:700;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+html.lock #toast{bottom:auto;top:calc(.7rem + env(safe-area-inset-top))}
+html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom))}
+#toast .tmsg{flex:1}
+#toast .tact{flex:none;min-height:2.7rem;padding:.4rem .8rem;border:0;border-radius:12px;background:#fff;color:#2B241D;font-weight:800}
+
+/* 家族の設定 */
+#settings{padding-bottom:3rem}
+.stop{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:.7rem;padding-top:calc(.6rem + env(safe-area-inset-top));padding-bottom:.5rem;background:var(--bg);border-bottom:1px solid var(--line)}
+.stop h1{margin:0;font-size:1.25rem}
+.sh{font-size:1.1rem;margin:1.6rem 0 .5rem}
+.btnrow{display:flex;flex-wrap:wrap;gap:.5rem}
+.sgrp h3{display:flex;justify-content:space-between;margin:1rem 0 .4rem;font-size:.95rem;color:var(--text2)}
+.slist{list-style:none;margin:0;padding:0;border:2px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.srow{display:flex;align-items:center;gap:.4rem;padding:.35rem .5rem;border-top:1px solid var(--line)}
+.srow:first-child{border-top:0}
+.srow.note{display:block;margin:0;padding:.7rem}
+.sedit{flex:1;min-width:0;display:flex;align-items:center;gap:.6rem;min-height:3.2rem;padding:.2rem;border:0;background:none;text-align:left}
+.stx{flex:1;min-width:0;display:flex;flex-direction:column}
+.stx b{font-size:1rem;line-height:1.35;overflow-wrap:anywhere}
+.stx small{font-size:.75rem;font-weight:600;color:var(--text2);line-height:1.4}
+.mv{display:flex;gap:.3rem;flex:none}
+.mv button{width:2.5rem;height:2.5rem;border:2px solid var(--line);border-radius:10px;background:var(--surface);font-weight:800}
+.mv button:disabled{opacity:.3}
+.srow .btn{flex:none;min-height:2.6rem;font-size:.9rem;padding:.3rem .7rem}
+.seg{display:flex;flex-wrap:wrap;gap:.4rem}
+.seg button{flex:1 1 auto;min-height:3rem;padding:.3rem .6rem;border:2px solid var(--line);border-radius:12px;background:var(--surface);font-weight:700}
+.seg button.on{border-color:var(--accent);background:var(--accentBg);color:#8C2D04}
+.sizeprev{margin:.6rem 0 0;padding:.6rem .8rem;border:2px dashed var(--line);border-radius:12px;background:var(--surface);font-weight:800;line-height:1.35}
+.ver{margin-top:2rem;text-align:center;font-size:.8rem;color:var(--text2)}
+
+/* item editor */
+.fl{display:block;margin:0 0 1.1rem;font-size:.95rem;font-weight:800}
+.fl > small,.fl label small{display:block;margin-top:.2rem;font-size:.8rem;font-weight:600;color:var(--text2)}
+.fl input[type="text"]{display:block;width:100%;min-height:3rem;margin-top:.35rem;padding:.4rem .7rem;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:1.1rem;font-weight:600}
+.fl .chips{margin-top:.4rem}
+.picrow{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;margin:.4rem 0}
+.emojis{display:grid;grid-template-columns:repeat(auto-fill,minmax(2.8rem,1fr));gap:.25rem;max-height:11.5rem;overflow-y:auto;margin-top:.5rem;padding:.3rem;border:2px solid var(--line);border-radius:12px;background:#fff}
+.emojis button{height:2.8rem;padding:0;border:2px solid transparent;border-radius:10px;background:none;font-size:1.55rem;line-height:1}
+.emojis button.on{border-color:var(--accent);background:var(--accentBg)}
+.emojis .ini{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:8px;background:#8A6E50;color:#fff;font-size:1rem;font-weight:800}
+.addrow{display:flex;gap:.5rem;margin-top:.5rem}
+.addrow input[type="text"]{margin-top:0}
+.addrow .btn{flex:none}
+.tag{display:inline-flex;align-items:center;gap:.2rem;min-height:2.6rem;padding:0 .2rem 0 .9rem;border-radius:999px;border:2px solid var(--accent);background:var(--accentBg);font-weight:700}
+.tag button{width:2.2rem;height:2.2rem;border:0;border-radius:50%;background:none;font-size:1.1rem;font-weight:800;color:var(--text2)}
+</style>
+</head>
+<body>
+
+<main id="home">
+  <header class="top wrap"><h1>かいものメモ</h1><p class="today" id="today"></p></header>
+  <p class="how wrap" id="how"></p>
+  <div class="wrap"><button type="button" id="sameBtn" class="btn same" hidden><span>🔁 まえと おなじものを 入れる</span><small id="sameDate"></small></button></div>
+  <section id="extrasSec" class="wrap" hidden><h2 class="gh">ほかに たのむもの</h2><ul id="extrasList" class="rows"></ul></section>
+  <div id="groups" class="wrap"></div>
+  <p id="emptyItems" class="wrap note empty" hidden>品物が ありません。下の「家族の設定」から ふやしてください。</p>
+  <footer class="foot wrap"><button type="button" id="openSettings" class="link">⚙ 家族の設定</button></footer>
+</main>
+
+<nav id="bar" aria-label="送る">
+  <div class="wrap">
+    <button type="button" id="voiceBtn" class="btn">🎤 声で たのむ</button>
+    <button type="button" id="sendBtn" class="btn go" aria-disabled="true">送る <span id="sendN" class="badge" hidden></span></button>
+  </div>
+</nav>
+
+<section id="settings" hidden aria-labelledby="setTitle">
+  <header class="stop wrap"><button type="button" id="closeSettings" class="btn">← もどる</button><h1 id="setTitle">家族の設定</h1></header>
+  <div class="wrap">
+    <p class="note">ここは ご家族（準備をする人）用の 画面です。</p>
+
+    <h2 class="sh">品物</h2>
+    <div class="btnrow"><button type="button" id="addItem" class="btn go">＋ 品物を ふやす</button><button type="button" id="sortFreq" class="btn">よく頼む順に ならべる</button></div>
+    <p class="note">ボタンの 場所は 勝手には 変わりません。↑↓ で ならべかえられます。</p>
+    <div id="sItems"></div>
+
+    <h2 class="sh">声で たのまれたもの</h2>
+    <p class="note">よく出てくるものは「ボタンにする」と、次から 押すだけで たのめます。</p>
+    <ul id="sExtras" class="slist"></ul>
+
+    <h2 class="sh">文字の大きさ</h2>
+    <div class="seg" id="sizeSeg"><button type="button" data-v="m">ふつう</button><button type="button" data-v="l">大きい</button><button type="button" data-v="xl">とても大きい</button></div>
+    <p class="sizeprev" id="sizePrev" aria-hidden="true">トイレットペーパー　2パック</p>
+    <p class="note">買い物の 画面の 文字が、この 見本の 大きさに なります。</p>
+
+    <h2 class="sh">送り方</h2>
+    <div class="seg" id="sendSeg"><button type="button" data-v="line">LINEを ひらく</button><button type="button" data-v="share">共有メニュー</button></div>
+    <p class="note">「LINEで 送る」を 押したときの 動き方です。LINE が うまく ひらかないときは「共有メニュー」に して、出てきた中から LINE を えらんでください。</p>
+    <a id="testSend" class="btn" href="#" target="_blank" rel="noopener">ためしに 送ってみる</a>
+
+    <h2 class="sh">声で たのむ</h2>
+    <p class="note" id="srState"></p>
+    <button type="button" id="testMic" class="btn">🎤 ためしに 話してみる</button>
+    <p class="msg" id="testMicMsg" aria-live="polite"></p>
+    <textarea id="testMicOut" class="big" rows="2" aria-label="ためしの 結果" hidden></textarea>
+
+    <h2 class="sh">ホーム画面に アイコンを 置く</h2>
+    <p class="note" id="installNote"></p>
+    <button type="button" id="installBtn" class="btn go" hidden>ホーム画面に アイコンを 作る</button>
+
+    <h2 class="sh">バックアップ</h2>
+    <p class="note">品物・写真・送った記録を ファイルに 残せます。スマホを 替えるときにも 使えます。</p>
+    <div class="btnrow"><button type="button" id="exportBtn" class="btn">ファイルに 書き出す</button><button type="button" id="importBtn" class="btn">ファイルから 読みこむ</button></div>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <p class="note" id="usage"></p>
+
+    <p class="ver">かいものメモ 1.0</p>
+  </div>
+</section>
+
+<div class="layer" id="sh-confirm" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
+  <div class="scrim" data-close></div>
+  <div class="sheet"><div class="wrap">
+    <h2 id="cTitle">これを 送ります</h2>
+    <ul class="clist" id="clist"></ul>
+    <h3 class="h3">いつまでに？ <small>（えらばなくても だいじょうぶ）</small></h3>
+    <div class="chips" id="whenChips"></div>
+    <div class="acts">
+      <a id="lineSend" class="btn go big" href="#" target="_blank" rel="noopener">LINEで 送る</a>
+      <button type="button" class="btn big plain" data-close>もどって なおす</button>
+      <button type="button" id="clearAll" class="link danger">えらんだものを ぜんぶ けす</button>
+    </div>
+  </div></div>
+</div>
+
+<div class="layer" id="sh-sent" hidden role="dialog" aria-modal="true" aria-labelledby="sentTitle">
+  <div class="scrim"></div>
+  <div class="sheet"><div class="wrap">
+    <h2 id="sentTitle">LINEで 送れましたか？</h2>
+    <p class="note">送れたら、えらんだものを 空にします。</p>
+    <div class="acts">
+      <button type="button" id="sentYes" class="btn go big">はい、送れました</button>
+      <button type="button" id="sentNo" class="btn big plain">いいえ、まだです</button>
+    </div>
+  </div></div>
+</div>
+
+<div class="layer" id="sh-voice" hidden role="dialog" aria-modal="true" aria-labelledby="vTitle">
+  <div class="scrim" data-close></div>
+  <div class="sheet"><div class="wrap">
+    <h2 id="vTitle">ほかに ほしいもの</h2>
+    <button type="button" id="micBtn" class="btn micbig">🎤 押して 話す</button>
+    <p class="msg" id="voiceMsg" aria-live="polite"></p>
+    <textarea id="voiceText" class="big" rows="3" aria-label="ほしいもの"></textarea>
+    <p class="note" id="kbHint" hidden>キーボードの 🎤（マイク）を 押しても、声で 入れられます。</p>
+    <div class="acts">
+      <button type="button" id="voiceAdd" class="btn go big">リストに 入れる</button>
+      <button type="button" class="btn big plain" data-close>やめる</button>
+    </div>
+  </div></div>
+</div>
+
+<div class="layer" id="sh-size" hidden role="dialog" aria-modal="true" aria-labelledby="sizeName">
+  <div class="scrim" data-close></div>
+  <div class="sheet"><div class="wrap">
+    <div class="sizehead" id="sizeHead"></div>
+    <ul class="rows" id="sizeRows"></ul>
+    <div class="acts"><button type="button" class="btn go big" data-close>できた</button></div>
+  </div></div>
+</div>
+
+<div class="layer" id="sh-same" hidden role="dialog" aria-modal="true" aria-labelledby="sameTitle">
+  <div class="scrim" data-close></div>
+  <div class="sheet"><div class="wrap">
+    <h2 id="sameTitle"></h2>
+    <ul class="clist" id="slist"></ul>
+    <div class="acts">
+      <button type="button" id="sameAdd" class="btn go big">これを 入れる</button>
+      <button type="button" class="btn big plain" data-close>やめる</button>
+    </div>
+  </div></div>
+</div>
+
+<div class="layer" id="sh-ask" hidden role="dialog" aria-modal="true" aria-labelledby="askTitle">
+  <div class="scrim" data-close></div>
+  <div class="sheet"><div class="wrap">
+    <h2 id="askTitle"></h2>
+    <p class="note" id="askText"></p>
+    <div class="acts">
+      <button type="button" id="askOk" class="btn go big"></button>
+      <button type="button" id="askNo" class="btn big plain"></button>
+    </div>
+  </div></div>
+</div>
+
+<div class="layer" id="sh-edit" hidden role="dialog" aria-modal="true" aria-labelledby="editTitle">
+  <div class="scrim" data-close></div>
+  <div class="sheet"><div class="wrap">
+    <h2 id="editTitle"></h2>
+    <label class="fl">なまえ<input id="fName" type="text" maxlength="30" autocomplete="off"></label>
+    <div class="fl">絵・写真
+      <div class="picrow"><span id="fPicBox"></span><button type="button" id="fPhoto" class="btn">📷 写真を とる・えらぶ</button><button type="button" id="fNoPhoto" class="btn plain" hidden>写真を やめる</button></div>
+      <input id="fPhotoFile" type="file" accept="image/*" hidden>
+      <small id="fPhotoNote" hidden>写真が あるときは、写真が 出ます。</small>
+      <div class="emojis" id="fEmojis" role="group" aria-label="絵"></div>
+    </div>
+    <div class="fl">数え方
+      <div class="chips" id="fUnits"></div>
+      <div class="addrow"><input id="fUnitOther" type="text" maxlength="6" placeholder="ほかの数え方" aria-label="ほかの数え方" autocomplete="off"></div>
+      <small id="fUnitNote" hidden>g は 100g ずつ ふえます。</small>
+    </div>
+    <label class="fl">くわしく<input id="fNote" type="text" maxlength="30" autocomplete="off"><small>名前の下と、LINE の文に 小さく入ります。</small></label>
+    <div class="fl">えらべる大きさ・種類
+      <small>2つ 以上 入れると、押したときに「どれに しますか？」と 聞きます。</small>
+      <div class="chips" id="fSizes"></div>
+      <div class="addrow"><input id="fSizeIn" type="text" maxlength="12" placeholder="大きさ・種類" aria-label="大きさ・種類" autocomplete="off"><button type="button" id="fSizeAdd" class="btn">足す</button></div>
+    </div>
+    <div class="fl">グループ<div class="chips" id="fGroup"></div></div>
+    <div class="acts">
+      <button type="button" id="fSave" class="btn go big">保存する</button>
+      <button type="button" class="btn big plain" data-close>やめる</button>
+      <button type="button" id="fDelete" class="link danger">この品物を けす</button>
+    </div>
+  </div></div>
+</div>
+
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const KEY = 'kaimono:v1:';
+const DAY = 864e5;
+
+const GROUPS = [
+  { key: 'food', label: 'たべもの' },
+  { key: 'drink', label: 'のみもの' },
+  // daily goods are asked for at uneven times, so their rows say when they were last asked for
+  { key: 'daily', label: 'にちようひん', showLast: true },
+  { key: 'other', label: 'そのほか' },
+];
+const UNITS = ['個', '本', 'パック', '袋', '箱', 'たば', 'ふさ', 'g'];
+const WHEN = ['きょう中に', 'あしたまでに', 'こんど来るとき', 'いそがない'];
+// Emoji 13 or older, so they show on older Android phones too
+const EMOJIS = '🍞 🥚 🍚 🍙 🌾 🍌 🍎 🍊 🍇 🍓 🍑 🍉 🍅 🥒 🥕 🧅 🥔 🥬 🥦 🌽 🍄 🍠 🐟 🦐 🥩 🍗 🥓 🧀 🧈 🍜 🍱 🥟 🍘 🍪 🍡 🍰 🍦 🍫 🍬 🥫 🧂 🍯 🥛 🍵 ☕ 🧃 🍺 🍶 💧 🧊 🧻 🤧 🧺 🧽 🧴 🧼 🪥 🗑️ 🧹 🔋 💡 😷 🩹 💊 👕 🧦 💐 🌸 📰 ✉️ 🐶 🐱 🎁 📦'.split(' ');
+// name, picture, unit, group, sizes (two or more: the parent is asked which one)
+const DEFAULT_ITEMS = [
+  ['食パン', '🍞', '袋', 'food', ['6枚切り', '8枚切り']],
+  ['たまご', '🥚', 'パック', 'food'],
+  ['お米', '🌾', '袋', 'food', ['2kg', '5kg']],
+  ['バナナ', '🍌', 'ふさ', 'food'],
+  ['トマト', '🍅', '個', 'food'],
+  ['たまねぎ', '🧅', '個', 'food'],
+  ['おさかな', '🐟', 'パック', 'food'],
+  ['お肉', '🥩', 'g', 'food'],
+  ['おせんべい', '🍘', '袋', 'food'],
+  ['牛乳', '🥛', '本', 'drink', ['1L', '500ml']],
+  ['お茶', '🍵', '本', 'drink'],
+  ['お水', '💧', '本', 'drink'],
+  ['トイレットペーパー', '🧻', 'パック', 'daily'],
+  ['ティッシュ', '🤧', '箱', 'daily'],
+  ['せんたく洗剤', '🧺', '個', 'daily'],
+  ['台所洗剤', '🧽', '本', 'daily'],
+  ['シャンプー', '🧴', '本', 'daily'],
+  ['ごみ袋', '🗑️', '袋', 'daily'],
+  ['電池', '🔋', 'パック', 'other'],
+  ['お花', '💐', 'たば', 'other'],
+];
+
+let seq = 0;
+const uid = () => Date.now().toString(36) + (seq++).toString(36) + Math.random().toString(36).slice(2, 5);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const buzz = () => { try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} };
+
+/* ---------- storage (this phone only) ---------- */
+let warnedAt = 0;
+function load(name, fallback) {
+  try { const s = localStorage.getItem(KEY + name); return s == null ? fallback : JSON.parse(s); }
+  catch (e) { return fallback; }
+}
+function save(name, value) {
+  try { localStorage.setItem(KEY + name, JSON.stringify(value)); return true; }
+  catch (e) {
+    if (Date.now() - warnedAt > 5000) { warnedAt = Date.now(); toast('保存できませんでした。スマホの 空きが 少ないかもしれません。'); }
+    return false;
+  }
+}
+function drop(name) { try { localStorage.removeItem(KEY + name); } catch (e) {} }
+
+function okItem(x) { return x && typeof x === 'object' && String(x.name || '').trim() !== ''; }
+function fixItem(x) {
+  return {
+    id: String(x.id || uid()),
+    name: String(x.name).trim().slice(0, 40),
+    emoji: typeof x.emoji === 'string' ? x.emoji.slice(0, 8) : '',
+    unit: String(x.unit || '個').slice(0, 8),
+    group: GROUPS.some(g => g.key === x.group) ? x.group : 'other',
+    sizes: Array.isArray(x.sizes) ? [...new Set(x.sizes.map(s => String(s).trim().slice(0, 12)).filter(Boolean))].slice(0, 8) : [],
+    note: String(x.note || '').slice(0, 40),
+    photo: !!x.photo,
+    count: Math.max(0, +x.count || 0),
+    lastAt: Math.max(0, +x.lastAt || 0),
+  };
+}
+function fixCart(c) {
+  c = c && typeof c === 'object' ? c : {};
+  const lines = {};
+  if (c.lines && typeof c.lines === 'object') for (const [k, v] of Object.entries(c.lines)) if (+v > 0) lines[k] = +v;
+  const extras = Array.isArray(c.extras) ? c.extras.filter(x => x && String(x.text || '').trim()).map(x => ({ id: String(x.id || uid()), text: String(x.text).slice(0, 200) })) : [];
+  return { lines, extras, when: WHEN.includes(c.when) ? c.when : '' };
+}
+function okHist(h) { return h && typeof h === 'object' && +h.at > 0 && Array.isArray(h.lines); }
+function fixHist(h) {
+  return {
+    at: +h.at,
+    lines: h.lines.filter(l => l && l.name).map(l => ({ id: String(l.id || ''), name: String(l.name), size: String(l.size || ''), unit: String(l.unit || ''), qty: Math.max(1, +l.qty || 1) })),
+    extras: Array.isArray(h.extras) ? h.extras.map(String).filter(Boolean) : [],
+    when: String(h.when || ''),
+  };
+}
+const freshItems = () => DEFAULT_ITEMS.map(([name, emoji, unit, group, sizes]) => fixItem({ name, emoji, unit, group, sizes }));
+
+let items = load('items', null);
+if (!Array.isArray(items)) { items = freshItems(); save('items', items); }
+items = items.filter(okItem).map(fixItem);
+let cart = fixCart(load('cart', null));
+let hist = load('history', []);
+hist = Array.isArray(hist) ? hist.filter(okHist).map(fixHist) : [];
+let settings = Object.assign({ size: 'm', send: 'line' }, load('settings', {}));
+let pending = load('pending', null);
+if (pending && !(Date.now() - (+pending.at || 0) < 3 * DAY)) { pending = null; drop('pending'); }
+const saveCart = () => save('cart', cart);
+
+// photos sit under their own keys, so one big photo can never spoil the item list
+const photoCache = new Map();
+function photoOf(it) {
+  if (!it || !it.photo) return '';
+  if (!photoCache.has(it.id)) {
+    let p = '';
+    try { p = localStorage.getItem(KEY + 'photo:' + it.id) || ''; } catch (e) {}
+    photoCache.set(it.id, p);
+  }
+  return photoCache.get(it.id);
+}
+function setPhoto(id, data) {
+  try {
+    if (data) localStorage.setItem(KEY + 'photo:' + id, data);
+    else localStorage.removeItem(KEY + 'photo:' + id);
+    photoCache.set(id, data || '');
+    return true;
+  } catch (e) { return false; }
+}
+const okPhoto = p => typeof p === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(p);
+
+/* ---------- items and the cart ---------- */
+const byId = id => items.find(it => it.id === id);
+const inGroup = key => items.filter(it => it.group === key);
+const sized = it => it.sizes.length >= 2;
+const stepOf = it => it.unit === 'g' ? 100 : 1;
+const keyOf = (id, size) => size ? id + '|' + size : id;
+function splitKey(k) { const i = k.indexOf('|'); return i < 0 ? [k, ''] : [k.slice(0, i), k.slice(i + 1)]; }
+function linesOf(it, c = cart) {
+  if (sized(it)) return it.sizes.map(size => ({ size, qty: c.lines[keyOf(it.id, size)] || 0 })).filter(l => l.qty > 0);
+  const qty = c.lines[it.id] || 0;
+  return qty > 0 ? [{ size: '', qty }] : [];
+}
+// a single size works like a note: it goes into the name's brackets
+const detailOf = (it, size) => [size || (it.sizes.length === 1 ? it.sizes[0] : ''), it.note].filter(Boolean).join('・');
+const cartCount = () => items.reduce((n, it) => n + linesOf(it).length, 0) + cart.extras.length;
+function change(it, size, dir) {
+  const k = keyOf(it.id, size), step = stepOf(it);
+  const q = Math.max(0, Math.min((cart.lines[k] || 0) + dir * step, 99 * step));
+  if (q) cart.lines[k] = q; else delete cart.lines[k];
+  saveCart(); buzz();
+}
+const qtyHTML = (it, q) => `<b>${q}</b><small>${esc(it.unit)}</small>`;
+function picHTML(it, cls = '', photo) {
+  const p = photo === undefined ? photoOf(it) : photo;
+  if (p) return `<span class="pic ${cls}"><img src="${esc(p)}" alt=""></span>`;
+  if (it.emoji) return `<span class="pic emo ${cls}" aria-hidden="true">${esc(it.emoji)}</span>`;
+  return `<span class="pic ini ${cls}" aria-hidden="true">${esc([...(it.name || '？')][0])}</span>`;
+}
+const NOTE_PIC = '<span class="pic emo sm" aria-hidden="true">📝</span>';
+
+/* ---------- dates ---------- */
+const WD = '日月火水木金土';
+const md = ts => { const d = new Date(ts); return `${d.getMonth() + 1}月${d.getDate()}日`; };
+const mdw = ts => `${md(ts)}（${WD[new Date(ts).getDay()]}）`;
+function ago(ts) {
+  const a = new Date(); a.setHours(0, 0, 0, 0);
+  const b = new Date(ts); b.setHours(0, 0, 0, 0);
+  const days = Math.round((a - b) / DAY);
+  if (days <= 0) return 'きょう';
+  if (days === 1) return 'きのう';
+  if (days < 14) return `${days}日まえ`;
+  if (days < 60) return `${Math.floor(days / 7)}週間まえ`;
+  return `${Math.floor(days / 30)}か月まえ`;
+}
+
+/* ---------- toast ---------- */
+let toastTimer = 0;
+function toast(msg, actLabel, act) {
+  const t = $('#toast');
+  t.innerHTML = '<span class="tmsg"></span>' + (actLabel ? '<button type="button" class="tact"></button>' : '');
+  $('.tmsg', t).textContent = msg;
+  if (actLabel) {
+    const b = $('.tact', t);
+    b.textContent = actLabel;
+    b.onclick = () => { hideToast(); act(); };
+  }
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, actLabel ? 7000 : 3500);
+}
+function hideToast() { $('#toast').hidden = true; }
+
+/* ---------- layers: sheets and the settings page, each one step of the back button ---------- */
+// Android's back gesture closes the top sheet instead of leaving the app
+const layers = [];
+let popWaiters = [];
+history.scrollRestoration = 'manual';
+function pushLayer(name, onClose) {
+  layers.push({ name, onClose, from: document.activeElement });
+  history.pushState({ kaimono: layers.length }, '');
+}
+function popLayer() {
+  return new Promise(res => {
+    if (!layers.length) { res(); return; }
+    popWaiters.push(res);
+    history.back();
+  });
+}
+window.addEventListener('popstate', () => {
+  const l = layers.pop();
+  if (l) {
+    l.onClose();
+    if (l.from && document.contains(l.from) && !l.from.closest('[hidden]')) { try { l.from.focus({ preventScroll: true }); } catch (e) {} }
+  }
+  const w = popWaiters; popWaiters = [];
+  w.forEach(f => f());
+});
+const isOpen = name => layers.some(l => l.name === name);
+const sheetsOpen = () => layers.some(l => l.name.startsWith('sh-'));
+function openSheet(id) {
+  if (isOpen(id)) return;
+  const el = $('#' + id);
+  el.style.zIndex = 40 + layers.length;
+  el.hidden = false;
+  document.documentElement.classList.add('lock');
+  el.getBoundingClientRect();
+  el.classList.add('open');
+  el.querySelector('.sheet').scrollTop = 0;
+  pushLayer(id, () => {
+    el.classList.remove('open');
+    el.hidden = true;
+    if (!sheetsOpen()) document.documentElement.classList.remove('lock');
+    el.dispatchEvent(new Event('closed'));
+  });
+  const h = $('h2', el) || $('.nm', el);
+  if (h) { h.setAttribute('tabindex', '-1'); try { h.focus({ preventScroll: true }); } catch (e) {} }
+}
+const closeSheet = () => popLayer();
+document.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeSheet(); });
+
+function ask(title, text, okLabel, noLabel = 'やめる', danger = false) {
+  return new Promise(res => {
+    let answered = false;
+    $('#askTitle').textContent = title;
+    $('#askText').textContent = text;
+    const ok = $('#askOk'), no = $('#askNo');
+    ok.textContent = okLabel; no.textContent = noLabel;
+    ok.className = 'btn big ' + (danger ? 'redfill' : 'go');
+    ok.onclick = async () => { answered = true; await closeSheet(); res(true); };
+    no.onclick = async () => { answered = true; await closeSheet(); res(false); };
+    const sh = $('#sh-ask');
+    sh.addEventListener('closed', () => { if (!answered) res(false); }, { once: true });
+    openSheet('sh-ask');
+  });
+}
+
+/* ---------- home ---------- */
+const groupsEl = $('#groups');
+let shownDay = new Date().toDateString();
+function renderHome() {
+  shownDay = new Date().toDateString();
+  $('#today').textContent = mdw(Date.now());
+  const last = hist[0];
+  $('#sameBtn').hidden = !last;
+  if (last) $('#sameDate').textContent = `${md(last.at)}に 送ったもの`;
+  renderExtras();
+  const frag = document.createDocumentFragment();
+  for (const g of GROUPS) {
+    const list = inGroup(g.key);
+    if (!list.length) continue;
+    const sec = document.createElement('section');
+    sec.innerHTML = `<h2 class="gh">${g.label}</h2><ul class="rows"></ul>`;
+    const ul = sec.lastElementChild;
+    list.forEach(it => ul.appendChild(rowEl(it, g)));
+    frag.appendChild(sec);
+  }
+  groupsEl.replaceChildren(frag);
+  $('#emptyItems').hidden = items.length > 0;
+  renderBar();
+}
+function rowEl(it, g) {
+  const li = document.createElement('li');
+  li.className = 'row';
+  li.dataset.id = it.id;
+  const subs = [];
+  const det = detailOf(it, '');
+  if (det) subs.push(`<span class="sub">${esc(det)}</span>`);
+  if (sized(it)) subs.push(`<span class="sub">${esc(it.sizes.join('・'))}</span>`);
+  if (g.showLast && it.lastAt) subs.push(`<span class="sub last">前回 ${ago(it.lastAt)}</span>`);
+  const nm = esc(it.name);
+  li.innerHTML = `<button type="button" class="hit" tabindex="-1" aria-hidden="true"></button>${picHTML(it)}`
+    + `<span class="txt"><span class="nm">${nm}</span>${subs.join('')}</span>`
+    + `<span class="step"><span class="sum"></span><button type="button" class="minus" aria-label="${nm}を へらす">−</button>`
+    + `<span class="n"></span><button type="button" class="plus" aria-label="${nm}を ふやす">＋</button></span>`;
+  paintRow(li, it);
+  return li;
+}
+function paintRow(li, it) {
+  const ls = linesOf(it), on = ls.length > 0;
+  li.classList.toggle('sel', on);
+  const minus = $('.minus', li), n = $('.n', li), sum = $('.sum', li);
+  if (sized(it)) {
+    minus.hidden = n.hidden = true;
+    sum.hidden = !on;
+    sum.innerHTML = ls.map(l => `${esc(l.size)} ${qtyHTML(it, l.qty)}`).join('<br>');
+  } else {
+    sum.hidden = true;
+    minus.hidden = n.hidden = !on;
+    n.innerHTML = on ? qtyHTML(it, ls[0].qty) : '';
+  }
+}
+// a trembling finger can land twice in a row; the second tap within 180 ms is dropped
+let lastTap = { el: null, t: 0 };
+function tooFast(el) {
+  const t = performance.now(), fast = lastTap.el === el && t - lastTap.t < 180;
+  lastTap = { el, t };
+  return fast;
+}
+groupsEl.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  const li = b && b.closest('.row');
+  const it = li && byId(li.dataset.id);
+  if (!it || tooFast(b)) return;
+  if (b.classList.contains('minus')) { change(it, '', -1); paintRow(li, it); renderBar(); return; }
+  if (sized(it)) { openSize(it); return; }
+  change(it, '', 1);
+  paintRow(li, it);
+  renderBar();
+  li.classList.remove('pop'); void li.offsetWidth; li.classList.add('pop');
+});
+
+function renderExtras() {
+  $('#extrasSec').hidden = !cart.extras.length;
+  $('#extrasList').innerHTML = cart.extras.map(x =>
+    `<li class="row sel" data-x="${esc(x.id)}">${NOTE_PIC.replace(' sm', '')}<span class="txt"><span class="nm">${esc(x.text)}</span></span>`
+    + `<span class="step"><button type="button" class="del" aria-label="${esc(x.text)}を けす">けす</button></span></li>`).join('');
+}
+$('#extrasList').addEventListener('click', e => {
+  const b = e.target.closest('.del');
+  if (!b) return;
+  const i = cart.extras.findIndex(x => x.id === b.closest('[data-x]').dataset.x);
+  if (i < 0) return;
+  const [x] = cart.extras.splice(i, 1);
+  saveCart(); renderExtras(); renderBar();
+  toast(`「${x.text}」を けしました`, 'もとに もどす', () => { cart.extras.splice(i, 0, x); saveCart(); renderExtras(); renderBar(); });
+});
+
+function renderBar() {
+  const n = cartCount();
+  $('#sendBtn').setAttribute('aria-disabled', n ? 'false' : 'true');
+  $('#sendN').hidden = !n;
+  $('#sendN').textContent = n;
+  $('#how').innerHTML = n
+    ? 'えらび おわったら、下の <span class="g">送る</span> を 押してください。'
+    : 'ほしいものの <span class="k">＋</span> を 押してください。';
+}
+const bar = $('#bar');
+new ResizeObserver(() => { if (bar.offsetHeight) document.documentElement.style.setProperty('--barH', bar.offsetHeight + 'px'); }).observe(bar);
+
+/* ---------- sizes ---------- */
+let sizeItem = null;
+function openSize(it) { sizeItem = it; renderSize(); openSheet('sh-size'); }
+function renderSize() {
+  const it = sizeItem;
+  $('#sizeHead').innerHTML = `${picHTML(it)}<span><span class="nm" id="sizeName">${esc(it.name)}</span><span class="q">どれに しますか？</span></span>`;
+  $('#sizeRows').innerHTML = it.sizes.map((s, i) => {
+    const q = cart.lines[keyOf(it.id, s)] || 0;
+    return `<li class="row np${q ? ' sel' : ''}" data-i="${i}"><button type="button" class="hit" tabindex="-1" aria-hidden="true"></button>`
+      + `<span class="txt"><span class="nm">${esc(s)}</span></span><span class="step">`
+      + (q ? `<button type="button" class="minus" aria-label="${esc(s)}を へらす">−</button><span class="n">${qtyHTML(it, q)}</span>` : '')
+      + `<button type="button" class="plus" aria-label="${esc(s)}を ふやす">＋</button></span></li>`;
+  }).join('');
+}
+$('#sizeRows').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b || !sizeItem || tooFast(b)) return;
+  const s = sizeItem.sizes[+b.closest('[data-i]').dataset.i];
+  change(sizeItem, s, b.classList.contains('minus') ? -1 : 1);
+  renderSize();
+});
+$('#sh-size').addEventListener('closed', () => renderHome());
+
+/* ---------- voice ---------- */
+// Chrome on Android has speech recognition; iPhone home-screen apps don't, so the keyboard's mic is the fallback there
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const SR_ERRORS = {
+  'no-speech': '声が きこえませんでした。もういちど 🎤 を 押して、話してください。',
+  'audio-capture': 'マイクが 見つかりませんでした。',
+  'not-allowed': 'マイクが 許可されていません。ご家族に「家族の設定」で ためしてもらってください。',
+  'service-not-allowed': 'この スマホでは、アプリの 🎤 が 使えません。',
+  'network': 'インターネットに つながらないため、声で 入れられません。',
+  'language-not-supported': '日本語の 声の入力が 使えませんでした。',
+};
+const MIC_IDLE = '🎤 押して 話す', MIC_BUSY = '<span class="dot"></span> きいています（おわったら 押す）';
+let rec = null, recBtn = null, recIdle = MIC_IDLE;
+function paintMic(btn, busy, idle) {
+  if (!btn) return;
+  btn.classList.toggle('on', busy);
+  btn.innerHTML = busy ? MIC_BUSY : idle;
+}
+function listen({ field, say, btn, idle = MIC_IDLE, done }) {
+  if (rec) { stopListen(); return; }
+  if (!SR) { say('この スマホでは、アプリの 🎤 が 使えません。キーボードの 🎤 を 使ってください。'); $('#kbHint').hidden = false; return; }
+  let r;
+  try { r = new SR(); } catch (e) { say('声の入力を はじめられませんでした。'); return; }
+  r.lang = 'ja-JP'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+  const base = field.value.trim();
+  let failed = false;
+  r.onresult = e => {
+    let t = '';
+    for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+    field.value = (base ? base + '、' : '') + t.trim();
+  };
+  r.onerror = e => {
+    failed = true;
+    if (SR_ERRORS[e.error]) say(SR_ERRORS[e.error]);
+    if (!['aborted', 'no-speech'].includes(e.error)) $('#kbHint').hidden = false;
+  };
+  r.onend = () => {
+    if (rec === r) { rec = null; paintMic(btn, false, idle); }
+    if (!failed && field.value.trim() !== base) say(done);
+  };
+  rec = r; recBtn = btn; recIdle = idle;
+  paintMic(btn, true, idle);
+  say('きいています。ほしいものを 話してください。');
+  try { r.start(); } catch (e) { rec = null; paintMic(btn, false, idle); say('もういちど 押してください。'); }
+}
+// stop() keeps what was heard; abort() drops it (used when the sheet closes)
+function stopListen(discard) {
+  const r = rec;
+  if (!r) return;
+  rec = null;
+  paintMic(recBtn, false, recIdle);
+  try { discard ? r.abort() : r.stop(); } catch (e) {}
+}
+const voiceSay = m => { $('#voiceMsg').textContent = m; };
+$('#voiceBtn').addEventListener('click', () => {
+  $('#voiceText').value = '';
+  voiceSay(SR ? '🎤 を 押して、ほしいものを 話してください。' : 'ここに 入れてください。');
+  $('#micBtn').hidden = !SR;
+  $('#kbHint').hidden = !!SR;
+  openSheet('sh-voice');
+});
+$('#micBtn').addEventListener('click', () => listen({ field: $('#voiceText'), say: voiceSay, btn: $('#micBtn'), done: 'これで よければ、下の「リストに 入れる」を 押してください。' }));
+$('#sh-voice').addEventListener('closed', () => stopListen(true));
+$('#voiceAdd').addEventListener('click', async () => {
+  const t = $('#voiceText').value.replace(/\s+/g, ' ').trim();
+  if (!t) { voiceSay(SR ? 'まだ 何も 入っていません。🎤 を 押して 話してください。' : 'まだ 何も 入っていません。'); return; }
+  stopListen(true);
+  cart.extras.push({ id: uid(), text: t.slice(0, 200) });
+  saveCart();
+  await closeSheet();
+  renderHome();
+  $('#extrasSec').scrollIntoView({ block: 'center' });
+  toast(`「${t}」を 入れました`);
+});
+
+/* ---------- 送る ---------- */
+function buildText(c = cart) {
+  const out = [`🛒 かいものリスト（${md(Date.now())}）`];
+  const itemLines = [];
+  for (const g of GROUPS) for (const it of inGroup(g.key)) for (const l of linesOf(it, c)) {
+    const det = detailOf(it, l.size);
+    itemLines.push(`・${it.name}${det ? `（${det}）` : ''} ${l.qty}${it.unit}`);
+  }
+  out.push(...itemLines);
+  if (c.extras.length) {
+    if (itemLines.length) out.push('', 'ほかに');
+    c.extras.forEach(x => out.push(`・${x.text}`));
+  }
+  if (c.when) out.push('', `いつ：${c.when}`);
+  return out.join('\n');
+}
+const lineURL = text => 'https://line.me/R/share?text=' + encodeURIComponent(text);
+$('#sendBtn').addEventListener('click', () => {
+  if (!cartCount()) { toast('先に、ほしいものの ＋ を 押してください。'); return; }
+  renderConfirm();
+  openSheet('sh-confirm');
+});
+function renderConfirm() {
+  const rows = [];
+  for (const g of GROUPS) for (const it of inGroup(g.key)) for (const l of linesOf(it)) {
+    const det = detailOf(it, l.size);
+    rows.push(`<li>${picHTML(it, 'sm')}<span class="cn">${esc(it.name)}${det ? `<small>${esc(det)}</small>` : ''}</span><span class="cq">${qtyHTML(it, l.qty)}</span></li>`);
+  }
+  cart.extras.forEach(x => rows.push(`<li>${NOTE_PIC}<span class="cn">${esc(x.text)}</span></li>`));
+  $('#clist').innerHTML = rows.join('');
+  renderWhen();
+}
+function renderWhen() {
+  $('#whenChips').innerHTML = WHEN.map(w => `<button type="button" class="chip${cart.when === w ? ' on' : ''}" aria-pressed="${cart.when === w}" data-w="${w}">${w}</button>`).join('');
+  $('#lineSend').href = lineURL(buildText());
+}
+$('#whenChips').addEventListener('click', e => {
+  const b = e.target.closest('[data-w]');
+  if (!b) return;
+  cart.when = cart.when === b.dataset.w ? '' : b.dataset.w;
+  saveCart(); renderWhen(); buzz();
+});
+
+// whether the message really went out is only known to the parent, so the app asks once they come back
+let wentAway = false, askTimer = 0;
+function markPending(text) {
+  pending = { at: Date.now(), text, cart: clone(cart) };
+  save('pending', pending);
+  wentAway = false;
+  clearTimeout(askTimer);
+  // if LINE never opened, the question still comes
+  askTimer = setTimeout(() => { if (pending && !wentAway && document.visibilityState === 'visible') askSent(); }, 4000);
+}
+function clearPending() { pending = null; drop('pending'); clearTimeout(askTimer); }
+$('#lineSend').addEventListener('click', e => {
+  const text = buildText();
+  if (settings.send === 'share' && navigator.share) {
+    e.preventDefault();
+    markPending(text);
+    navigator.share({ text }).then(() => {
+      setTimeout(() => { if (pending && document.visibilityState === 'visible') askSent(); }, 500);
+    }).catch(err => {
+      clearPending();
+      toast(err && err.name === 'AbortError' ? '送るのを やめました。' : '送れませんでした。もういちど 押してください。');
+    });
+    return;
+  }
+  e.currentTarget.href = lineURL(text);
+  markPending(text);
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') { if (pending) wentAway = true; return; }
+  if (pending && wentAway) { wentAway = false; setTimeout(askSent, 300); }
+  else if (new Date().toDateString() !== shownDay && $('#settings').hidden && !sheetsOpen()) renderHome();
+});
+async function askSent() {
+  if (!pending || isOpen('sh-sent')) return;
+  clearTimeout(askTimer);
+  while (layers.length && layers[layers.length - 1].name !== 'settings') await popLayer();
+  if (!pending || isOpen('sh-sent')) return;
+  openSheet('sh-sent');
+}
+let sentAnswered = false;
+$('#sh-sent').addEventListener('closed', () => {
+  // closed with the back button: treated as not sent, the list stays
+  if (!sentAnswered) { clearPending(); toast('リストは そのまま 残っています。'); }
+  sentAnswered = false;
+});
+$('#sentYes').addEventListener('click', async () => { sentAnswered = true; await closeSheet(); markSent(); });
+$('#sentNo').addEventListener('click', async () => { sentAnswered = true; await closeSheet(); clearPending(); toast('リストは そのまま 残っています。'); });
+function markSent() {
+  const c = pending ? fixCart(pending.cart) : cart;
+  const now = Date.now();
+  const lines = [];
+  for (const g of GROUPS) for (const it of inGroup(g.key)) for (const l of linesOf(it, c)) lines.push({ id: it.id, name: it.name, size: l.size, unit: it.unit, qty: l.qty });
+  const before = { cart: clone(cart), hist: hist.slice(), stats: items.map(it => [it.id, it.count, it.lastAt]) };
+  hist.unshift({ at: now, lines, extras: c.extras.map(x => x.text), when: c.when });
+  hist = hist.slice(0, 60);
+  save('history', hist);
+  const ids = new Set(lines.map(l => l.id));
+  items.forEach(it => { if (ids.has(it.id)) { it.count++; it.lastAt = now; } });
+  save('items', items);
+  cart = fixCart(null);
+  saveCart();
+  clearPending();
+  renderHome();
+  window.scrollTo(0, 0);
+  toast('送りました。おつかれさまでした。', 'もとに もどす', () => {
+    cart = fixCart(before.cart); saveCart();
+    hist = before.hist; save('history', hist);
+    before.stats.forEach(([id, count, lastAt]) => { const it = byId(id); if (it) { it.count = count; it.lastAt = lastAt; } });
+    save('items', items);
+    renderHome();
+  });
+}
+$('#clearAll').addEventListener('click', async () => {
+  if (!(await ask('ぜんぶ けしますか？', 'えらんだものが 空に なります。', 'ぜんぶ けす', 'やめる', true))) return;
+  const before = clone(cart);
+  cart = fixCart(null);
+  saveCart(); clearPending();
+  await closeSheet();
+  renderHome();
+  toast('ぜんぶ けしました。', 'もとに もどす', () => { cart = fixCart(before); saveCart(); renderHome(); });
+});
+
+/* ---------- まえと おなじ ---------- */
+$('#sameBtn').addEventListener('click', () => {
+  const h = hist[0];
+  if (!h) return;
+  $('#sameTitle').textContent = `${md(h.at)}に 送ったもの`;
+  $('#slist').innerHTML = h.lines.map(l => {
+    const it = byId(l.id);
+    const det = [l.size, it ? it.note : ''].filter(Boolean).join('・');
+    return `<li>${it ? picHTML(it, 'sm') : NOTE_PIC}<span class="cn">${esc(l.name)}${det ? `<small>${esc(det)}</small>` : ''}</span><span class="cq"><b>${l.qty}</b><small>${esc(l.unit)}</small></span></li>`;
+  }).join('') + h.extras.map(t => `<li>${NOTE_PIC}<span class="cn">${esc(t)}</span></li>`).join('');
+  openSheet('sh-same');
+});
+$('#sameAdd').addEventListener('click', async () => {
+  const h = hist[0];
+  if (!h) return;
+  const before = clone(cart);
+  for (const l of h.lines) {
+    const it = byId(l.id);
+    let k = null;
+    if (it && sized(it)) { if (it.sizes.includes(l.size)) k = keyOf(it.id, l.size); }
+    else if (it && (!l.size || it.sizes[0] === l.size)) k = it.id;
+    // pressing it twice must not double the amounts
+    if (k) cart.lines[k] = Math.max(cart.lines[k] || 0, l.qty);
+    else {
+      const text = `${l.name}${l.size ? `（${l.size}）` : ''} ${l.qty}${l.unit}`;
+      if (!cart.extras.some(x => x.text === text)) cart.extras.push({ id: uid(), text });
+    }
+  }
+  h.extras.forEach(t => { if (!cart.extras.some(x => x.text === t)) cart.extras.push({ id: uid(), text: t }); });
+  saveCart();
+  await closeSheet();
+  renderHome();
+  toast('まえと おなじものを 入れました。', 'もとに もどす', () => { cart = fixCart(before); saveCart(); renderHome(); });
+});
+
+/* ---------- 家族の設定 ---------- */
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let homeScroll = 0;
+$('#openSettings').addEventListener('click', async () => {
+  if (await ask('ご家族用の 設定です', '品物の 登録や、送り方の 設定を します。ひらきますか？', 'ひらく', 'もどる')) openSettings();
+});
+function openSettings() {
+  homeScroll = window.scrollY;
+  renderSettings();
+  $('#home').hidden = bar.hidden = true;
+  $('#settings').hidden = false;
+  document.documentElement.classList.add('insettings');
+  window.scrollTo(0, 0);
+  pushLayer('settings', () => {
+    stopListen(true);
+    $('#settings').hidden = true;
+    document.documentElement.classList.remove('insettings');
+    $('#home').hidden = bar.hidden = false;
+    renderHome();
+    window.scrollTo(0, homeScroll);
+  });
+}
+$('#closeSettings').addEventListener('click', () => popLayer());
+
+function sline(it) {
+  const a = [it.unit];
+  if (it.sizes.length) a.push(it.sizes.join('・'));
+  if (it.note) a.push(it.note);
+  a.push(it.lastAt ? `前回 ${md(it.lastAt)}・${it.count}回` : 'まだ たのまれていない');
+  return a.join('／');
+}
+function renderSettings() {
+  $('#sItems').innerHTML = GROUPS.map(g => {
+    const list = inGroup(g.key);
+    const rows = list.map((it, i) => `<li class="srow" data-id="${esc(it.id)}"><button type="button" class="sedit">${picHTML(it, 'sm')}`
+      + `<span class="stx"><b>${esc(it.name)}</b><small>${esc(sline(it))}</small></span></button><span class="mv">`
+      + `<button type="button" class="up" aria-label="${esc(it.name)}を 上へ"${i === 0 ? ' disabled' : ''}>↑</button>`
+      + `<button type="button" class="down" aria-label="${esc(it.name)}を 下へ"${i === list.length - 1 ? ' disabled' : ''}>↓</button></span></li>`).join('');
+    return `<section class="sgrp"><h3>${g.label}<span>${list.length}こ</span></h3>${list.length ? `<ul class="slist">${rows}</ul>` : '<p class="note">まだ ありません。</p>'}</section>`;
+  }).join('');
+  renderRecent();
+  setSeg('#sizeSeg', settings.size);
+  setSeg('#sendSeg', settings.send);
+  $('#testSend').href = lineURL(TEST_TEXT);
+  $('#srState').textContent = SR
+    ? 'この スマホでは、アプリの 🎤 で 声を 入れられます。はじめて 使うとき「マイクの 使用を 許可しますか？」と 出たら「許可」を 押してください。ここで いちど ためしておくと 安心です。'
+    : 'この ブラウザでは アプリの 🎤 が 使えません。かわりに キーボードの 🎤 で 声を 入れられます。';
+  $('#testMic').hidden = !SR;
+  $('#installBtn').hidden = !installEvt;
+  $('#installNote').textContent = standalone() ? 'いま ホーム画面の アイコンから ひらいています。'
+    : installEvt ? '下の ボタンを 押すと、ホーム画面に アイコンが できます。'
+    : isIOS() ? 'Safari の 共有ボタン（□に↑）→「ホーム画面に追加」を 押してください。'
+    : 'Chrome の 右上「︙」→「ホーム画面に追加」（または「アプリを インストール」）を 押してください。';
+  renderUsage();
+}
+function renderUsage() {
+  let n = 0;
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith(KEY)) n += k.length + (localStorage.getItem(k) || '').length; } } catch (e) {}
+  // roughly 2 bytes a character against the usual 5 MB
+  $('#usage').textContent = `この スマホで 使っている 量：${Math.max(1, Math.round(n * 2 / 1024))}KB（めやす 5,000KB）`;
+}
+function setSeg(sel, v) { $$(sel + ' button').forEach(b => { const on = b.dataset.v === v; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }); }
+$('#sizeSeg').addEventListener('click', e => {
+  const b = e.target.closest('[data-v]');
+  if (!b) return;
+  settings.size = b.dataset.v;
+  save('settings', settings); applySize(); setSeg('#sizeSeg', settings.size);
+});
+$('#sendSeg').addEventListener('click', e => {
+  const b = e.target.closest('[data-v]');
+  if (!b) return;
+  if (b.dataset.v === 'share' && !navigator.share) { toast('この ブラウザには 共有メニューが ありません。'); return; }
+  settings.send = b.dataset.v;
+  save('settings', settings); setSeg('#sendSeg', settings.send);
+});
+// the preview shows an item name at the size the parent's rows will use (1.15rem of 20, 23 or 26px)
+const SIZE_PX = { m: 20, l: 23, xl: 26 };
+function applySize() {
+  const s = SIZE_PX[settings.size] ? settings.size : 'm';
+  document.documentElement.dataset.size = s;
+  $('#sizePrev').style.fontSize = Math.round(SIZE_PX[s] * 1.15) + 'px';
+}
+const TEST_TEXT = 'かいものメモの ためしです。\nこれが 届いたら、送り方は だいじょうぶです。';
+$('#testSend').addEventListener('click', e => {
+  if (settings.send === 'share' && navigator.share) { e.preventDefault(); navigator.share({ text: TEST_TEXT }).catch(() => {}); }
+});
+$('#testMic').addEventListener('click', () => {
+  const out = $('#testMicOut');
+  out.hidden = false;
+  if (!rec) out.value = '';
+  listen({ field: out, say: m => { $('#testMicMsg').textContent = m; }, btn: $('#testMic'), idle: '🎤 ためしに 話してみる', done: '聞きとれました。これで だいじょうぶです。' });
+});
+
+$('#sItems').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  const row = b && b.closest('[data-id]');
+  const it = row && byId(row.dataset.id);
+  if (!it) return;
+  if (b.classList.contains('sedit')) { openEdit(it); return; }
+  const up = b.classList.contains('up');
+  const list = inGroup(it.group), i = list.indexOf(it), j = up ? i - 1 : i + 1;
+  if (j < 0 || j >= list.length) return;
+  const a = items.indexOf(it), c = items.indexOf(list[j]);
+  [items[a], items[c]] = [items[c], items[a]];
+  save('items', items);
+  renderSettings();
+  const nb = $(`#sItems [data-id="${CSS.escape(it.id)}"] .${up ? 'up' : 'down'}`);
+  if (nb && !nb.disabled) nb.focus();
+});
+$('#sortFreq').addEventListener('click', () => {
+  const before = items.slice();
+  for (const g of GROUPS) {
+    const list = inGroup(g.key);
+    const slots = list.map(it => items.indexOf(it));
+    const sorted = list.slice().sort((x, y) => (y.count - x.count) || (list.indexOf(x) - list.indexOf(y)));
+    slots.forEach((s, k) => { items[s] = sorted[k]; });
+  }
+  save('items', items);
+  renderSettings();
+  toast('よく 頼む順に ならべました。', 'もとに もどす', () => { items = before; save('items', items); renderSettings(); });
+});
+
+function recentExtras() {
+  const map = new Map();
+  for (const h of hist) for (const t of h.extras) {
+    const k = t.trim();
+    if (!k || items.some(it => it.name === k)) continue;
+    const m = map.get(k) || { text: k, times: 0, at: h.at };
+    m.times++;
+    map.set(k, m);
+  }
+  return [...map.values()].sort((a, b) => (b.times - a.times) || (b.at - a.at)).slice(0, 15);
+}
+function renderRecent() {
+  const list = recentExtras();
+  $('#sExtras').innerHTML = list.length
+    ? list.map((x, i) => `<li class="srow"><span class="stx"><b>${esc(x.text)}</b><small>${x.times}回・前回 ${md(x.at)}</small></span><button type="button" class="btn" data-i="${i}">ボタンにする</button></li>`).join('')
+    : '<li class="srow note">まだ ありません。</li>';
+  $('#sExtras').onclick = e => { const b = e.target.closest('[data-i]'); if (b) openEdit(null, list[+b.dataset.i].text); };
+}
+
+/* ---------- item editor ---------- */
+let editing = null, draft = null;
+$('#addItem').addEventListener('click', () => openEdit(null));
+function openEdit(it, name = '') {
+  editing = it;
+  draft = it ? { ...it, sizes: it.sizes.slice(), photoData: photoOf(it) }
+    : { id: uid(), name, emoji: '', unit: '個', group: 'food', sizes: [], note: '', photo: false, count: 0, lastAt: 0, photoData: '' };
+  draft.photo = !!draft.photoData;
+  $('#editTitle').textContent = it ? '品物を なおす' : '品物を ふやす';
+  $('#fName').value = draft.name;
+  $('#fNote').value = draft.note;
+  $('#fSizeIn').value = '';
+  $('#fDelete').hidden = !it;
+  $('#fEmojis').innerHTML = `<button type="button" data-e="" aria-label="絵なし（名前の 1文字目）"><span class="ini"></span></button>`
+    + EMOJIS.map(e => `<button type="button" data-e="${e}" aria-label="${e}">${e}</button>`).join('');
+  paintEdit(); paintUnits(); paintSizes(); paintGroup();
+  openSheet('sh-edit');
+  const grid = $('#fEmojis'), on = $('.on', grid);
+  grid.scrollTop = on ? on.getBoundingClientRect().top - grid.getBoundingClientRect().top + grid.scrollTop - 8 : 0;
+}
+function paintEdit() {
+  $('#fPicBox').innerHTML = picHTML({ ...draft, name: draft.name || '？' }, '', draft.photo ? draft.photoData : '');
+  $('#fNoPhoto').hidden = $('#fPhotoNote').hidden = !draft.photo;
+  $('#fEmojis .ini').textContent = [...(draft.name || '？')][0];
+  $$('#fEmojis button').forEach(b => { const on = b.dataset.e === draft.emoji; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+}
+function paintUnits() {
+  $('#fUnits').innerHTML = UNITS.map(u => `<button type="button" class="chip${draft.unit === u ? ' on' : ''}" aria-pressed="${draft.unit === u}" data-u="${esc(u)}">${esc(u)}</button>`).join('');
+  $('#fUnitOther').value = UNITS.includes(draft.unit) ? '' : draft.unit;
+  $('#fUnitNote').hidden = draft.unit !== 'g';
+}
+function paintSizes() {
+  $('#fSizes').innerHTML = draft.sizes.map((s, i) => `<span class="tag">${esc(s)}<button type="button" data-i="${i}" aria-label="${esc(s)}を けす">×</button></span>`).join('');
+}
+function paintGroup() {
+  $('#fGroup').innerHTML = GROUPS.map(g => `<button type="button" class="chip${draft.group === g.key ? ' on' : ''}" aria-pressed="${draft.group === g.key}" data-g="${g.key}">${g.label}</button>`).join('');
+}
+$('#fName').addEventListener('input', e => { draft.name = e.target.value.trim(); paintEdit(); });
+$('#fEmojis').addEventListener('click', e => { const b = e.target.closest('[data-e]'); if (b) { draft.emoji = b.dataset.e; paintEdit(); } });
+$('#fUnits').addEventListener('click', e => { const b = e.target.closest('[data-u]'); if (b) { draft.unit = b.dataset.u; paintUnits(); } });
+$('#fUnitOther').addEventListener('input', e => {
+  const v = e.target.value.trim();
+  draft.unit = v || '個';
+  $$('#fUnits .chip').forEach(c => { const on = c.dataset.u === draft.unit && !v; c.classList.toggle('on', on); c.setAttribute('aria-pressed', on); });
+  $('#fUnitNote').hidden = draft.unit !== 'g';
+});
+function addSize() {
+  const v = $('#fSizeIn').value.trim().slice(0, 12);
+  if (v && !draft.sizes.includes(v) && draft.sizes.length < 8) draft.sizes.push(v);
+  $('#fSizeIn').value = '';
+  paintSizes();
+}
+$('#fSizeAdd').addEventListener('click', addSize);
+$('#fSizeIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); addSize(); } });
+$('#fSizes').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) { draft.sizes.splice(+b.dataset.i, 1); paintSizes(); } });
+$('#fGroup').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (b) { draft.group = b.dataset.g; paintGroup(); } });
+$('#fPhoto').addEventListener('click', () => $('#fPhotoFile').click());
+$('#fNoPhoto').addEventListener('click', () => { draft.photo = false; draft.photoData = ''; paintEdit(); });
+$('#fPhotoFile').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try { draft.photoData = await shrink(f); draft.photo = true; paintEdit(); }
+  catch (err) { toast('写真を 読みこめませんでした。'); }
+});
+// a square of 240px is enough for a 72px picture on a sharp screen, and keeps each photo near 15KB
+function shrink(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      try {
+        const S = 240, w = img.naturalWidth, h = img.naturalHeight, m = Math.min(w, h);
+        const c = document.createElement('canvas');
+        c.width = c.height = S;
+        const x = c.getContext('2d');
+        x.fillStyle = '#fff'; x.fillRect(0, 0, S, S);
+        x.drawImage(img, (w - m) / 2, (h - m) / 2, m, m, 0, 0, S, S);
+        res(c.toDataURL('image/jpeg', 0.8));
+      } catch (e) { rej(e); }
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('load')); };
+    img.src = url;
+  });
+}
+$('#fSave').addEventListener('click', async () => {
+  const name = $('#fName').value.trim();
+  if (!name) { toast('なまえを 入れてください。'); $('#fName').focus(); return; }
+  if ($('#fSizeIn').value.trim()) addSize();
+  draft.name = name;
+  draft.note = $('#fNote').value.trim();
+  const oldPhoto = editing ? photoOf(editing) : '';
+  if (draft.photo && draft.photoData !== oldPhoto && !setPhoto(draft.id, draft.photoData)) {
+    toast('写真を 保存できませんでした。スマホの 空きが 足りないかもしれません。');
+    return;
+  }
+  if (!draft.photo && oldPhoto) setPhoto(draft.id, '');
+  const { photoData, ...rest } = draft;
+  const item = fixItem(rest);
+  const at = editing ? items.indexOf(editing) : -1;
+  if (at >= 0) items[at] = item; else items.push(item);
+  // amounts picked under sizes that no longer exist are dropped
+  for (const k of Object.keys(cart.lines)) {
+    const [id, size] = splitKey(k);
+    if (id === item.id && (sized(item) ? !item.sizes.includes(size) : size !== '')) delete cart.lines[k];
+  }
+  save('items', items); saveCart();
+  const isNew = !editing;
+  await closeSheet();
+  renderSettings();
+  toast(isNew ? `「${item.name}」を ふやしました。` : '保存しました。');
+});
+$('#fDelete').addEventListener('click', async () => {
+  const it = editing;
+  if (!it || !(await ask(`「${it.name}」を けしますか？`, '親の 画面から この ボタンが なくなります。', 'けす', 'やめる', true))) return;
+  await closeSheet();
+  const idx = items.indexOf(it), photo = photoOf(it);
+  const keys = Object.entries(cart.lines).filter(([k]) => splitKey(k)[0] === it.id);
+  items.splice(idx, 1);
+  setPhoto(it.id, '');
+  keys.forEach(([k]) => { delete cart.lines[k]; });
+  save('items', items); saveCart();
+  renderSettings();
+  toast(`「${it.name}」を けしました。`, 'もとに もどす', () => {
+    items.splice(Math.min(idx, items.length), 0, it);
+    if (photo) setPhoto(it.id, photo);
+    keys.forEach(([k, v]) => { cart.lines[k] = v; });
+    save('items', items); saveCart();
+    renderSettings();
+  });
+});
+
+/* ---------- install and backup ---------- */
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  // the parent never sees Chrome's own install banner; the family installs from 家族の設定
+  e.preventDefault();
+  installEvt = e;
+  if (!$('#settings').hidden) renderSettings();
+});
+window.addEventListener('appinstalled', () => { installEvt = null; if (!$('#settings').hidden) renderSettings(); });
+$('#installBtn').addEventListener('click', async () => {
+  if (!installEvt) return;
+  const ev = installEvt;
+  installEvt = null;
+  ev.prompt();
+  const r = await ev.userChoice.catch(() => null);
+  renderSettings();
+  if (r && r.outcome === 'accepted') toast('ホーム画面に アイコンを 作りました。');
+});
+
+$('#exportBtn').addEventListener('click', () => {
+  const photos = {};
+  items.forEach(it => { const p = photoOf(it); if (p) photos[it.id] = p; });
+  const data = { app: 'kaimono', version: 1, exportedAt: new Date().toISOString(), items, photos, history: hist, settings };
+  const d = new Date(), pad = n => String(n).padStart(2, '0');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+  a.download = `kaimono-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  toast('ファイルに 書き出しました。');
+});
+$('#importBtn').addEventListener('click', () => $('#importFile').click());
+$('#importFile').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  let data;
+  try { data = JSON.parse(await f.text()); } catch (err) { toast('ファイルを 読めませんでした。'); return; }
+  if (!data || data.app !== 'kaimono' || !Array.isArray(data.items)) { toast('かいものメモの ファイルでは ないようです。'); return; }
+  if ((+data.version || 1) > 1) { toast('新しい 版の ファイルです。アプリを 新しくしてから 読みこんでください。'); return; }
+  const list = data.items.filter(okItem).map(fixItem);
+  if (!(await ask('ファイルから 読みこみますか？', `品物 ${list.length}こ を 読みこみます。いまの 品物と 送った記録は、ファイルの 中身に 入れかわります。`, '読みこむ'))) return;
+  items.forEach(it => setPhoto(it.id, ''));
+  const photos = data.photos && typeof data.photos === 'object' ? data.photos : {};
+  let lost = 0;
+  list.forEach(it => {
+    if (!it.photo) return;
+    if (!okPhoto(photos[it.id]) || !setPhoto(it.id, photos[it.id])) { it.photo = false; lost++; }
+  });
+  items = list;
+  hist = Array.isArray(data.history) ? data.history.filter(okHist).map(fixHist).slice(0, 60) : [];
+  const s = data.settings || {};
+  if (['m', 'l', 'xl'].includes(s.size)) settings.size = s.size;
+  if (['line', 'share'].includes(s.send)) settings.send = s.send;
+  save('items', items); save('history', hist); save('settings', settings);
+  applySize();
+  renderSettings();
+  toast(lost ? `読みこみました（写真 ${lost}まいは 入りませんでした）。` : '読みこみました。');
+});
+
+/* ---------- start ---------- */
+applySize();
+renderHome();
+if (pending) setTimeout(askSent, 700);
+if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {});
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
