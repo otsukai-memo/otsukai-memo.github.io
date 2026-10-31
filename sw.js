@@ -1,7 +1,7 @@
 // Offline copy of the app. The page is asked for fresh every time (a 304 when unchanged),
 // so a new version shows on the next open; icons come from the cache. Bump CACHE when icons change.
-// つみかさね lives at the root of the same address and shares this cache storage,
-// so only caches named kaimono-* are ever touched here.
+// The app has an address of its own (otsukai-memo.github.io); it first lived at tsumikasane.github.io/kaimono/,
+// where つみかさね shared the cache storage, so only caches named kaimono-* are ever touched here.
 const PREFIX = 'kaimono-';
 const CACHE = PREFIX + 'v1';
 const INDEX = './index.html';
