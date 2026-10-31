@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>かいものメモ</title>
 <meta name="description" content="ほしいものを押すだけで、買い物のお願いをLINEで送れるメモ">
-<meta name="theme-color" content="#FFF9F0">
+<meta name="theme-color" content="#ecefe6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#10140f" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="かいもの">
@@ -13,226 +14,328 @@
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
-/* Made for a parent in their 80s who finds typing on a phone hard: every request is pressed or spoken, never typed.
-   Big type (20px root; 23 and 26 from 家族の設定), targets of 52px or more, no swipes or long presses,
-   and rows that never move on their own, because the parent finds things by where they were last time.
-   The family (50s) prepares the items in 家族の設定 and receives the list as a LINE message. */
+/* かいものメモ follows Material Design 3 (m3.material.io), the design language of the parent's Android phone, with its
+   2025 Expressive parts: a segmented list whose picked row rounds out, round buttons that square off while pressed,
+   a docked toolbar in place of the bottom app bar, a connected button group in place of segmented buttons.
+   It is made for a parent in their 80s who finds typing hard, so M3's sizes are scaled up: a 20px root (Body Large
+   16sp at 125%; 23 and 26 from 家族の設定), targets of 52px or more, no swipes or long presses, and rows that never
+   move by themselves, because the parent finds things by where they were last time. */
 :root{
-  --bg:#FFF9F0;--surface:#fff;--text:#1F1A14;--text2:#574C42;--line:#D9CEC0;
-  /* orange marks what is picked, green is the one way to send, blue is the voice path; all 4.5:1 or more */
-  --accent:#C2410C;--accentBg:#FFF0E3;--last:#8A4B12;
-  --go:#0B7D3E;--goPress:#08622F;--blue:#1D5FB4;--blueBg:#EEF4FC;--danger:#B42318;
-  --r:16px;--barH:5.2rem;
+  /* M3 colour roles: the Tonal Spot scheme of seed #3E8E41, from Google's material-color-utilities 0.3.0 */
+  --md-primary:#3b693a;--md-on-primary:#ffffff;--md-primary-container:#bcf0b4;--md-on-primary-container:#235024;
+  --md-secondary:#52634f;--md-on-secondary:#ffffff;--md-secondary-container:#d5e8cf;--md-on-secondary-container:#3b4b38;
+  --md-tertiary:#38656a;--md-on-tertiary:#ffffff;--md-tertiary-container:#bcebf0;--md-on-tertiary-container:#1f4d52;
+  --md-error:#ba1a1a;--md-on-error:#ffffff;--md-error-container:#ffdad6;--md-on-error-container:#93000a;
+  --md-surface:#f7fbf1;--md-surface-container-lowest:#ffffff;--md-surface-container-low:#f1f5ec;--md-surface-container:#ecefe6;
+  --md-surface-container-high:#e6e9e0;--md-surface-container-highest:#e0e4db;
+  --md-on-surface:#191d17;--md-on-surface-variant:#424940;--md-outline:#72796f;--md-outline-variant:#c2c9bd;
+  --md-inverse-surface:#2d322c;--md-inverse-on-surface:#eef2e9;--md-inverse-primary:#a1d39a;
+  /* which surface goes where: white rows on a tinted page, as in Android's own settings */
+  --page:var(--md-surface-container);--item:var(--md-surface-container-lowest);--bar:var(--md-surface-container-high);
+  --sheet:var(--md-surface-container-low);--dialog:var(--md-surface-container-high);--picbg:var(--md-surface-container-high);
+  /* M3 type scale, enlarged (Body Large 16→20, Title Large 22→24, Headline Medium 28→32), Expressive emphasised weights */
+  --font:Roboto,system-ui,-apple-system,"Noto Sans JP","Noto Sans CJK JP","Hiragino Sans","Yu Gothic UI",sans-serif;
+  --t-headline:500 1.6rem/1.25 var(--font);
+  --t-headline-s:500 1.35rem/1.3 var(--font);
+  --t-title-l:500 1.2rem/1.35 var(--font);
+  --t-title-m:500 1rem/1.45 var(--font);
+  --t-body-l:400 1rem/1.6 var(--font);
+  --t-body-m:400 .875rem/1.5 var(--font);
+  --t-label-l:600 1rem/1.3 var(--font);
+  /* M3 corner scale ×1.25: extra small 4, small 8, medium 12, large 16, extra large 28 */
+  --sh-xs:5px;--sh-s:10px;--sh-m:15px;--sh-l:20px;--sh-xl:28px;
+  /* M3 easing: standard, and emphasised decelerate for things coming in */
+  --ease:cubic-bezier(.2,0,0,1);--ease-in:cubic-bezier(.05,.7,.1,1);
+  --barH:5.5rem;
   color-scheme:light;font-size:20px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --md-primary:#a1d39a;--md-on-primary:#0a390f;--md-primary-container:#235024;--md-on-primary-container:#bcf0b4;
+    --md-secondary:#baccb3;--md-on-secondary:#253423;--md-secondary-container:#3b4b38;--md-on-secondary-container:#d5e8cf;
+    --md-tertiary:#a0cfd4;--md-on-tertiary:#00363b;--md-tertiary-container:#1f4d52;--md-on-tertiary-container:#bcebf0;
+    --md-error:#ffb4ab;--md-on-error:#690005;--md-error-container:#93000a;--md-on-error-container:#ffdad6;
+    --md-surface:#10140f;--md-surface-container-lowest:#0b0f0a;--md-surface-container-low:#191d17;--md-surface-container:#1d211b;
+    --md-surface-container-high:#272b25;--md-surface-container-highest:#323630;
+    --md-on-surface:#e0e4db;--md-on-surface-variant:#c2c9bd;--md-outline:#8c9388;--md-outline-variant:#424940;
+    --md-inverse-surface:#e0e4db;--md-inverse-on-surface:#2d322c;--md-inverse-primary:#3b693a;
+    --page:var(--md-surface);--item:var(--md-surface-container-high);--bar:var(--md-surface-container);--picbg:var(--md-surface-container-highest);
+    color-scheme:dark;
+  }
 }
 html[data-size="l"]{font-size:23px}
 html[data-size="xl"]{font-size:26px}
 /* the text size is for the parent's screen; 家族の設定 stays at the normal size */
 html.insettings{font-size:20px}
 *{box-sizing:border-box}
-html{background:var(--bg);-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior-y:none}
+html{background:var(--page);-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior-y:none}
 /* the text is written with spaces between phrases, so lines break only there and never mid-word */
-body{margin:0;background:var(--bg);color:var(--text);line-height:1.5;overscroll-behavior-y:none;word-break:keep-all;overflow-wrap:anywhere;
-  font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP","Noto Sans CJK JP","Yu Gothic UI",sans-serif}
+body{margin:0;background:var(--page);color:var(--md-on-surface);font:var(--t-body-l);overscroll-behavior-y:none;word-break:keep-all;overflow-wrap:anywhere}
 html.lock,html.lock body{overflow:hidden}
 button,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 a{-webkit-tap-highlight-color:transparent}
-:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+:focus-visible{outline:3px solid var(--md-secondary);outline-offset:2px}
 /* rules like `.row { display: grid }` would otherwise beat the hidden attribute */
 [hidden]{display:none!important}
 .wrap{max-width:640px;margin:0 auto;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+.ic{display:block;flex:none;width:1.5rem;height:1.5rem;fill:currentColor}
+.note{margin:.35rem .25rem .7rem;font:var(--t-body-m);color:var(--md-on-surface-variant)}
 
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:3rem;padding:.45rem 1rem;
-  border-radius:14px;border:2px solid var(--text);background:var(--surface);color:var(--text);
-  font-size:1rem;font-weight:700;line-height:1.3;text-align:center;text-decoration:none}
-.btn:active{transform:scale(.98)}
-.btn.go{background:var(--go);border-color:var(--go);color:#fff}
-.btn.go:active{background:var(--goPress)}
-.btn.go[aria-disabled="true"]{background:#ADA49A;border-color:#ADA49A}
-.btn.big{width:100%;min-height:3.6rem;font-size:1.2rem}
-.btn.plain{border-color:var(--line)}
-.btn.redfill{background:var(--danger);border-color:var(--danger);color:#fff}
-.link{background:none;border:0;padding:.6rem .4rem;min-height:3rem;font-size:.9rem;font-weight:700;color:var(--text2);text-decoration:underline;text-underline-offset:3px}
-.link.danger{color:var(--danger)}
-.note{font-size:.85rem;color:var(--text2);margin:.3rem 0 .6rem;line-height:1.6}
+/* M3 state layer and ripple: pressing tints the control and a circle grows from the finger */
+.sl{position:relative;overflow:hidden;isolation:isolate}
+.sl::before{content:"";position:absolute;inset:0;z-index:-1;background:currentColor;opacity:0;transition:opacity .15s var(--ease);pointer-events:none}
+.sl:active::before{opacity:.12}
+@media (hover:hover){.sl:hover::before{opacity:.08}.sl:active::before{opacity:.12}}
+.ripple{position:absolute;z-index:-1;border-radius:50%;background:currentColor;opacity:.18;transform:scale(0);animation:ripple .55s var(--ease) forwards;pointer-events:none}
+@keyframes ripple{to{transform:scale(1);opacity:0}}
 
-/* home */
-.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;column-gap:.5rem;padding-top:calc(.8rem + env(safe-area-inset-top))}
-.top h1{margin:0;font-size:1.45rem;line-height:1.2;white-space:nowrap}
-.today{margin:0;font-size:.95rem;font-weight:700;color:var(--text2);white-space:nowrap}
-.how{margin:.45rem auto .2rem;font-size:.95rem;font-weight:700;line-height:1.8}
-.how .k{display:inline-flex;align-items:center;justify-content:center;width:1.55rem;height:1.55rem;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;vertical-align:-.25rem}
-.how .g{display:inline-block;padding:0 .5rem;border-radius:8px;background:var(--go);color:#fff;line-height:1.5}
-.same{width:100%;margin:.5rem 0 .1rem;flex-direction:column;gap:0;border-color:var(--blue);color:var(--blue);min-height:3.6rem;font-size:1.05rem}
-.same small{font-size:.8rem;font-weight:700;color:var(--text2)}
-.gh{font-size:1.05rem;line-height:1.3;margin:1.1rem 0 .5rem;padding-left:.55rem;border-left:6px solid var(--accent)}
-.rows{list-style:none;margin:0;padding:0}
+/* buttons: round, squaring off while pressed (M3 Expressive shape morph) */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:3rem;padding:0 1.25rem;border:0;border-radius:999px;
+  font:var(--t-label-l);text-align:center;text-decoration:none;transition:border-radius .2s var(--ease)}
+.btn:active{border-radius:var(--sh-m)}
+.btn .ic{width:1.25rem;height:1.25rem}
+.btn.filled{background:var(--md-primary);color:var(--md-on-primary)}
+.btn.tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.btn.tertiary{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
+.btn.outlined{background:transparent;color:var(--md-on-surface-variant);box-shadow:inset 0 0 0 1px var(--md-outline)}
+.btn.text{background:transparent;color:var(--md-primary);padding:0 .75rem}
+.btn.danger{background:var(--md-error);color:var(--md-on-error)}
+.btn.text.danger-t{color:var(--md-error)}
+.btn.quiet{color:var(--md-on-surface-variant)}
+.btn[aria-disabled="true"]{background:color-mix(in srgb,var(--md-on-surface) 12%,transparent);color:color-mix(in srgb,var(--md-on-surface) 50%,transparent)}
+.btn.big{width:100%;min-height:3.5rem;font-size:1.1rem}
+.btn.big .ic{width:1.5rem;height:1.5rem}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;flex:none;width:3rem;height:3rem;margin:0;padding:0;border:0;border-radius:50%;
+  background:transparent;color:var(--md-on-surface-variant);transition:border-radius .2s var(--ease)}
+.icon-btn:active{border-radius:var(--sh-m)}
+.icon-btn:disabled{opacity:.38}
 
+/* top app bar with a subtitle (M3 Expressive) */
+.appbar{padding-top:calc(1rem + env(safe-area-inset-top));padding-bottom:.25rem}
+.appbar h1{margin:0;font:var(--t-headline);white-space:nowrap}
+.appbar .sub{margin:.1rem 0 0;font:var(--t-title-m);color:var(--md-on-surface-variant)}
+.how{margin:.6rem auto 0;font:var(--t-body-l);color:var(--md-on-surface-variant)}
+.how .k{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;vertical-align:-.4rem;background:var(--md-primary);color:var(--md-on-primary)}
+.how .k .ic{width:1.2rem;height:1.2rem}
+.how .g{display:inline-flex;align-items:center;gap:.25rem;padding:0 .65rem 0 .5rem;border-radius:999px;vertical-align:-.15rem;background:var(--md-primary);color:var(--md-on-primary);font:var(--t-label-l);line-height:1.65}
+.how .g .ic{width:1rem;height:1rem}
+.same{display:flex;align-items:center;gap:.8rem;width:100%;min-height:4.2rem;margin:.8rem 0 .2rem;padding:.6rem .75rem .6rem 1rem;border:0;border-radius:var(--sh-l);
+  background:var(--md-secondary-container);color:var(--md-on-secondary-container);text-align:left;transition:border-radius .2s var(--ease)}
+.same:active{border-radius:var(--sh-xl)}
+.same .ic{width:1.75rem;height:1.75rem}
+.same-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.same-txt b{font:var(--t-title-m)}
+.same-txt small{font:var(--t-body-m)}
+.gh{margin:1.4rem .25rem .55rem;font:var(--t-title-m);color:var(--md-primary)}
+
+/* M3 Expressive segmented list: rows 2dp apart, 4dp inner and 16dp outer corners; a picked row rounds out all round */
+.rows,.clist,.slist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+.row,.clist li,.slist > li{background:var(--item);border-radius:var(--sh-xs)}
+.rows > :first-child,.clist > :first-child,.slist > :first-child{border-top-left-radius:var(--sh-l);border-top-right-radius:var(--sh-l)}
+.rows > :last-child,.clist > :last-child,.slist > :last-child{border-bottom-left-radius:var(--sh-l);border-bottom-right-radius:var(--sh-l)}
 /* one row per item: the picture, the name, and under the name a ＋ that never moves (− and the count appear to its left) */
-.row{position:relative;display:grid;grid-template-columns:3.6rem 1fr;grid-template-areas:"pic txt" "pic step";
-  column-gap:.75rem;row-gap:.3rem;align-items:center;margin:0 0 .6rem;padding:.55rem .7rem;
-  background:var(--surface);border:2px solid var(--line);border-radius:var(--r);
-  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-.row.sel{border:3px solid var(--accent);background:var(--accentBg);padding:calc(.55rem - 1px) calc(.7rem - 1px)}
-.row.pop{animation:pop .18s ease-out}
-@keyframes pop{40%{transform:scale(.975)}}
+.row{position:relative;display:grid;grid-template-columns:3.5rem 1fr;grid-template-areas:"pic txt" "pic step";
+  column-gap:1rem;row-gap:.35rem;align-items:center;padding:.75rem .9rem .75rem 1rem;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:border-radius .25s var(--ease),background-color .2s var(--ease)}
+.rows > .row.sel{border-radius:var(--sh-l);background:var(--md-primary-container);color:var(--md-on-primary-container)}
 /* the whole row is a ＋, for fingers that miss the button; screen readers get the real buttons */
 .hit{position:absolute;inset:0;z-index:1;margin:0;padding:0;border:0;border-radius:inherit;background:transparent}
-.pic{grid-area:pic;width:3.6rem;height:3.6rem;display:flex;align-items:center;justify-content:center;flex:none;
-  border-radius:12px;overflow:hidden;background:#FBF3E8}
-.pic.emo{font-size:2.4rem;line-height:1}
-.pic.ini{background:#8A6E50;color:#fff;font-size:1.5rem;font-weight:800}
+.picbox{grid-area:pic;position:relative;width:3.5rem;height:3.5rem}
+.pic{display:flex;align-items:center;justify-content:center;flex:none;width:3.5rem;height:3.5rem;border-radius:var(--sh-m);overflow:hidden;background:var(--picbg)}
+.pic.emo{font-size:2.25rem;line-height:1}
+.pic.ini{background:var(--md-secondary-container);color:var(--md-on-secondary-container);font:500 1.4rem/1 var(--font)}
+.pic.memo{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
+.pic.memo .ic{width:1.75rem;height:1.75rem}
 .pic img{width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none}
+.selmark{position:absolute;top:-.35rem;right:-.35rem;display:none;width:1.55rem;height:1.55rem;border-radius:50%;
+  background:var(--md-on-primary);color:var(--md-primary);box-shadow:0 0 0 2px var(--md-primary-container)}
+.selmark .ic{width:100%;height:100%}
+.row.sel .selmark{display:block}
 .txt{grid-area:txt;min-width:0}
 /* item names have no spaces, so they break between characters, but never before ー or a small kana */
 .nm,.cn,.stx b{word-break:normal;line-break:strict}
-.nm{display:block;font-size:1.15rem;font-weight:800;line-height:1.3}
-.sub{display:block;font-size:.8rem;font-weight:600;color:var(--text2);line-height:1.4}
-.sub.last{color:var(--last)}
-.step{grid-area:step;justify-self:end;position:relative;z-index:2;display:flex;align-items:center;gap:.45rem;pointer-events:none}
-.step button{pointer-events:auto;width:2.6rem;height:2.6rem;flex:none;display:flex;align-items:center;justify-content:center;
-  margin:0;padding:0;border-radius:50%;border:2px solid var(--text);background:var(--surface);font-size:1.5rem;font-weight:800;line-height:1}
-.step .plus{background:var(--accent);border-color:var(--accent);color:#fff}
-.step .n{min-width:2.4rem;text-align:center;color:var(--accent);font-weight:800;white-space:nowrap}
-.n b,.cq b{font-size:1.35rem}
-.n small,.cq small{font-size:.8rem;margin-left:.1rem}
-.step .sum{text-align:right;color:var(--accent);font-weight:800;font-size:.85rem;line-height:1.35}
-.step .del{width:auto;border-radius:12px;padding:0 .9rem;font-size:.95rem;border-color:var(--line)}
+.nm{display:block;font:var(--t-title-l)}
+.sub{display:block;font:var(--t-body-m);color:var(--md-on-surface-variant)}
+.sub.last{color:var(--md-tertiary);font-weight:500}
+.row.sel .sub{color:var(--md-on-primary-container)}
+.step{grid-area:step;justify-self:end;position:relative;z-index:2;display:flex;align-items:center;gap:.5rem;pointer-events:none}
+.step button{pointer-events:auto}
+.step .icon-btn{width:2.75rem;height:2.75rem}
+.step .icon-btn .ic{width:1.6rem;height:1.6rem}
+.step .minus{color:var(--md-on-surface-variant);box-shadow:inset 0 0 0 1px var(--md-outline)}
+.step .plus{background:var(--md-primary);color:var(--md-on-primary)}
+.row.sel .step .minus{color:var(--md-on-primary-container);box-shadow:inset 0 0 0 1px var(--md-on-primary-container)}
+.step .n{min-width:2.5rem;text-align:center;white-space:nowrap}
+.n b,.cq b{font:600 1.35rem/1 var(--font)}
+.n small,.cq small{margin-left:.1rem;font:var(--t-body-m)}
+.step .sum{text-align:right;font:var(--t-body-m);font-weight:600}
+.step .sum b{font-size:1.1rem}
+.step .del{min-height:2.75rem;padding:0 1rem 0 .8rem}
+.row.sel .btn.outlined{color:var(--md-on-primary-container);box-shadow:inset 0 0 0 1px var(--md-on-primary-container)}
 /* bigger text: the buttons get their own line so the name keeps its width */
 html[data-size="l"] .row,html[data-size="xl"] .row{grid-template-areas:"pic txt" "step step"}
-html .row.np,html[data-size] .row.np{grid-template-columns:1fr auto;grid-template-areas:"txt step"}
-.foot{padding-top:1.2rem;padding-bottom:1rem;text-align:center}
+html .row.np,html[data-size] .row.np{grid-template-columns:1fr auto;grid-template-areas:"txt step";min-height:4.25rem}
+.foot{padding-top:1.4rem;padding-bottom:1rem;text-align:center}
 .empty{margin-top:1rem}
-
-/* the bar at the bottom: speak (blue) or send (green) */
-#bar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,249,240,.97);border-top:2px solid var(--line);
-  padding:.55rem 0 calc(.55rem + env(safe-area-inset-bottom))}
-#bar .wrap{display:flex;gap:.6rem}
-#bar .btn{flex:1;min-height:3.5rem;font-size:1.05rem;padding:.3rem .5rem}
-#voiceBtn{border-color:var(--blue);color:var(--blue);background:var(--blueBg)}
-#sendBtn{font-size:1.2rem}
-html[data-size="l"] #bar .wrap,html[data-size="xl"] #bar .wrap{flex-direction:column}
-.badge{display:inline-flex;align-items:center;justify-content:center;min-width:1.7rem;height:1.7rem;padding:0 .35rem;
-  border-radius:999px;background:#fff;color:var(--go);font-size:1rem;font-weight:800}
 #home{padding-bottom:calc(var(--barH) + 1rem)}
 
-/* sheets slide up from the bottom; each has its own dimmed backdrop so they can stack */
+/* docked toolbar (M3 Expressive): speak (tertiary) or send (filled primary) */
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--bar);box-shadow:0 -1px 3px rgba(0,0,0,.12),0 -4px 12px rgba(0,0,0,.06);
+  padding:.7rem 0 calc(.7rem + env(safe-area-inset-bottom))}
+#bar .wrap{display:flex;gap:.5rem}
+#bar .btn{flex:1;min-height:3.5rem;padding:0 .5rem;gap:.35rem;font-size:1rem}
+#bar .btn .ic{width:1.2rem;height:1.2rem}
+#voiceBtn{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
+#sendBtn{font-size:1.1rem}
+html[data-size="l"] #bar .wrap,html[data-size="xl"] #bar .wrap{flex-direction:column}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:1.6rem;height:1.6rem;padding:0 .4rem;border-radius:999px;
+  background:var(--md-on-primary);color:var(--md-primary);font:600 .95rem/1 var(--font)}
+
+/* M3 bottom sheets (28dp corners, 32% scrim) and dialogs; each layer has its own scrim so they can stack */
 .layer{position:fixed;inset:0;z-index:40}
-.scrim{position:absolute;inset:0;background:rgba(31,26,20,.5)}
-.sheet{position:absolute;left:0;right:0;bottom:0;max-height:92vh;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;
-  background:var(--bg);border-radius:22px 22px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.25);
-  padding:1.1rem 0 calc(1.1rem + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .2s ease-out}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.32)}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-width:640px;margin:0 auto;max-height:92vh;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;
+  background:var(--sheet);border-radius:var(--sh-xl) var(--sh-xl) 0 0;padding:1.5rem 0 calc(1.25rem + env(safe-area-inset-bottom));
+  transform:translateY(100%);transition:transform .4s var(--ease-in)}
 .layer.open .sheet{transform:none}
-@media (prefers-reduced-motion:reduce){.sheet{transition:none}.row.pop{animation:none}}
-.sheet h2{font-size:1.35rem;line-height:1.3;margin:0 0 .7rem}
+.sheet h2{margin:0 .25rem 1rem;font:var(--t-headline-s)}
 .sheet h2:focus{outline:none}
-.acts{display:flex;flex-direction:column;gap:.6rem;margin-top:1.1rem}
-.h3{font-size:1rem;margin:1rem 0 .5rem}
-.h3 small{font-weight:600;color:var(--text2);font-size:.8rem}
-.clist{list-style:none;margin:0;padding:0;border:2px solid var(--line);border-radius:var(--r);background:var(--surface)}
-.clist li{display:flex;align-items:center;gap:.7rem;padding:.55rem .7rem;border-top:1px solid var(--line)}
-.clist li:first-child{border-top:0}
-.pic.sm{width:2.6rem;height:2.6rem;border-radius:10px}
-.pic.sm.emo{font-size:1.75rem}
-.pic.sm.ini{font-size:1.1rem}
-.cn{flex:1;min-width:0;font-size:1.1rem;font-weight:800;line-height:1.3;overflow-wrap:anywhere}
-.cn small{display:block;font-size:.8rem;font-weight:600;color:var(--text2)}
-.cq{flex:none;color:var(--accent);font-weight:800;white-space:nowrap}
+.layer.dialog .sheet{top:50%;bottom:auto;left:1.25rem;right:1.25rem;max-width:560px;border-radius:var(--sh-xl);background:var(--dialog);padding:1.5rem 0;
+  opacity:0;transform:translateY(-50%) scale(.92);transition:transform .35s var(--ease-in),opacity .15s linear}
+.layer.dialog.open .sheet{opacity:1;transform:translateY(-50%)}
+.layer.dialog .wrap{padding:0 1.5rem}
+.layer.dialog .note{margin-left:0;margin-right:0;font-size:1rem}
+.hero{display:flex;justify-content:center;margin-bottom:.75rem;color:var(--md-secondary)}
+.hero .ic{width:2rem;height:2rem}
+.hero + h2{text-align:center}
+@media (prefers-reduced-motion:reduce){.sheet,.layer.dialog .sheet,.btn,.icon-btn,.row,.same{transition:none}}
+.acts{display:flex;flex-direction:column;gap:.6rem;margin-top:1.25rem}
+.h3{margin:1.25rem .25rem .6rem;font:var(--t-title-m)}
+.h3 small{font:var(--t-body-m);color:var(--md-on-surface-variant)}
+.clist li{display:flex;align-items:center;gap:.9rem;min-height:4rem;padding:.6rem 1rem}
+.pic.sm{width:2.5rem;height:2.5rem;border-radius:var(--sh-s)}
+.pic.sm.emo{font-size:1.65rem}
+.pic.sm.ini{font-size:1.05rem}
+.pic.sm .ic{width:1.35rem;height:1.35rem}
+.cn{flex:1;min-width:0;font:var(--t-title-m)}
+.cn small{display:block;font:var(--t-body-m);color:var(--md-on-surface-variant)}
+.cq{flex:none;color:var(--md-primary);white-space:nowrap}
+/* M3 filter chips (single choice): a check and a tonal fill when picked */
 .chips{display:flex;flex-wrap:wrap;gap:.5rem}
-.chip{min-height:2.8rem;padding:.3rem .95rem;border-radius:999px;border:2px solid var(--line);background:var(--surface);font-size:1rem;font-weight:700}
-.chip.on{border-color:var(--accent);background:var(--accentBg);color:#8C2D04}
-.chip.on::before{content:"✓ "}
-.sizehead{display:flex;align-items:center;gap:.8rem;margin-bottom:.8rem}
-.sizehead .pic{grid-area:auto}
-.sizehead .nm{font-size:1.35rem}
-.sizehead .q{display:block;font-weight:700;color:var(--text2)}
+.chip{display:inline-flex;align-items:center;gap:.4rem;min-height:2.75rem;padding:0 1rem;border:0;border-radius:var(--sh-s);
+  background:transparent;color:var(--md-on-surface-variant);box-shadow:inset 0 0 0 1px var(--md-outline);font:var(--t-label-l)}
+.chip .ic{width:1.25rem;height:1.25rem}
+.chip.on{padding-left:.65rem;background:var(--md-secondary-container);color:var(--md-on-secondary-container);box-shadow:none}
+.sizehead{display:flex;align-items:center;gap:1rem;margin:0 .25rem 1rem}
+.sizehead .nm{font:var(--t-headline-s)}
+.sizehead .q{display:block;font:var(--t-body-l);color:var(--md-on-surface-variant)}
 
 /* voice */
-.micbig{width:100%;min-height:5rem;border-radius:20px;border-color:var(--blue);color:var(--blue);background:var(--blueBg);font-size:1.3rem}
-.micbig.on{border-color:#B3261E;color:#B3261E;background:#FDECEC}
-.dot{display:inline-block;width:1rem;height:1rem;border-radius:50%;background:#D32F2F;animation:blink 1s infinite}
+.micbig{width:100%;min-height:5rem;font-size:1.25rem;background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
+.micbig .ic{width:1.75rem;height:1.75rem}
+.micbig.on{background:var(--md-error-container);color:var(--md-on-error-container)}
+.dot{display:inline-block;flex:none;width:1rem;height:1rem;border-radius:50%;background:var(--md-error);animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.25}}
-textarea.big{display:block;width:100%;min-height:6rem;margin-top:.8rem;padding:.7rem;border:2px solid var(--line);border-radius:14px;background:#fff;font-size:1.2rem;font-weight:600;resize:vertical}
-.msg{min-height:1.5rem;margin:.6rem 0 0;font-weight:700;color:var(--text2);line-height:1.5}
+.msg{min-height:1.5rem;margin:.75rem .25rem 0;font:var(--t-body-l);color:var(--md-on-surface-variant)}
+/* M3 outlined text field: the label sits inside, then floats onto the border */
+.tf{position:relative;display:block;margin:0 0 1.25rem}
+.tf input,.tf textarea{display:block;width:100%;min-height:3.5rem;margin:0;padding:0 1rem;border:0;border-radius:var(--sh-xs);outline:none;
+  background:transparent;box-shadow:inset 0 0 0 1px var(--md-outline);font:var(--t-body-l);color:var(--md-on-surface)}
+.tf textarea{min-height:7rem;padding:1rem;resize:vertical;font-size:1.15rem}
+.tf input:focus,.tf textarea:focus{box-shadow:inset 0 0 0 2px var(--md-primary)}
+.tf > span{position:absolute;left:.75rem;top:1.75rem;transform:translateY(-50%);padding:0 .25rem;background:var(--sheet);color:var(--md-on-surface-variant);
+  font:var(--t-body-l);line-height:1.2;pointer-events:none;transition:top .15s var(--ease),font-size .15s var(--ease),color .15s}
+.tf :focus + span,.tf :not(:placeholder-shown) + span{top:0;font-size:.75rem}
+.tf :focus + span{color:var(--md-primary)}
+.tf small{display:block;padding:.3rem 1rem 0;font:var(--t-body-m);color:var(--md-on-surface-variant)}
 
-/* toast: above the bar, or at the top while a sheet is open */
-#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--barH) + .6rem);z-index:90;width:min(calc(100vw - 24px),600px);
-  display:flex;align-items:center;gap:.8rem;padding:.8rem 1rem;border-radius:16px;background:#2B241D;color:#fff;
-  font-size:1rem;font-weight:700;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.3)}
-html.lock #toast{bottom:auto;top:calc(.7rem + env(safe-area-inset-top))}
+/* snackbar: above the toolbar, or at the top while a sheet is open */
+#toast{position:fixed;left:.75rem;right:.75rem;bottom:calc(var(--barH) + .75rem);z-index:90;max-width:600px;margin:0 auto;
+  display:flex;align-items:center;gap:.5rem;min-height:3.5rem;padding:.55rem .5rem .55rem 1rem;border-radius:var(--sh-xs);
+  background:var(--md-inverse-surface);color:var(--md-inverse-on-surface);font:var(--t-body-l);box-shadow:0 3px 10px rgba(0,0,0,.3)}
+html.lock #toast{top:calc(.75rem + env(safe-area-inset-top));bottom:auto}
 html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom))}
 #toast .tmsg{flex:1}
-#toast .tact{flex:none;min-height:2.7rem;padding:.4rem .8rem;border:0;border-radius:12px;background:#fff;color:#2B241D;font-weight:800}
+#toast .tact{flex:none;min-height:3rem;padding:0 .8rem;border:0;border-radius:999px;background:transparent;color:var(--md-inverse-primary);font:var(--t-label-l)}
 
 /* 家族の設定 */
 #settings{padding-bottom:3rem}
-.stop{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:.7rem;padding-top:calc(.6rem + env(safe-area-inset-top));padding-bottom:.5rem;background:var(--bg);border-bottom:1px solid var(--line)}
-.stop h1{margin:0;font-size:1.25rem}
-.sh{font-size:1.1rem;margin:1.6rem 0 .5rem}
+.topbar{position:sticky;top:0;z-index:5;padding-top:env(safe-area-inset-top);background:var(--page)}
+.topbar .wrap{display:flex;align-items:center;gap:.35rem;min-height:4rem}
+.topbar h1{margin:0;font:var(--t-title-l);font-size:1.375rem}
+.sh{margin:1.75rem .25rem .6rem;font:var(--t-title-m);color:var(--md-primary)}
 .btnrow{display:flex;flex-wrap:wrap;gap:.5rem}
-.sgrp h3{display:flex;justify-content:space-between;margin:1rem 0 .4rem;font-size:.95rem;color:var(--text2)}
-.slist{list-style:none;margin:0;padding:0;border:2px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
-.srow{display:flex;align-items:center;gap:.4rem;padding:.35rem .5rem;border-top:1px solid var(--line)}
-.srow:first-child{border-top:0}
-.srow.note{display:block;margin:0;padding:.7rem}
-.sedit{flex:1;min-width:0;display:flex;align-items:center;gap:.6rem;min-height:3.2rem;padding:.2rem;border:0;background:none;text-align:left}
-.stx{flex:1;min-width:0;display:flex;flex-direction:column}
-.stx b{font-size:1rem;line-height:1.35;overflow-wrap:anywhere}
-.stx small{font-size:.75rem;font-weight:600;color:var(--text2);line-height:1.4}
-.mv{display:flex;gap:.3rem;flex:none}
-.mv button{width:2.5rem;height:2.5rem;border:2px solid var(--line);border-radius:10px;background:var(--surface);font-weight:800}
-.mv button:disabled{opacity:.3}
-.srow .btn{flex:none;min-height:2.6rem;font-size:.9rem;padding:.3rem .7rem}
-.seg{display:flex;flex-wrap:wrap;gap:.4rem}
-.seg button{flex:1 1 auto;min-height:3rem;padding:.3rem .6rem;border:2px solid var(--line);border-radius:12px;background:var(--surface);font-weight:700}
-.seg button.on{border-color:var(--accent);background:var(--accentBg);color:#8C2D04}
-.sizeprev{margin:.6rem 0 0;padding:.6rem .8rem;border:2px dashed var(--line);border-radius:12px;background:var(--surface);font-weight:800;line-height:1.35}
-.ver{margin-top:2rem;text-align:center;font-size:.8rem;color:var(--text2)}
+.sgrp h3{display:flex;justify-content:space-between;margin:1.1rem .25rem .45rem;font:var(--t-title-m);font-size:.95rem;color:var(--md-on-surface-variant)}
+.srow{display:flex;align-items:center;gap:.25rem;min-height:4.25rem;padding:.35rem .5rem .35rem .4rem}
+.srow.empty{padding:.75rem 1rem;color:var(--md-on-surface-variant)}
+.sedit{flex:1;min-width:0;display:flex;align-items:center;gap:.8rem;min-height:3.5rem;padding:.35rem .5rem;border:0;border-radius:var(--sh-m);background:none;text-align:left}
+.stx{flex:1;min-width:0;display:flex;flex-direction:column;padding-left:.35rem}
+.stx b{font:var(--t-title-m)}
+.stx small{font:var(--t-body-m);font-size:.8rem;color:var(--md-on-surface-variant)}
+.sedit .stx{padding-left:0}
+.mv{display:flex;flex:none}
+.srow .btn{flex:none;min-height:2.75rem;padding:0 1rem;font-size:.95rem}
+/* connected button group (M3 Expressive): 2dp apart, round outside, small corners inside; the picked one rounds out */
+.seg{display:flex;gap:3px}
+.seg button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.3rem;min-height:3.25rem;padding:0 .6rem;border:0;border-radius:var(--sh-s);
+  background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);font:var(--t-label-l);transition:border-radius .2s var(--ease)}
+.seg button:first-child{border-radius:999px var(--sh-s) var(--sh-s) 999px}
+.seg button:last-child{border-radius:var(--sh-s) 999px 999px var(--sh-s)}
+.seg button.on{border-radius:999px;background:var(--md-primary);color:var(--md-on-primary)}
+.seg button .ic{display:none;width:1.2rem;height:1.2rem}
+.seg button.on .ic{display:block}
+.sizeprev{margin:.75rem 0 0;padding:.75rem 1rem;border-radius:var(--sh-m);background:var(--item);box-shadow:inset 0 0 0 1px var(--md-outline-variant);font-weight:500;line-height:1.35}
+.ver{margin-top:2rem;text-align:center;font:var(--t-body-m);color:var(--md-on-surface-variant)}
 
 /* item editor */
-.fl{display:block;margin:0 0 1.1rem;font-size:.95rem;font-weight:800}
-.fl > small,.fl label small{display:block;margin-top:.2rem;font-size:.8rem;font-weight:600;color:var(--text2)}
-.fl input[type="text"]{display:block;width:100%;min-height:3rem;margin-top:.35rem;padding:.4rem .7rem;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:1.1rem;font-weight:600}
-.fl .chips{margin-top:.4rem}
-.picrow{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;margin:.4rem 0}
-.emojis{display:grid;grid-template-columns:repeat(auto-fill,minmax(2.8rem,1fr));gap:.25rem;max-height:11.5rem;overflow-y:auto;margin-top:.5rem;padding:.3rem;border:2px solid var(--line);border-radius:12px;background:#fff}
-.emojis button{height:2.8rem;padding:0;border:2px solid transparent;border-radius:10px;background:none;font-size:1.55rem;line-height:1}
-.emojis button.on{border-color:var(--accent);background:var(--accentBg)}
-.emojis .ini{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:8px;background:#8A6E50;color:#fff;font-size:1rem;font-weight:800}
-.addrow{display:flex;gap:.5rem;margin-top:.5rem}
-.addrow input[type="text"]{margin-top:0}
-.addrow .btn{flex:none}
-.tag{display:inline-flex;align-items:center;gap:.2rem;min-height:2.6rem;padding:0 .2rem 0 .9rem;border-radius:999px;border:2px solid var(--accent);background:var(--accentBg);font-weight:700}
-.tag button{width:2.2rem;height:2.2rem;border:0;border-radius:50%;background:none;font-size:1.1rem;font-weight:800;color:var(--text2)}
+.fl{margin:0 0 1.4rem}
+.fl-t{display:block;margin:0 .25rem .55rem;font:var(--t-title-m);color:var(--md-on-surface-variant)}
+.fl > small,.fl-help{display:block;margin:.4rem .25rem 0;font:var(--t-body-m);color:var(--md-on-surface-variant)}
+.picrow{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
+.emojis{display:grid;grid-template-columns:repeat(auto-fill,minmax(2.75rem,1fr));gap:.25rem;max-height:11.5rem;overflow-y:auto;margin-top:.7rem;padding:.4rem;
+  border-radius:var(--sh-m);background:var(--item)}
+.emojis button{height:2.75rem;padding:0;border:0;border-radius:var(--sh-s);background:none;font-size:1.55rem;line-height:1}
+.emojis button.on{background:var(--md-primary-container);box-shadow:inset 0 0 0 2px var(--md-primary)}
+.emojis .ini{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:var(--sh-s);
+  background:var(--md-secondary-container);color:var(--md-on-secondary-container);font:600 1rem/1 var(--font)}
+.addrow{display:flex;align-items:flex-start;gap:.5rem;margin-top:.7rem}
+.addrow .tf{flex:1;margin:0}
+.addrow .btn{min-height:3.5rem}
+.fl .tf.inline{margin:.7rem 0 0}
+/* M3 input chips: the size, and an × to take it away */
+.tag{display:inline-flex;align-items:center;gap:.15rem;min-height:2.75rem;padding:0 .25rem 0 1rem;border-radius:var(--sh-s);
+  background:var(--md-secondary-container);color:var(--md-on-secondary-container);font:var(--t-label-l)}
+.tag button{display:inline-flex;align-items:center;justify-content:center;width:2.4rem;height:2.4rem;padding:0;border:0;border-radius:50%;background:none;color:inherit}
+.tag .ic{width:1.2rem;height:1.2rem}
 </style>
 </head>
 <body>
 
 <main id="home">
-  <header class="top wrap"><h1>かいものメモ</h1><p class="today" id="today"></p></header>
+  <header class="appbar wrap"><h1>かいものメモ</h1><p class="sub" id="today"></p></header>
   <p class="how wrap" id="how"></p>
-  <div class="wrap"><button type="button" id="sameBtn" class="btn same" hidden><span>🔁 まえと おなじものを 入れる</span><small id="sameDate"></small></button></div>
+  <div class="wrap"><button type="button" id="sameBtn" class="same sl" hidden><span data-ic="history"></span><span class="same-txt"><b>まえと おなじものを 入れる</b><small id="sameDate"></small></span></button></div>
   <section id="extrasSec" class="wrap" hidden><h2 class="gh">ほかに たのむもの</h2><ul id="extrasList" class="rows"></ul></section>
   <div id="groups" class="wrap"></div>
   <p id="emptyItems" class="wrap note empty" hidden>品物が ありません。下の「家族の設定」から ふやしてください。</p>
-  <footer class="foot wrap"><button type="button" id="openSettings" class="link">⚙ 家族の設定</button></footer>
+  <footer class="foot wrap"><button type="button" id="openSettings" class="btn text quiet sl"><span data-ic="settings"></span>家族の設定</button></footer>
 </main>
 
 <nav id="bar" aria-label="送る">
   <div class="wrap">
-    <button type="button" id="voiceBtn" class="btn">🎤 声で たのむ</button>
-    <button type="button" id="sendBtn" class="btn go" aria-disabled="true">送る <span id="sendN" class="badge" hidden></span></button>
+    <button type="button" id="voiceBtn" class="btn sl"><span data-ic="mic"></span>声で たのむ</button>
+    <button type="button" id="sendBtn" class="btn filled sl" aria-disabled="true"><span data-ic="send"></span>送る<span id="sendN" class="badge" hidden></span></button>
   </div>
 </nav>
 
 <section id="settings" hidden aria-labelledby="setTitle">
-  <header class="stop wrap"><button type="button" id="closeSettings" class="btn">← もどる</button><h1 id="setTitle">家族の設定</h1></header>
+  <header class="topbar"><div class="wrap"><button type="button" id="closeSettings" class="icon-btn sl" aria-label="もどる"><span data-ic="arrow_back"></span></button><h1 id="setTitle">家族の設定</h1></div></header>
   <div class="wrap">
     <p class="note">ここは ご家族（準備をする人）用の 画面です。</p>
 
     <h2 class="sh">品物</h2>
-    <div class="btnrow"><button type="button" id="addItem" class="btn go">＋ 品物を ふやす</button><button type="button" id="sortFreq" class="btn">よく頼む順に ならべる</button></div>
+    <div class="btnrow"><button type="button" id="addItem" class="btn filled sl"><span data-ic="add"></span>品物を ふやす</button><button type="button" id="sortFreq" class="btn outlined sl"><span data-ic="sort"></span>よく頼む順に ならべる</button></div>
     <p class="note">ボタンの 場所は 勝手には 変わりません。↑↓ で ならべかえられます。</p>
     <div id="sItems"></div>
 
@@ -241,32 +344,32 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <ul id="sExtras" class="slist"></ul>
 
     <h2 class="sh">文字の大きさ</h2>
-    <div class="seg" id="sizeSeg"><button type="button" data-v="m">ふつう</button><button type="button" data-v="l">大きい</button><button type="button" data-v="xl">とても大きい</button></div>
+    <div class="seg" id="sizeSeg"><button type="button" class="sl" data-v="m"><span data-ic="check"></span>ふつう</button><button type="button" class="sl" data-v="l"><span data-ic="check"></span>大きい</button><button type="button" class="sl" data-v="xl"><span data-ic="check"></span>特大</button></div>
     <p class="sizeprev" id="sizePrev" aria-hidden="true">トイレットペーパー　2パック</p>
     <p class="note">買い物の 画面の 文字が、この 見本の 大きさに なります。</p>
 
     <h2 class="sh">送り方</h2>
-    <div class="seg" id="sendSeg"><button type="button" data-v="line">LINEを ひらく</button><button type="button" data-v="share">共有メニュー</button></div>
+    <div class="seg" id="sendSeg"><button type="button" class="sl" data-v="line"><span data-ic="check"></span>LINEを ひらく</button><button type="button" class="sl" data-v="share"><span data-ic="check"></span>共有メニュー</button></div>
     <p class="note">「LINEで 送る」を 押したときの 動き方です。LINE が うまく ひらかないときは「共有メニュー」に して、出てきた中から LINE を えらんでください。</p>
-    <a id="testSend" class="btn" href="#" target="_blank" rel="noopener">ためしに 送ってみる</a>
+    <a id="testSend" class="btn outlined sl" href="#" target="_blank" rel="noopener"><span data-ic="send"></span>ためしに 送ってみる</a>
 
     <h2 class="sh">声で たのむ</h2>
     <p class="note" id="srState"></p>
-    <button type="button" id="testMic" class="btn">🎤 ためしに 話してみる</button>
+    <button type="button" id="testMic" class="btn outlined sl"></button>
     <p class="msg" id="testMicMsg" aria-live="polite"></p>
-    <textarea id="testMicOut" class="big" rows="2" aria-label="ためしの 結果" hidden></textarea>
+    <label class="tf" id="testMicBox" hidden><textarea id="testMicOut" rows="2" placeholder=" "></textarea><span>ためしの 結果</span></label>
 
     <h2 class="sh">ホーム画面に アイコンを 置く</h2>
     <p class="note" id="installNote"></p>
-    <button type="button" id="installBtn" class="btn go" hidden>ホーム画面に アイコンを 作る</button>
+    <button type="button" id="installBtn" class="btn tonal sl" hidden><span data-ic="add_to_home_screen"></span>ホーム画面に アイコンを 作る</button>
 
     <h2 class="sh">バックアップ</h2>
     <p class="note">品物・写真・送った記録を ファイルに 残せます。スマホを 替えるときにも 使えます。</p>
-    <div class="btnrow"><button type="button" id="exportBtn" class="btn">ファイルに 書き出す</button><button type="button" id="importBtn" class="btn">ファイルから 読みこむ</button></div>
+    <div class="btnrow"><button type="button" id="exportBtn" class="btn outlined sl"><span data-ic="download"></span>ファイルに 書き出す</button><button type="button" id="importBtn" class="btn outlined sl"><span data-ic="upload"></span>ファイルから 読みこむ</button></div>
     <input type="file" id="importFile" accept=".json,application/json" hidden>
     <p class="note" id="usage"></p>
 
-    <p class="ver">かいものメモ 1.0</p>
+    <p class="ver">かいものメモ 1.1</p>
   </div>
 </section>
 
@@ -278,21 +381,22 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <h3 class="h3">いつまでに？ <small>（えらばなくても だいじょうぶ）</small></h3>
     <div class="chips" id="whenChips"></div>
     <div class="acts">
-      <a id="lineSend" class="btn go big" href="#" target="_blank" rel="noopener">LINEで 送る</a>
-      <button type="button" class="btn big plain" data-close>もどって なおす</button>
-      <button type="button" id="clearAll" class="link danger">えらんだものを ぜんぶ けす</button>
+      <a id="lineSend" class="btn filled big sl" href="#" target="_blank" rel="noopener"><span data-ic="send"></span>LINEで 送る</a>
+      <button type="button" class="btn outlined big sl" data-close>もどって なおす</button>
+      <button type="button" id="clearAll" class="btn text danger-t sl"><span data-ic="delete"></span>えらんだものを ぜんぶ けす</button>
     </div>
   </div></div>
 </div>
 
-<div class="layer" id="sh-sent" hidden role="dialog" aria-modal="true" aria-labelledby="sentTitle">
+<div class="layer dialog" id="sh-sent" hidden role="dialog" aria-modal="true" aria-labelledby="sentTitle">
   <div class="scrim"></div>
   <div class="sheet"><div class="wrap">
+    <div class="hero"><span data-ic="send"></span></div>
     <h2 id="sentTitle">LINEで 送れましたか？</h2>
     <p class="note">送れたら、えらんだものを 空にします。</p>
     <div class="acts">
-      <button type="button" id="sentYes" class="btn go big">はい、送れました</button>
-      <button type="button" id="sentNo" class="btn big plain">いいえ、まだです</button>
+      <button type="button" id="sentYes" class="btn filled big sl">はい、送れました</button>
+      <button type="button" id="sentNo" class="btn outlined big sl">いいえ、まだです</button>
     </div>
   </div></div>
 </div>
@@ -301,13 +405,13 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
   <div class="scrim" data-close></div>
   <div class="sheet"><div class="wrap">
     <h2 id="vTitle">ほかに ほしいもの</h2>
-    <button type="button" id="micBtn" class="btn micbig">🎤 押して 話す</button>
+    <button type="button" id="micBtn" class="btn micbig sl"></button>
     <p class="msg" id="voiceMsg" aria-live="polite"></p>
-    <textarea id="voiceText" class="big" rows="3" aria-label="ほしいもの"></textarea>
-    <p class="note" id="kbHint" hidden>キーボードの 🎤（マイク）を 押しても、声で 入れられます。</p>
+    <label class="tf" style="margin-top:.9rem"><textarea id="voiceText" rows="3" placeholder=" "></textarea><span>ほしいもの</span></label>
+    <p class="note" id="kbHint" hidden>キーボードの マイクを 押しても、声で 入れられます。</p>
     <div class="acts">
-      <button type="button" id="voiceAdd" class="btn go big">リストに 入れる</button>
-      <button type="button" class="btn big plain" data-close>やめる</button>
+      <button type="button" id="voiceAdd" class="btn filled big sl"><span data-ic="add"></span>リストに 入れる</button>
+      <button type="button" class="btn outlined big sl" data-close>やめる</button>
     </div>
   </div></div>
 </div>
@@ -317,7 +421,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
   <div class="sheet"><div class="wrap">
     <div class="sizehead" id="sizeHead"></div>
     <ul class="rows" id="sizeRows"></ul>
-    <div class="acts"><button type="button" class="btn go big" data-close>できた</button></div>
+    <div class="acts"><button type="button" class="btn filled big sl" data-close><span data-ic="check"></span>できた</button></div>
   </div></div>
 </div>
 
@@ -327,20 +431,20 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <h2 id="sameTitle"></h2>
     <ul class="clist" id="slist"></ul>
     <div class="acts">
-      <button type="button" id="sameAdd" class="btn go big">これを 入れる</button>
-      <button type="button" class="btn big plain" data-close>やめる</button>
+      <button type="button" id="sameAdd" class="btn filled big sl"><span data-ic="history"></span>これを 入れる</button>
+      <button type="button" class="btn outlined big sl" data-close>やめる</button>
     </div>
   </div></div>
 </div>
 
-<div class="layer" id="sh-ask" hidden role="dialog" aria-modal="true" aria-labelledby="askTitle">
+<div class="layer dialog" id="sh-ask" hidden role="dialog" aria-modal="true" aria-labelledby="askTitle">
   <div class="scrim" data-close></div>
   <div class="sheet"><div class="wrap">
     <h2 id="askTitle"></h2>
     <p class="note" id="askText"></p>
     <div class="acts">
-      <button type="button" id="askOk" class="btn go big"></button>
-      <button type="button" id="askNo" class="btn big plain"></button>
+      <button type="button" id="askOk" class="btn filled big sl"></button>
+      <button type="button" id="askNo" class="btn outlined big sl"></button>
     </div>
   </div></div>
 </div>
@@ -349,29 +453,29 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
   <div class="scrim" data-close></div>
   <div class="sheet"><div class="wrap">
     <h2 id="editTitle"></h2>
-    <label class="fl">なまえ<input id="fName" type="text" maxlength="30" autocomplete="off"></label>
-    <div class="fl">絵・写真
-      <div class="picrow"><span id="fPicBox"></span><button type="button" id="fPhoto" class="btn">📷 写真を とる・えらぶ</button><button type="button" id="fNoPhoto" class="btn plain" hidden>写真を やめる</button></div>
+    <label class="tf"><input id="fName" type="text" maxlength="30" autocomplete="off" placeholder=" "><span>なまえ</span></label>
+    <div class="fl"><span class="fl-t">絵・写真</span>
+      <div class="picrow"><span id="fPicBox"></span><button type="button" id="fPhoto" class="btn tonal sl"><span data-ic="photo_camera"></span>写真を とる・えらぶ</button><button type="button" id="fNoPhoto" class="btn text sl" hidden><span data-ic="hide_image"></span>写真を やめる</button></div>
       <input id="fPhotoFile" type="file" accept="image/*" hidden>
       <small id="fPhotoNote" hidden>写真が あるときは、写真が 出ます。</small>
       <div class="emojis" id="fEmojis" role="group" aria-label="絵"></div>
     </div>
-    <div class="fl">数え方
+    <div class="fl"><span class="fl-t">数え方</span>
       <div class="chips" id="fUnits"></div>
-      <div class="addrow"><input id="fUnitOther" type="text" maxlength="6" placeholder="ほかの数え方" aria-label="ほかの数え方" autocomplete="off"></div>
+      <label class="tf inline"><input id="fUnitOther" type="text" maxlength="6" autocomplete="off" placeholder=" "><span>ほかの数え方</span></label>
       <small id="fUnitNote" hidden>g は 100g ずつ ふえます。</small>
     </div>
-    <label class="fl">くわしく<input id="fNote" type="text" maxlength="30" autocomplete="off"><small>名前の下と、LINE の文に 小さく入ります。</small></label>
-    <div class="fl">えらべる大きさ・種類
-      <small>2つ 以上 入れると、押したときに「どれに しますか？」と 聞きます。</small>
+    <label class="tf"><input id="fNote" type="text" maxlength="30" autocomplete="off" placeholder=" "><span>くわしく</span><small>名前の下と、LINE の文に 小さく入ります。</small></label>
+    <div class="fl"><span class="fl-t">えらべる大きさ・種類</span>
       <div class="chips" id="fSizes"></div>
-      <div class="addrow"><input id="fSizeIn" type="text" maxlength="12" placeholder="大きさ・種類" aria-label="大きさ・種類" autocomplete="off"><button type="button" id="fSizeAdd" class="btn">足す</button></div>
+      <div class="addrow"><label class="tf"><input id="fSizeIn" type="text" maxlength="12" autocomplete="off" placeholder=" "><span>大きさ・種類</span></label><button type="button" id="fSizeAdd" class="btn tonal sl">足す</button></div>
+      <small class="fl-help">2つ 以上 入れると、押したときに「どれに しますか？」と 聞きます。</small>
     </div>
-    <div class="fl">グループ<div class="chips" id="fGroup"></div></div>
+    <div class="fl"><span class="fl-t">グループ</span><div class="chips" id="fGroup"></div></div>
     <div class="acts">
-      <button type="button" id="fSave" class="btn go big">保存する</button>
-      <button type="button" class="btn big plain" data-close>やめる</button>
-      <button type="button" id="fDelete" class="link danger">この品物を けす</button>
+      <button type="button" id="fSave" class="btn filled big sl"><span data-ic="check"></span>保存する</button>
+      <button type="button" class="btn outlined big sl" data-close>やめる</button>
+      <button type="button" id="fDelete" class="btn text danger-t sl"><span data-ic="delete"></span>この品物を けす</button>
     </div>
   </div></div>
 </div>
@@ -383,6 +487,35 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 'use strict';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+// Material Symbols Rounded (weight 400), from google/material-design-icons, Apache License 2.0
+const ICONS = {
+  add: 'M440-440H240q-17 0-28.5-11.5T200-480q0-17 11.5-28.5T240-520h200v-200q0-17 11.5-28.5T480-760q17 0 28.5 11.5T520-720v200h200q17 0 28.5 11.5T760-480q0 17-11.5 28.5T720-440H520v200q0 17-11.5 28.5T480-200q-17 0-28.5-11.5T440-240v-200Z',
+  remove: 'M240-440q-17 0-28.5-11.5T200-480q0-17 11.5-28.5T240-520h480q17 0 28.5 11.5T760-480q0 17-11.5 28.5T720-440H240Z',
+  mic: 'M480-400q-50 0-85-35t-35-85v-240q0-50 35-85t85-35q50 0 85 35t35 85v240q0 50-35 85t-85 35Zm-40 240v-83q-92-13-157.5-78T203-479q-2-17 9-29t28-12q17 0 28.5 11.5T284-480q14 70 69.5 115T480-320q72 0 127-45.5T676-480q4-17 15.5-28.5T720-520q17 0 28 12t9 29q-14 91-79 157t-158 79v83q0 17-11.5 28.5T480-120q-17 0-28.5-11.5T440-160Z',
+  stop: 'M240-320v-320q0-33 23.5-56.5T320-720h320q33 0 56.5 23.5T720-640v320q0 33-23.5 56.5T640-240H320q-33 0-56.5-23.5T240-320Z',
+  send: 'M176-183q-20 8-38-3.5T120-220v-180l320-80-320-80v-180q0-22 18-33.5t38-3.5l616 260q25 11 25 37t-25 37L176-183Z',
+  history: 'M480-120q-126 0-223-76.5T131-392q-4-15 6-27.5t27-14.5q16-2 29 6t18 24q24 90 99 147t170 57q117 0 198.5-81.5T760-480q0-117-81.5-198.5T480-760q-69 0-129 32t-101 88h70q17 0 28.5 11.5T360-600q0 17-11.5 28.5T320-560H160q-17 0-28.5-11.5T120-600v-160q0-17 11.5-28.5T160-800q17 0 28.5 11.5T200-760v54q51-64 124.5-99T480-840q75 0 140.5 28.5t114 77q48.5 48.5 77 114T840-480q0 75-28.5 140.5t-77 114q-48.5 48.5-114 77T480-120Zm40-376 100 100q11 11 11 28t-11 28q-11 11-28 11t-28-11L452-452q-6-6-9-13.5t-3-15.5v-159q0-17 11.5-28.5T480-680q17 0 28.5 11.5T520-640v144Z',
+  settings: 'M433-80q-27 0-46.5-18T363-142l-9-66q-13-5-24.5-12T307-235l-62 26q-25 11-50 2t-39-32l-47-82q-14-23-8-49t27-43l53-40q-1-7-1-13.5v-27q0-6.5 1-13.5l-53-40q-21-17-27-43t8-49l47-82q14-23 39-32t50 2l62 26q11-8 23-15t24-12l9-66q4-26 23.5-44t46.5-18h94q27 0 46.5 18t23.5 44l9 66q13 5 24.5 12t22.5 15l62-26q25-11 50-2t39 32l47 82q14 23 8 49t-27 43l-53 40q1 7 1 13.5v27q0 6.5-2 13.5l53 40q21 17 27 43t-8 49l-48 82q-14 23-39 32t-50-2l-60-26q-11 8-23 15t-24 12l-9 66q-4 26-23.5 44T527-80h-94Zm49-260q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Z',
+  arrow_back: 'm313-440 196 196q12 12 11.5 28T508-188q-12 11-28 11.5T452-188L188-452q-6-6-8.5-13t-2.5-15q0-8 2.5-15t8.5-13l264-264q11-11 27.5-11t28.5 11q12 12 12 28.5T508-715L313-520h447q17 0 28.5 11.5T800-480q0 17-11.5 28.5T760-440H313Z',
+  check: 'm382-354 339-339q12-12 28-12t28 12q12 12 12 28.5T777-636L410-268q-12 12-28 12t-28-12L182-440q-12-12-11.5-28.5T183-497q12-12 28.5-12t28.5 12l142 143Z',
+  close: 'M480-424 284-228q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536-480l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480-424Z',
+  photo_camera: 'M480-260q75 0 127.5-52.5T660-440q0-75-52.5-127.5T480-620q-75 0-127.5 52.5T300-440q0 75 52.5 127.5T480-260Zm0-80q-42 0-71-29t-29-71q0-42 29-71t71-29q42 0 71 29t29 71q0 42-29 71t-71 29ZM160-120q-33 0-56.5-23.5T80-200v-480q0-33 23.5-56.5T160-760h126l50-54q11-12 26.5-19t32.5-7h170q17 0 32.5 7t26.5 19l50 54h126q33 0 56.5 23.5T880-680v480q0 33-23.5 56.5T800-120H160Z',
+  hide_image: 'M840-760v440q0 20-12.5 30T800-280q-15 0-27.5-10.5T760-321v-439H320q-20 0-30-12.5T280-800q0-15 10-27.5t30-12.5h440q33 0 56.5 23.5T840-760ZM200-120q-33 0-56.5-23.5T120-200v-528l-36-36q-11-11-11-28t11-28q11-11 28-11t28 11l680 680q11 11 11 28t-11 28q-11 11-28 11t-28-11l-36-36H200Zm367-160H280q-12 0-18-11t2-21l80-107q6-8 16-8t16 8l74 99 33-44-283-283v447h447l-80-80Zm-30-257ZM424-424Z',
+  arrow_upward: 'M440-647 244-451q-12 12-28 11.5T188-452q-11-12-11.5-28t11.5-28l264-264q6-6 13-8.5t15-2.5q8 0 15 2.5t13 8.5l264 264q11 11 11 27.5T772-452q-12 12-28.5 12T715-452L520-647v447q0 17-11.5 28.5T480-160q-17 0-28.5-11.5T440-200v-447Z',
+  arrow_downward: 'M440-313v-447q0-17 11.5-28.5T480-800q17 0 28.5 11.5T520-760v447l196-196q12-12 28-11.5t28 12.5q11 12 11.5 28T772-452L508-188q-6 6-13 8.5t-15 2.5q-8 0-15-2.5t-13-8.5L188-452q-11-11-11-27.5t11-28.5q12-12 28.5-12t28.5 12l195 195Z',
+  delete: 'M280-120q-33 0-56.5-23.5T200-200v-520q-17 0-28.5-11.5T160-760q0-17 11.5-28.5T200-800h160q0-17 11.5-28.5T400-840h160q17 0 28.5 11.5T600-800h160q17 0 28.5 11.5T800-760q0 17-11.5 28.5T760-720v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM400-280q17 0 28.5-11.5T440-320v-280q0-17-11.5-28.5T400-640q-17 0-28.5 11.5T360-600v280q0 17 11.5 28.5T400-280Zm160 0q17 0 28.5-11.5T600-320v-280q0-17-11.5-28.5T560-640q-17 0-28.5 11.5T520-600v280q0 17 11.5 28.5T560-280ZM280-720v520-520Z',
+  edit_note: 'M200-400q-17 0-28.5-11.5T160-440q0-17 11.5-28.5T200-480h200q17 0 28.5 11.5T440-440q0 17-11.5 28.5T400-400H200Zm0-160q-17 0-28.5-11.5T160-600q0-17 11.5-28.5T200-640h360q17 0 28.5 11.5T600-600q0 17-11.5 28.5T560-560H200Zm0-160q-17 0-28.5-11.5T160-760q0-17 11.5-28.5T200-800h360q17 0 28.5 11.5T600-760q0 17-11.5 28.5T560-720H200Zm320 520v-66q0-8 3-15.5t9-13.5l209-208q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q8 9 12.5 20t4.5 22q0 11-4 22.5T863-380L655-172q-6 6-13.5 9t-15.5 3h-66q-17 0-28.5-11.5T520-200Zm300-223-37-37 37 37ZM580-220h38l121-122-18-19-19-18-122 121v38Zm141-141-19-18 37 37-18-19Z',
+  download: 'M480-337q-8 0-15-2.5t-13-8.5L308-492q-12-12-11.5-28t11.5-28q12-12 28.5-12.5T365-549l75 75v-286q0-17 11.5-28.5T480-800q17 0 28.5 11.5T520-760v286l75-75q12-12 28.5-11.5T652-548q11 12 11.5 28T652-492L508-348q-6 6-13 8.5t-15 2.5ZM240-160q-33 0-56.5-23.5T160-240v-80q0-17 11.5-28.5T200-360q17 0 28.5 11.5T240-320v80h480v-80q0-17 11.5-28.5T760-360q17 0 28.5 11.5T800-320v80q0 33-23.5 56.5T720-160H240Z',
+  upload: 'M240-160q-33 0-56.5-23.5T160-240v-80q0-17 11.5-28.5T200-360q17 0 28.5 11.5T240-320v80h480v-80q0-17 11.5-28.5T760-360q17 0 28.5 11.5T800-320v80q0 33-23.5 56.5T720-160H240Zm200-486-75 75q-12 12-28.5 11.5T308-572q-11-12-11.5-28t11.5-28l144-144q6-6 13-8.5t15-2.5q8 0 15 2.5t13 8.5l144 144q12 12 11.5 28T652-572q-12 12-28.5 12.5T595-571l-75-75v286q0 17-11.5 28.5T480-320q-17 0-28.5-11.5T440-360v-286Z',
+  add_to_home_screen: 'M320-40q-33 0-56.5-23.5T240-120v-120q0-17 11.5-28.5T280-280q17 0 28.5 11.5T320-240h400v-480H320q0 17-11.5 28.5T280-680q-17 0-28.5-11.5T240-720v-120q0-33 23.5-56.5T320-920h400q33 0 56.5 23.5T800-840v720q0 33-23.5 56.5T720-40H320Zm0-120v40h400v-40H320Zm80-344L204-308q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196H240q-17 0-28.5-11.5T200-600q0-17 11.5-28.5T240-640h200q17 0 28.5 11.5T480-600v200q0 17-11.5 28.5T440-360q-17 0-28.5-11.5T400-400v-104Zm-80-296h400v-40H320v40Zm0 0v-40 40Zm0 640v40-40Z',
+  sort: 'M160-240q-17 0-28.5-11.5T120-280q0-17 11.5-28.5T160-320h160q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240H160Zm0-200q-17 0-28.5-11.5T120-480q0-17 11.5-28.5T160-520h400q17 0 28.5 11.5T600-480q0 17-11.5 28.5T560-440H160Zm0-200q-17 0-28.5-11.5T120-680q0-17 11.5-28.5T160-720h640q17 0 28.5 11.5T840-680q0 17-11.5 28.5T800-640H160Z',
+  check_circle: 'm424-408-86-86q-11-11-28-11t-28 11q-11 11-11 28t11 28l114 114q12 12 28 12t28-12l226-226q11-11 11-28t-11-28q-11-11-28-11t-28 11L424-408Zm56 328q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z',
+  edit: 'M200-200h57l391-391-57-57-391 391v57Zm-40 80q-17 0-28.5-11.5T120-160v-97q0-16 6-30.5t17-25.5l505-504q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L313-143q-11 11-25.5 17t-30.5 6h-97Zm600-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z',
+};
+const ic = (name, cls = '') => `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 -960 960 960" aria-hidden="true" focusable="false"><path d="${ICONS[name]}"/></svg>`;
+// static markup names its icons with data-ic; they are drawn once here
+$$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
+
 const KEY = 'kaimono:v1:';
 const DAY = 864e5;
 
@@ -426,6 +559,19 @@ const uid = () => Date.now().toString(36) + (seq++).toString(36) + Math.random()
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const clone = o => JSON.parse(JSON.stringify(o));
 const buzz = () => { try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} };
+
+// M3 ripple: a circle grows from the finger, so every press shows that it landed
+const calm = matchMedia('(prefers-reduced-motion: reduce)');
+document.addEventListener('pointerdown', e => {
+  const el = e.target.closest('.sl');
+  if (!el || calm.matches || el.disabled || el.getAttribute('aria-disabled') === 'true') return;
+  const r = el.getBoundingClientRect(), d = Math.hypot(r.width, r.height) * 2;
+  const s = document.createElement('span');
+  s.className = 'ripple';
+  s.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
+  el.appendChild(s);
+  s.addEventListener('animationend', () => s.remove());
+}, { passive: true });
 
 /* ---------- storage (this phone only) ---------- */
 let warnedAt = 0;
@@ -535,7 +681,7 @@ function picHTML(it, cls = '', photo) {
   if (it.emoji) return `<span class="pic emo ${cls}" aria-hidden="true">${esc(it.emoji)}</span>`;
   return `<span class="pic ini ${cls}" aria-hidden="true">${esc([...(it.name || '？')][0])}</span>`;
 }
-const NOTE_PIC = '<span class="pic emo sm" aria-hidden="true">📝</span>';
+const notePic = (cls = '') => `<span class="pic memo ${cls}" aria-hidden="true">${ic('edit_note')}</span>`;
 
 /* ---------- dates ---------- */
 const WD = '日月火水木金土';
@@ -552,11 +698,11 @@ function ago(ts) {
   return `${Math.floor(days / 30)}か月まえ`;
 }
 
-/* ---------- toast ---------- */
+/* ---------- snackbar ---------- */
 let toastTimer = 0;
 function toast(msg, actLabel, act) {
   const t = $('#toast');
-  t.innerHTML = '<span class="tmsg"></span>' + (actLabel ? '<button type="button" class="tact"></button>' : '');
+  t.innerHTML = '<span class="tmsg"></span>' + (actLabel ? '<button type="button" class="tact sl"></button>' : '');
   $('.tmsg', t).textContent = msg;
   if (actLabel) {
     const b = $('.tact', t);
@@ -569,7 +715,7 @@ function toast(msg, actLabel, act) {
 }
 function hideToast() { $('#toast').hidden = true; }
 
-/* ---------- layers: sheets and the settings page, each one step of the back button ---------- */
+/* ---------- layers: sheets, dialogs and the settings page, each one step of the back button ---------- */
 // Android's back gesture closes the top sheet instead of leaving the app
 const layers = [];
 let popWaiters = [];
@@ -624,7 +770,7 @@ function ask(title, text, okLabel, noLabel = 'やめる', danger = false) {
     $('#askText').textContent = text;
     const ok = $('#askOk'), no = $('#askNo');
     ok.textContent = okLabel; no.textContent = noLabel;
-    ok.className = 'btn big ' + (danger ? 'redfill' : 'go');
+    ok.className = 'btn big sl ' + (danger ? 'danger' : 'filled');
     ok.onclick = async () => { answered = true; await closeSheet(); res(true); };
     no.onclick = async () => { answered = true; await closeSheet(); res(false); };
     const sh = $('#sh-ask');
@@ -667,10 +813,11 @@ function rowEl(it, g) {
   if (sized(it)) subs.push(`<span class="sub">${esc(it.sizes.join('・'))}</span>`);
   if (g.showLast && it.lastAt) subs.push(`<span class="sub last">前回 ${ago(it.lastAt)}</span>`);
   const nm = esc(it.name);
-  li.innerHTML = `<button type="button" class="hit" tabindex="-1" aria-hidden="true"></button>${picHTML(it)}`
+  li.innerHTML = `<button type="button" class="hit sl" tabindex="-1" aria-hidden="true"></button>`
+    + `<span class="picbox">${picHTML(it)}<span class="selmark">${ic('check_circle')}</span></span>`
     + `<span class="txt"><span class="nm">${nm}</span>${subs.join('')}</span>`
-    + `<span class="step"><span class="sum"></span><button type="button" class="minus" aria-label="${nm}を へらす">−</button>`
-    + `<span class="n"></span><button type="button" class="plus" aria-label="${nm}を ふやす">＋</button></span>`;
+    + `<span class="step"><span class="sum"></span><button type="button" class="minus icon-btn sl" aria-label="${nm}を へらす">${ic('remove')}</button>`
+    + `<span class="n"></span><button type="button" class="plus icon-btn sl" aria-label="${nm}を ふやす">${ic('add')}</button></span>`;
   paintRow(li, it);
   return li;
 }
@@ -705,14 +852,13 @@ groupsEl.addEventListener('click', e => {
   change(it, '', 1);
   paintRow(li, it);
   renderBar();
-  li.classList.remove('pop'); void li.offsetWidth; li.classList.add('pop');
 });
 
 function renderExtras() {
   $('#extrasSec').hidden = !cart.extras.length;
   $('#extrasList').innerHTML = cart.extras.map(x =>
-    `<li class="row sel" data-x="${esc(x.id)}">${NOTE_PIC.replace(' sm', '')}<span class="txt"><span class="nm">${esc(x.text)}</span></span>`
-    + `<span class="step"><button type="button" class="del" aria-label="${esc(x.text)}を けす">けす</button></span></li>`).join('');
+    `<li class="row sel" data-x="${esc(x.id)}"><span class="picbox">${notePic()}</span><span class="txt"><span class="nm">${esc(x.text)}</span></span>`
+    + `<span class="step"><button type="button" class="del btn outlined sl" aria-label="${esc(x.text)}を けす">${ic('delete')}けす</button></span></li>`).join('');
 }
 $('#extrasList').addEventListener('click', e => {
   const b = e.target.closest('.del');
@@ -730,8 +876,8 @@ function renderBar() {
   $('#sendN').hidden = !n;
   $('#sendN').textContent = n;
   $('#how').innerHTML = n
-    ? 'えらび おわったら、下の <span class="g">送る</span> を 押してください。'
-    : 'ほしいものの <span class="k">＋</span> を 押してください。';
+    ? `えらび おわったら、下の <span class="g">${ic('send')}送る</span> を 押してください。`
+    : `ほしいものの <span class="k" role="img" aria-label="＋">${ic('add')}</span> を 押してください。`;
 }
 const bar = $('#bar');
 new ResizeObserver(() => { if (bar.offsetHeight) document.documentElement.style.setProperty('--barH', bar.offsetHeight + 'px'); }).observe(bar);
@@ -744,10 +890,10 @@ function renderSize() {
   $('#sizeHead').innerHTML = `${picHTML(it)}<span><span class="nm" id="sizeName">${esc(it.name)}</span><span class="q">どれに しますか？</span></span>`;
   $('#sizeRows').innerHTML = it.sizes.map((s, i) => {
     const q = cart.lines[keyOf(it.id, s)] || 0;
-    return `<li class="row np${q ? ' sel' : ''}" data-i="${i}"><button type="button" class="hit" tabindex="-1" aria-hidden="true"></button>`
+    return `<li class="row np${q ? ' sel' : ''}" data-i="${i}"><button type="button" class="hit sl" tabindex="-1" aria-hidden="true"></button>`
       + `<span class="txt"><span class="nm">${esc(s)}</span></span><span class="step">`
-      + (q ? `<button type="button" class="minus" aria-label="${esc(s)}を へらす">−</button><span class="n">${qtyHTML(it, q)}</span>` : '')
-      + `<button type="button" class="plus" aria-label="${esc(s)}を ふやす">＋</button></span></li>`;
+      + (q ? `<button type="button" class="minus icon-btn sl" aria-label="${esc(s)}を へらす">${ic('remove')}</button><span class="n">${qtyHTML(it, q)}</span>` : '')
+      + `<button type="button" class="plus icon-btn sl" aria-label="${esc(s)}を ふやす">${ic('add')}</button></span></li>`;
   }).join('');
 }
 $('#sizeRows').addEventListener('click', e => {
@@ -763,14 +909,16 @@ $('#sh-size').addEventListener('closed', () => renderHome());
 // Chrome on Android has speech recognition; iPhone home-screen apps don't, so the keyboard's mic is the fallback there
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const SR_ERRORS = {
-  'no-speech': '声が きこえませんでした。もういちど 🎤 を 押して、話してください。',
+  'no-speech': '声が きこえませんでした。もういちど マイクを 押して、話してください。',
   'audio-capture': 'マイクが 見つかりませんでした。',
   'not-allowed': 'マイクが 許可されていません。ご家族に「家族の設定」で ためしてもらってください。',
-  'service-not-allowed': 'この スマホでは、アプリの 🎤 が 使えません。',
+  'service-not-allowed': 'この スマホでは、アプリの マイクが 使えません。',
   'network': 'インターネットに つながらないため、声で 入れられません。',
   'language-not-supported': '日本語の 声の入力が 使えませんでした。',
 };
-const MIC_IDLE = '🎤 押して 話す', MIC_BUSY = '<span class="dot"></span> きいています（おわったら 押す）';
+const MIC_IDLE = `${ic('mic')}<span>押して 話す</span>`;
+const MIC_BUSY = `<span class="dot"></span><span>きいています（おわったら 押す）</span>`;
+const MIC_TEST = `${ic('mic')}<span>ためしに 話してみる</span>`;
 let rec = null, recBtn = null, recIdle = MIC_IDLE;
 function paintMic(btn, busy, idle) {
   if (!btn) return;
@@ -779,7 +927,7 @@ function paintMic(btn, busy, idle) {
 }
 function listen({ field, say, btn, idle = MIC_IDLE, done }) {
   if (rec) { stopListen(); return; }
-  if (!SR) { say('この スマホでは、アプリの 🎤 が 使えません。キーボードの 🎤 を 使ってください。'); $('#kbHint').hidden = false; return; }
+  if (!SR) { say('この スマホでは、アプリの マイクが 使えません。キーボードの マイクを 使ってください。'); $('#kbHint').hidden = false; return; }
   let r;
   try { r = new SR(); } catch (e) { say('声の入力を はじめられませんでした。'); return; }
   r.lang = 'ja-JP'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
@@ -813,9 +961,11 @@ function stopListen(discard) {
   try { discard ? r.abort() : r.stop(); } catch (e) {}
 }
 const voiceSay = m => { $('#voiceMsg').textContent = m; };
+paintMic($('#micBtn'), false, MIC_IDLE);
+paintMic($('#testMic'), false, MIC_TEST);
 $('#voiceBtn').addEventListener('click', () => {
   $('#voiceText').value = '';
-  voiceSay(SR ? '🎤 を 押して、ほしいものを 話してください。' : 'ここに 入れてください。');
+  voiceSay(SR ? 'マイクを 押して、ほしいものを 話してください。' : '下に 入れてください。');
   $('#micBtn').hidden = !SR;
   $('#kbHint').hidden = !!SR;
   openSheet('sh-voice');
@@ -824,7 +974,7 @@ $('#micBtn').addEventListener('click', () => listen({ field: $('#voiceText'), sa
 $('#sh-voice').addEventListener('closed', () => stopListen(true));
 $('#voiceAdd').addEventListener('click', async () => {
   const t = $('#voiceText').value.replace(/\s+/g, ' ').trim();
-  if (!t) { voiceSay(SR ? 'まだ 何も 入っていません。🎤 を 押して 話してください。' : 'まだ 何も 入っていません。'); return; }
+  if (!t) { voiceSay(SR ? 'まだ 何も 入っていません。マイクを 押して 話してください。' : 'まだ 何も 入っていません。'); return; }
   stopListen(true);
   cart.extras.push({ id: uid(), text: t.slice(0, 200) });
   saveCart();
@@ -862,12 +1012,15 @@ function renderConfirm() {
     const det = detailOf(it, l.size);
     rows.push(`<li>${picHTML(it, 'sm')}<span class="cn">${esc(it.name)}${det ? `<small>${esc(det)}</small>` : ''}</span><span class="cq">${qtyHTML(it, l.qty)}</span></li>`);
   }
-  cart.extras.forEach(x => rows.push(`<li>${NOTE_PIC}<span class="cn">${esc(x.text)}</span></li>`));
+  cart.extras.forEach(x => rows.push(`<li>${notePic('sm')}<span class="cn">${esc(x.text)}</span></li>`));
   $('#clist').innerHTML = rows.join('');
   renderWhen();
 }
+function chipHTML(on, attr, label) {
+  return `<button type="button" class="chip sl${on ? ' on' : ''}" aria-pressed="${on}" ${attr}>${on ? ic('check') : ''}${label}</button>`;
+}
 function renderWhen() {
-  $('#whenChips').innerHTML = WHEN.map(w => `<button type="button" class="chip${cart.when === w ? ' on' : ''}" aria-pressed="${cart.when === w}" data-w="${w}">${w}</button>`).join('');
+  $('#whenChips').innerHTML = WHEN.map(w => chipHTML(cart.when === w, `data-w="${w}"`, w)).join('');
   $('#lineSend').href = lineURL(buildText());
 }
 $('#whenChips').addEventListener('click', e => {
@@ -967,8 +1120,8 @@ $('#sameBtn').addEventListener('click', () => {
   $('#slist').innerHTML = h.lines.map(l => {
     const it = byId(l.id);
     const det = [l.size, it ? it.note : ''].filter(Boolean).join('・');
-    return `<li>${it ? picHTML(it, 'sm') : NOTE_PIC}<span class="cn">${esc(l.name)}${det ? `<small>${esc(det)}</small>` : ''}</span><span class="cq"><b>${l.qty}</b><small>${esc(l.unit)}</small></span></li>`;
-  }).join('') + h.extras.map(t => `<li>${NOTE_PIC}<span class="cn">${esc(t)}</span></li>`).join('');
+    return `<li>${it ? picHTML(it, 'sm') : notePic('sm')}<span class="cn">${esc(l.name)}${det ? `<small>${esc(det)}</small>` : ''}</span><span class="cq"><b>${l.qty}</b><small>${esc(l.unit)}</small></span></li>`;
+  }).join('') + h.extras.map(t => `<li>${notePic('sm')}<span class="cn">${esc(t)}</span></li>`).join('');
   openSheet('sh-same');
 });
 $('#sameAdd').addEventListener('click', async () => {
@@ -1029,10 +1182,10 @@ function sline(it) {
 function renderSettings() {
   $('#sItems').innerHTML = GROUPS.map(g => {
     const list = inGroup(g.key);
-    const rows = list.map((it, i) => `<li class="srow" data-id="${esc(it.id)}"><button type="button" class="sedit">${picHTML(it, 'sm')}`
+    const rows = list.map((it, i) => `<li class="srow" data-id="${esc(it.id)}"><button type="button" class="sedit sl">${picHTML(it, 'sm')}`
       + `<span class="stx"><b>${esc(it.name)}</b><small>${esc(sline(it))}</small></span></button><span class="mv">`
-      + `<button type="button" class="up" aria-label="${esc(it.name)}を 上へ"${i === 0 ? ' disabled' : ''}>↑</button>`
-      + `<button type="button" class="down" aria-label="${esc(it.name)}を 下へ"${i === list.length - 1 ? ' disabled' : ''}>↓</button></span></li>`).join('');
+      + `<button type="button" class="up icon-btn sl" aria-label="${esc(it.name)}を 上へ"${i === 0 ? ' disabled' : ''}>${ic('arrow_upward')}</button>`
+      + `<button type="button" class="down icon-btn sl" aria-label="${esc(it.name)}を 下へ"${i === list.length - 1 ? ' disabled' : ''}>${ic('arrow_downward')}</button></span></li>`).join('');
     return `<section class="sgrp"><h3>${g.label}<span>${list.length}こ</span></h3>${list.length ? `<ul class="slist">${rows}</ul>` : '<p class="note">まだ ありません。</p>'}</section>`;
   }).join('');
   renderRecent();
@@ -1040,8 +1193,8 @@ function renderSettings() {
   setSeg('#sendSeg', settings.send);
   $('#testSend').href = lineURL(TEST_TEXT);
   $('#srState').textContent = SR
-    ? 'この スマホでは、アプリの 🎤 で 声を 入れられます。はじめて 使うとき「マイクの 使用を 許可しますか？」と 出たら「許可」を 押してください。ここで いちど ためしておくと 安心です。'
-    : 'この ブラウザでは アプリの 🎤 が 使えません。かわりに キーボードの 🎤 で 声を 入れられます。';
+    ? 'この スマホでは、アプリの マイクで 声を 入れられます。はじめて 使うとき「マイクの 使用を 許可しますか？」と 出たら「許可」を 押してください。ここで いちど ためしておくと 安心です。'
+    : 'この ブラウザでは アプリの マイクが 使えません。かわりに キーボードの マイクで 声を 入れられます。';
   $('#testMic').hidden = !SR;
   $('#installBtn').hidden = !installEvt;
   $('#installNote').textContent = standalone() ? 'いま ホーム画面の アイコンから ひらいています。'
@@ -1070,12 +1223,12 @@ $('#sendSeg').addEventListener('click', e => {
   settings.send = b.dataset.v;
   save('settings', settings); setSeg('#sendSeg', settings.send);
 });
-// the preview shows an item name at the size the parent's rows will use (1.15rem of 20, 23 or 26px)
+// the preview shows an item name at the size the parent's rows will use (1.2rem of 20, 23 or 26px)
 const SIZE_PX = { m: 20, l: 23, xl: 26 };
 function applySize() {
   const s = SIZE_PX[settings.size] ? settings.size : 'm';
   document.documentElement.dataset.size = s;
-  $('#sizePrev').style.fontSize = Math.round(SIZE_PX[s] * 1.15) + 'px';
+  $('#sizePrev').style.fontSize = Math.round(SIZE_PX[s] * 1.2) + 'px';
 }
 const TEST_TEXT = 'かいものメモの ためしです。\nこれが 届いたら、送り方は だいじょうぶです。';
 $('#testSend').addEventListener('click', e => {
@@ -1083,9 +1236,9 @@ $('#testSend').addEventListener('click', e => {
 });
 $('#testMic').addEventListener('click', () => {
   const out = $('#testMicOut');
-  out.hidden = false;
+  $('#testMicBox').hidden = false;
   if (!rec) out.value = '';
-  listen({ field: out, say: m => { $('#testMicMsg').textContent = m; }, btn: $('#testMic'), idle: '🎤 ためしに 話してみる', done: '聞きとれました。これで だいじょうぶです。' });
+  listen({ field: out, say: m => { $('#testMicMsg').textContent = m; }, btn: $('#testMic'), idle: MIC_TEST, done: '聞きとれました。これで だいじょうぶです。' });
 });
 
 $('#sItems').addEventListener('click', e => {
@@ -1131,8 +1284,8 @@ function recentExtras() {
 function renderRecent() {
   const list = recentExtras();
   $('#sExtras').innerHTML = list.length
-    ? list.map((x, i) => `<li class="srow"><span class="stx"><b>${esc(x.text)}</b><small>${x.times}回・前回 ${md(x.at)}</small></span><button type="button" class="btn" data-i="${i}">ボタンにする</button></li>`).join('')
-    : '<li class="srow note">まだ ありません。</li>';
+    ? list.map((x, i) => `<li class="srow"><span class="stx"><b>${esc(x.text)}</b><small>${x.times}回・前回 ${md(x.at)}</small></span><button type="button" class="btn tonal sl" data-i="${i}">ボタンにする</button></li>`).join('')
+    : '<li class="srow empty">まだ ありません。</li>';
   $('#sExtras').onclick = e => { const b = e.target.closest('[data-i]'); if (b) openEdit(null, list[+b.dataset.i].text); };
 }
 
@@ -1149,8 +1302,8 @@ function openEdit(it, name = '') {
   $('#fNote').value = draft.note;
   $('#fSizeIn').value = '';
   $('#fDelete').hidden = !it;
-  $('#fEmojis').innerHTML = `<button type="button" data-e="" aria-label="絵なし（名前の 1文字目）"><span class="ini"></span></button>`
-    + EMOJIS.map(e => `<button type="button" data-e="${e}" aria-label="${e}">${e}</button>`).join('');
+  $('#fEmojis').innerHTML = `<button type="button" class="sl" data-e="" aria-label="絵なし（名前の 1文字目）"><span class="ini"></span></button>`
+    + EMOJIS.map(e => `<button type="button" class="sl" data-e="${e}" aria-label="${e}">${e}</button>`).join('');
   paintEdit(); paintUnits(); paintSizes(); paintGroup();
   openSheet('sh-edit');
   const grid = $('#fEmojis'), on = $('.on', grid);
@@ -1163,15 +1316,15 @@ function paintEdit() {
   $$('#fEmojis button').forEach(b => { const on = b.dataset.e === draft.emoji; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
 }
 function paintUnits() {
-  $('#fUnits').innerHTML = UNITS.map(u => `<button type="button" class="chip${draft.unit === u ? ' on' : ''}" aria-pressed="${draft.unit === u}" data-u="${esc(u)}">${esc(u)}</button>`).join('');
+  $('#fUnits').innerHTML = UNITS.map(u => chipHTML(draft.unit === u, `data-u="${esc(u)}"`, esc(u))).join('');
   $('#fUnitOther').value = UNITS.includes(draft.unit) ? '' : draft.unit;
   $('#fUnitNote').hidden = draft.unit !== 'g';
 }
 function paintSizes() {
-  $('#fSizes').innerHTML = draft.sizes.map((s, i) => `<span class="tag">${esc(s)}<button type="button" data-i="${i}" aria-label="${esc(s)}を けす">×</button></span>`).join('');
+  $('#fSizes').innerHTML = draft.sizes.map((s, i) => `<span class="tag">${esc(s)}<button type="button" class="sl" data-i="${i}" aria-label="${esc(s)}を けす">${ic('close')}</button></span>`).join('');
 }
 function paintGroup() {
-  $('#fGroup').innerHTML = GROUPS.map(g => `<button type="button" class="chip${draft.group === g.key ? ' on' : ''}" aria-pressed="${draft.group === g.key}" data-g="${g.key}">${g.label}</button>`).join('');
+  $('#fGroup').innerHTML = GROUPS.map(g => chipHTML(draft.group === g.key, `data-g="${g.key}"`, g.label)).join('');
 }
 $('#fName').addEventListener('input', e => { draft.name = e.target.value.trim(); paintEdit(); });
 $('#fEmojis').addEventListener('click', e => { const b = e.target.closest('[data-e]'); if (b) { draft.emoji = b.dataset.e; paintEdit(); } });
@@ -1179,7 +1332,8 @@ $('#fUnits').addEventListener('click', e => { const b = e.target.closest('[data-
 $('#fUnitOther').addEventListener('input', e => {
   const v = e.target.value.trim();
   draft.unit = v || '個';
-  $$('#fUnits .chip').forEach(c => { const on = c.dataset.u === draft.unit && !v; c.classList.toggle('on', on); c.setAttribute('aria-pressed', on); });
+  if (v) $('#fUnits').innerHTML = UNITS.map(u => chipHTML(false, `data-u="${esc(u)}"`, esc(u))).join('');
+  else paintUnits();
   $('#fUnitNote').hidden = draft.unit !== 'g';
 });
 function addSize() {
@@ -1201,7 +1355,7 @@ $('#fPhotoFile').addEventListener('change', async e => {
   try { draft.photoData = await shrink(f); draft.photo = true; paintEdit(); }
   catch (err) { toast('写真を 読みこめませんでした。'); }
 });
-// a square of 240px is enough for a 72px picture on a sharp screen, and keeps each photo near 15KB
+// a square of 240px is enough for a 70px picture on a sharp screen, and keeps each photo near 15KB
 function shrink(file) {
   return new Promise((res, rej) => {
     const url = URL.createObjectURL(file), img = new Image();
