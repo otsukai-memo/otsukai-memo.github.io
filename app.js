@@ -47,7 +47,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.11';
+const APP_VER = '1.12';
 const DAY = 864e5;
 
 const GROUPS = [
@@ -603,7 +603,7 @@ function ago(ts) {
 
 /* ---------- snackbar ---------- */
 let toastTimer = 0;
-function toast(msg, actLabel, act) {
+function toast(msg, actLabel, act, ms) {
   const t = $('#toast');
   t.innerHTML = '<span class="tmsg"></span>' + (actLabel ? '<button type="button" class="tact sl"></button>' : '')
     + `<button type="button" class="tclose icon-btn sl" aria-label="とじる">${ic('x')}</button>`;
@@ -623,8 +623,9 @@ function toast(msg, actLabel, act) {
     if (new Set([...r.getClientRects()].map(x => Math.round(x.top))).size > 1) t.classList.add('two');
   }
   clearTimeout(toastTimer);
-  // older readers need time: ten seconds, fifteen when there is something to undo, or until × is pressed
-  toastTimer = setTimeout(hideToast, actLabel ? 15000 : 10000);
+  // older readers need time: ten seconds, fifteen when there is something to undo, or until × is pressed;
+  // ms for a message that should go sooner
+  toastTimer = setTimeout(hideToast, ms || (actLabel ? 15000 : 10000));
 }
 function hideToast() { $('#toast').hidden = true; }
 
@@ -786,7 +787,8 @@ function tooFast(el) {
 function nudge(li) {
   const p = $('.plus', li);
   if (p) { p.classList.remove('nudge'); void p.offsetWidth; p.classList.add('nudge'); }
-  toast(li.classList.contains('sel') ? '数を かえるときは、−・＋ を 押してください。' : '入れるときは「＋ 入れる」を 押してください。');
+  // the words go after a second, as the family asked (1.12); the ＋ moving shows where to press
+  toast(li.classList.contains('sel') ? '数を かえるときは、−・＋ を 押してください。' : '入れるときは「＋ 入れる」を 押してください。', '', null, 1000);
 }
 groupsEl.addEventListener('click', e => {
   const b = e.target.closest('button');

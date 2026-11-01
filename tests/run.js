@@ -88,6 +88,12 @@
     await wait(600);
     const ghTop = Math.round($in(f, '#g-daily .gh').getBoundingClientRect().top), under = $in(f, '#appbar').offsetHeight + 8;
     check($in(f, '#sh-nav').hidden && Math.abs(ghTop - under) <= 2, `ジャンルを 押すと その 場所へ 飛ぶ（見出しが 上から ${ghTop}px、帯の 下が ${under}px）`);
+    // 1.12: a touch on a row (not on ＋) shows how to put it in, for a second only
+    named(f, 'たまご').querySelector('.hit').click();
+    await wait(300);
+    const hinted = !$in(f, '#toast').hidden && /入れるときは/.test($in(f, '#toast').textContent);
+    await wait(1100);
+    check(hinted && $in(f, '#toast').hidden, '行を さわったときの 案内は 1秒で 消える');
 
     // ---------- what 1.3 left ----------
     await clean();
