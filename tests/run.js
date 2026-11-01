@@ -42,6 +42,8 @@
   const rows = f => f.contentDocument.querySelectorAll('#groups .row').length;
   // 1.10: an item with two sizes or more is shown as one item for each size
   const splitN = list => list.reduce((n, it) => n + ((it.sizes || []).length >= 2 ? it.sizes.length : 1), 0);
+  // 1.14: the starting items it adds to a list kept from before (none of them is in the fixtures)
+  const ADDED = 23;
   const named = (f, name) => [...f.contentDocument.querySelectorAll('#groups .row')].find(r => r.querySelector('.nm').textContent === name);
   const giveFile = (f, input, text) => {
     const dt = new f.contentWindow.DataTransfer();
@@ -75,7 +77,8 @@
     // ---------- a first start ----------
     await clean();
     let f = await openApp();
-    check(rows(f) >= 23, `はじめて 開くと はじめの 品物が 出る（${rows(f)}行）`);
+    check(rows(f) >= 46, `はじめて 開くと はじめの 品物が 出る（${rows(f)}行）`);
+    check(!$in(f, '#appbar h1') && !/かいものメモ/.test($in(f, '#appbar').textContent), '上の 帯に「かいものメモ」の 文字が ない');
     check(!!named(f, 'お米 2kg') && !!named(f, 'お米 5kg') && (stored('items') || []).every(it => !it.sizes.length), 'はじめの 品物は 大きさごとに 分かれて いる');
     check($in(f, '.ver').textContent === 'かいものメモ ' + appVer, `表示の 版が ${appVer}`);
     check(stored('ver') === appVer, 'ver が 保存される');
@@ -105,7 +108,7 @@
     put(f13);
     for (const [i, id] of f13.photos.entries()) localStorage.setItem(KEY + 'photo:' + id, await photoURL(i ? '#36c' : '#c63'));
     f = await openApp();
-    check(rows(f) === splitN(f13.items), `1.3 の 品物が 大きさごとに ぜんぶ 出る（${rows(f)}/${splitN(f13.items)}）`);
+    check(rows(f) === splitN(f13.items) + ADDED, `1.3 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f13.items) + ADDED}）`);
     const moved = await keys('photos');
     check(['a1~6枚切り', 'a1~8枚切り', 'a2'].every(id => moved.includes(id)) && !moved.includes('a1'), '1.3 の 写真が IndexedDB に 移る（分けた 品物には それぞれ）');
     check(!Object.keys(localStorage).some(k => k.startsWith(KEY + 'photo:')), '1.3 の 写真の 古い 置き場所は 空に なる');
@@ -124,7 +127,7 @@
     const f18 = FIXTURES['1.8'];
     put(f18);
     f = await openApp();
-    check(rows(f) === splitN(f18.items), `1.8 の 品物が 大きさごとに ぜんぶ 出る（${rows(f)}/${splitN(f18.items)}）`);
+    check(rows(f) === splitN(f18.items) + ADDED, `1.8 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f18.items) + ADDED}）`);
     check((stored('history') || []).length === f18.history, '1.8 の 送った 記録が 残る');
     check(f.contentDocument.documentElement.dataset.size === 'l', '文字の 大きさの 設定が 残る');
     check((stored('cart') || {}).when === 'こんど来るとき', 'えらんで いる リストが 残る');
@@ -147,7 +150,7 @@
     check(!!href, 'バックアップを 書き出せる');
     const text = href ? await (await f.contentWindow.fetch(href)).text() : '{}';
     const file = JSON.parse(text);
-    check(file.items && file.items.length === splitN(f18.items) && typeof file.sum === 'string' && file.appVersion === appVer, '書き出した ファイルに 品物・版・印が 入る');
+    check(file.items && file.items.length === splitN(f18.items) + ADDED && typeof file.sum === 'string' && file.appVersion === appVer, '書き出した ファイルに 品物・版・印が 入る');
     await clean();
     f = await openApp();
     await openSettings(f);
@@ -164,6 +167,23 @@
     giveFile(f, '#verifyFile', JSON.stringify(bad));
     await wait(800);
     check(/こわれて/.test($in(f, '#askText').textContent), '中身が かわった ファイルは「こわれて います」と 断る');
+
+    // ---------- 1.14: a list kept by 1.13 gets the new starting items once, but not one it has already ----------
+    await clean();
+    const kept = [
+      { id: 'd1', name: 'たまご', icon: 'egg', unit: 'パック', group: 'food', sizes: [], note: '', photo: false, count: 2, lastAt: 0 },
+      { id: 'd2', name: 'リンゴ', icon: 'apple', unit: '個', group: 'food', sizes: [], note: '', photo: false, count: 0, lastAt: 0 },
+      { id: 'd3', name: '電池', icon: 'battery-full', unit: 'パック', group: 'other', sizes: [], note: '', photo: false, count: 0, lastAt: 0 },
+    ];
+    localStorage.setItem(KEY + 'items', JSON.stringify(kept));
+    localStorage.setItem(KEY + 'ver', JSON.stringify('1.13'));
+    f = await openApp();
+    const grown = stored('items') || [];
+    check(grown.length === kept.length + ADDED - 1 && grown.filter(it => /りんご|リンゴ/.test(it.name)).length === 1, `1.13 の リストに 新しい 品物が 足される（${grown.length}こ。りんごは 1つの まま）`);
+    check(kept.every((it, i) => grown[i] && grown[i].id === it.id), 'もとの 品物の ならびは かわらない');
+    f.remove();
+    f = await openApp();
+    check((stored('items') || []).length === grown.length && stored('catalog') === 2, 'もう一度 ひらいても 足すのは 1回だけ');
 
     // ---------- a backup made by 1.9, with sizes, looked at and read in ----------
     await clean();

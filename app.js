@@ -47,7 +47,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.13';
+const APP_VER = '1.14';
 const DAY = 864e5;
 
 const GROUPS = [
@@ -137,32 +137,58 @@ const FROM_EMOJI = { '🍞': 'sandwich', '🥚': 'egg', '🌾': 'wheat', '🍚':
 // and what that window saves comes back as the same drawing
 const TO_EMOJI = {};
 for (const [e, n] of Object.entries(FROM_EMOJI)) TO_EMOJI[n] = TO_EMOJI[n] || e;
-// name, picture, unit, group; each size is an item of its own, so the parent is never asked which one
+// name, picture, unit, group, and the catalog that brought it (none: the first one). Each size is an item of its own,
+// so the parent is never asked which one.
 const DEFAULT_ITEMS = [
   ['食パン 6枚切り', 'sandwich', '袋', 'food'],
   ['食パン 8枚切り', 'sandwich', '袋', 'food'],
   ['たまご', 'egg', 'パック', 'food'],
   ['お米 2kg', 'wheat', '袋', 'food'],
   ['お米 5kg', 'wheat', '袋', 'food'],
+  ['とうふ', '', '丁', 'food', 2],
+  ['なっとう', 'bean', 'パック', 'food', 2],
+  ['ヨーグルト', '', '個', 'food', 2],
   ['バナナ', 'banana', 'ふさ', 'food'],
+  ['りんご', 'apple', '個', 'food', 2],
+  ['みかん', 'citrus', '袋', 'food', 2],
   ['トマト', '', '個', 'food'],
   ['たまねぎ', '', '個', 'food'],
+  ['にんじん', 'carrot', '本', 'food', 2],
+  ['キャベツ', 'leafy-green', '個', 'food', 2],
+  ['じゃがいも', '', '袋', 'food', 2],
   ['おさかな', 'fish', 'パック', 'food'],
   ['お肉', 'beef', 'g', 'food'],
+  ['とり肉', 'drumstick', 'g', 'food', 2],
+  ['ハム', 'ham', 'パック', 'food', 2],
+  ['うどん', 'soup', '袋', 'food', 2],
+  ['しょうゆ', '', '本', 'food', 2],
+  ['みそ', '', '個', 'food', 2],
   ['おせんべい', 'cookie', '袋', 'food'],
   ['牛乳 1L', 'milk', '本', 'drink'],
   ['牛乳 500ml', 'milk', '本', 'drink'],
   ['お茶', 'coffee', '本', 'drink'],
   ['お水', 'droplet', '本', 'drink'],
+  ['ジュース', 'cup-soda', '本', 'drink', 2],
+  ['ビール', 'beer', '本', 'drink', 2],
   ['トイレットペーパー', 'toilet', 'パック', 'daily'],
   ['ティッシュ', 'box', '箱', 'daily'],
   ['せんたく洗剤', 'washing-machine', '個', 'daily'],
   ['台所洗剤', 'soap-dispenser-droplet', '本', 'daily'],
   ['シャンプー', 'shower-head', '本', 'daily'],
+  ['ハンドソープ', '', '本', 'daily', 2],
+  ['はみがき粉', 'toothbrush', '本', 'daily', 2],
   ['ごみ袋', 'trash-2', '袋', 'daily'],
+  ['キッチンペーパー', '', 'パック', 'daily', 2],
+  ['ラップ', '', '本', 'daily', 2],
+  ['マスク', '', '箱', 'daily', 2],
   ['電池', 'battery-full', 'パック', 'other'],
+  ['電球', 'lightbulb', '個', 'other', 2],
+  ['ばんそうこう', 'bandage', '箱', 'other', 2],
+  ['新聞', 'newspaper', '部', 'other', 2],
   ['お花', 'flower', 'たば', 'other'],
 ];
+// the newest catalog: a phone keeps which one its list has had (catalog), and a list from before gets the rest
+const CATALOG = Math.max(...DEFAULT_ITEMS.map(d => d[4] || 1));
 
 let seq = 0;
 const uid = () => Date.now().toString(36) + (seq++).toString(36) + Math.random().toString(36).slice(2, 5);
@@ -310,7 +336,9 @@ function statsFor(list, made, h = hist) {
   const st = statsOf(h);
   for (const it of list) if (made.has(it.id)) Object.assign(it, st.get(it.id) || { count: 0, lastAt: 0 });
 }
-const freshItems = () => DEFAULT_ITEMS.map(([name, icon, unit, group]) => fixItem({ name, icon, unit, group }));
+const freshItems = (from = 0) => DEFAULT_ITEMS.filter(d => (d[4] || 1) > from).map(([name, icon, unit, group]) => fixItem({ name, icon, unit, group }));
+// a name as the family may have typed it: りんご and リンゴ, or ハム and ﾊﾑ, are one item
+const nameKey = s => String(s).normalize('NFKC').replace(/\s/g, '').replace(/[\u30a1-\u30f6]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
 
 // a recording never sent is kept a week (how long sent lists stay is the family's choice, settings.keep)
 const VOICE_DAYS = 7;
@@ -347,7 +375,7 @@ const rawNow = () => { const r = {}; for (const n of RAW_KEYS) { try { r[n] = lo
 const RAW = rawNow(), lastVer = load('ver', null);
 let items = loadItems();
 // with nothing readable stored, the starting items show, but are saved only once the stored list has been kept aside
-if (!items) { items = freshItems(); if (RAW.items == null) save('items', items); }
+if (!items) { items = freshItems(); if (RAW.items == null) { save('items', items); save('catalog', CATALOG); } }
 // 9: a first start (or one after the phone lost everything): the family is shown how to bring a backup back
 if (RAW.items == null && lastVer == null) save('welcome', Date.now());
 let cart = fixCart(load('cart', null));
@@ -500,6 +528,22 @@ async function finishSplit() {
   }
   splitMade.clear();
   announce('photos');
+}
+// a list kept from before a catalog of starting items gets that catalog's new items once, each at the end of its
+// genre, so no row the parent knows moves within it. Left out: a name the list has already, and one taken off in the
+// last 30 days (it is in the bin). Nothing is added to data that couldn't be read.
+async function addNewItems() {
+  const had = +load('catalog', 1) || 1;
+  if (broken.size || had >= CATALOG) return;
+  const have = new Set(items.map(it => nameKey(it.name)));
+  try { for (const t of await trashList()) if (t.item) have.add(nameKey(t.item.name)); } catch (e) {}
+  const add = freshItems(had).filter(it => !have.has(nameKey(it.name)));
+  if (add.length) {
+    items.push(...add);
+    // when it can't be saved, the next start tries again
+    if (!save('items', items)) return;
+  }
+  save('catalog', CATALOG);
 }
 // photos saved by 1.3 and before sit in localStorage as data URLs; they move to IndexedDB once, one by one
 async function movePhotos() {
@@ -2479,6 +2523,8 @@ if (pending) setTimeout(askSent, 700);
   }
   // 1.10: items with sizes, split as they were read, are saved only now, with their photos copied
   await finishSplit();
+  // 1.14: the starting items grew; a list from before gets the new ones, also only after that copy
+  await addNewItems();
   await loadPhotos();
   renderHome();
   // the clock is checked before anything is cleared by date
