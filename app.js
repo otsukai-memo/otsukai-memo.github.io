@@ -10,6 +10,7 @@ const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 // Lucide (lucide.dev, lucide-static 1.66.0), ISC License; a few come from Feather, MIT License: see LICENSE-lucide.txt.
 // Drawn with lines like the item pictures; play and stop are filled in, as people expect of them
 const ICONS = {
+  'menu': '<path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/>',
   'lock': '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
   'cloud-upload': '<path d="M12 13v8"/><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="m8 17 4-4 4 4"/>',
   'file-check': '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="m9 15 2 2 4-4"/>',
@@ -46,7 +47,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.10';
+const APP_VER = '1.11';
 const DAY = 864e5;
 
 const GROUPS = [
@@ -633,7 +634,7 @@ const layers = [];
 let popWaiters = [];
 history.scrollRestoration = 'manual';
 function pushLayer(name, onClose) {
-  layers.push({ name, onClose, from: document.activeElement });
+  layers.push({ name, onClose, from: document.activeElement, at: performance.now() });
   history.pushState({ kaimono: layers.length }, '');
 }
 function popLayer() {
@@ -662,7 +663,7 @@ function openSheet(id) {
   document.documentElement.classList.add('lock');
   el.getBoundingClientRect();
   el.classList.add('open');
-  (el.querySelector('.sheet-body') || el.querySelector('.sheet')).scrollTop = 0;
+  (el.querySelector('.sheet-body') || el.querySelector('.sheet') || el.querySelector('.drawer-panel')).scrollTop = 0;
   pushLayer(id, () => {
     el.classList.remove('open');
     el.hidden = true;
@@ -673,7 +674,9 @@ function openSheet(id) {
   if (h) { h.setAttribute('tabindex', '-1'); try { h.focus({ preventScroll: true }); } catch (e) {} }
 }
 const closeSheet = () => popLayer();
-document.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeSheet(); });
+// the second tap of a trembling double tap must not close what the first one has just opened
+const justOpened = () => layers.length > 0 && performance.now() - layers[layers.length - 1].at < 400;
+document.addEventListener('click', e => { if (e.target.closest('[data-close]') && !justOpened()) closeSheet(); });
 
 // gate: the safe answer is the filled button and comes first, and the other one has to be held for 1.5 seconds
 function ask(title, text, okLabel, noLabel = 'やめる', { danger = false, gate = false, one = false } = {}) {
@@ -737,6 +740,9 @@ function renderHome() {
     const list = inGroup(g.key);
     if (!list.length) continue;
     const sec = document.createElement('section');
+    // the genre menu takes the list here
+    sec.id = 'g-' + g.key;
+    sec.dataset.g = g.key;
     sec.innerHTML = `<h2 class="gh">${g.label}</h2><ul class="rows"></ul>`;
     const ul = sec.lastElementChild;
     list.forEach(it => ul.appendChild(rowEl(it, g)));
@@ -836,6 +842,49 @@ function renderBar() {
 }
 const bar = $('#bar');
 new ResizeObserver(() => { if (bar.offsetHeight) document.documentElement.style.setProperty('--barH', bar.offsetHeight + 'px'); }).observe(bar);
+
+/* ---------- ジャンル: a drawer from the top left; each genre takes the list to its place ---------- */
+// a drawing for each genre, from the item pictures
+const NAV_PICS = { food: 'apple', drink: 'coffee', daily: 'spray-can', other: 'package' };
+const appbar = $('#appbar');
+// the top bar stays at the top, and takes the bottom bar's colour once the list goes under it
+const liftBar = () => appbar.classList.toggle('lifted', window.scrollY > 2);
+addEventListener('scroll', liftBar, { passive: true });
+function renderNav() {
+  // the genre now at the top of the screen is marked, so the parent sees where they are
+  const below = appbar.getBoundingClientRect().bottom + 40;
+  let cur = '';
+  for (const sec of $$('#groups section')) if (sec.getBoundingClientRect().top <= below) cur = sec.dataset.g;
+  const list = GROUPS.filter(g => inGroup(g.key).length);
+  $('#navList').innerHTML = list.length ? list.map(g => {
+    const [, , hue, d] = PIC[NAV_PICS[g.key]];
+    return `<li><button type="button" class="navitem sl" data-g="${g.key}"${g.key === cur ? ' aria-current="true"' : ''}>`
+      + `<span class="pic lu h-${hue}" aria-hidden="true">${svgOf(d)}</span><span class="nl">${g.label}</span></button></li>`;
+  }).join('') : '<li class="note">品物が ありません。</li>';
+}
+$('#navBtn').addEventListener('click', () => {
+  renderNav();
+  openSheet('sh-nav');
+  $('#navBtn').setAttribute('aria-expanded', 'true');
+});
+$('#sh-nav').addEventListener('closed', () => $('#navBtn').setAttribute('aria-expanded', 'false'));
+$('#navList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-g]');
+  if (!b || justOpened()) return;
+  await closeSheet();
+  jumpTo(b.dataset.g);
+});
+// the genre's heading comes up at once just under the top bar (no gliding past rows on the way), and takes the focus
+// (for a screen reader)
+function jumpTo(key) {
+  const h = $(`#g-${key} .gh`);
+  if (!h) return;
+  const top = h.getBoundingClientRect().top + window.scrollY - appbar.offsetHeight - 8;
+  window.scrollTo(0, Math.max(0, top));
+  liftBar();
+  h.tabIndex = -1;
+  try { h.focus({ preventScroll: true }); } catch (e) {}
+}
 
 /* ---------- 声で たのむ ---------- */
 // LINE's own voice messages can only be recorded inside LINE, so the parent's voice is recorded here and goes to LINE

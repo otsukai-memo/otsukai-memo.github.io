@@ -79,6 +79,15 @@
     check(!!named(f, 'お米 2kg') && !!named(f, 'お米 5kg') && (stored('items') || []).every(it => !it.sizes.length), 'はじめの 品物は 大きさごとに 分かれて いる');
     check($in(f, '.ver').textContent === 'かいものメモ ' + appVer, `表示の 版が ${appVer}`);
     check(stored('ver') === appVer, 'ver が 保存される');
+    // 1.11: the genre menu at the top left lists the genres, and each one takes the list to its place
+    $in(f, '#navBtn').click();
+    await wait(700);
+    const genres = [...f.contentDocument.querySelectorAll('#navList [data-g]')].map(b => b.textContent).join('・');
+    check(!$in(f, '#sh-nav').hidden && genres === 'たべもの・のみもの・にちようひん・そのほか', `左上の メニューに ジャンルが 出る（${genres}）`);
+    $in(f, '#navList [data-g="daily"]').click();
+    await wait(600);
+    const ghTop = Math.round($in(f, '#g-daily .gh').getBoundingClientRect().top), under = $in(f, '#appbar').offsetHeight + 8;
+    check($in(f, '#sh-nav').hidden && Math.abs(ghTop - under) <= 2, `ジャンルを 押すと その 場所へ 飛ぶ（見出しが 上から ${ghTop}px、帯の 下が ${under}px）`);
 
     // ---------- what 1.3 left ----------
     await clean();

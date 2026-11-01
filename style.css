@@ -102,10 +102,18 @@ a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .icon-btn:active{border-radius:var(--sh-m)}
 .icon-btn:disabled{opacity:.38}
 
-/* top app bar with a subtitle (M3 Expressive) */
-.appbar{padding-top:calc(1rem + env(safe-area-inset-top));padding-bottom:.25rem}
-.appbar h1{margin:0;font:var(--t-headline);white-space:nowrap}
-.appbar .sub{margin:.1rem 0 0;font:var(--t-title-m);color:var(--md-on-surface-variant)}
+/* top app bar: the genre menu at the top left, then the title. It stays at the top, so the menu is always at hand,
+   and takes the bottom bar's colour once the list goes under it. The menu's icon has its name under it: three lines
+   alone mean nothing to many older people. */
+.appbar{position:sticky;top:0;z-index:20;padding-top:env(safe-area-inset-top);background:var(--page);transition:background-color .2s linear,box-shadow .2s linear}
+.appbar.lifted{background:var(--bar);box-shadow:0 1px 3px rgba(0,0,0,.12),0 4px 12px rgba(0,0,0,.06)}
+.appbar .wrap{display:flex;align-items:center;gap:.4rem;min-height:4rem;padding-top:.3rem;padding-bottom:.3rem}
+.appbar h1{min-width:0;margin:0;overflow:hidden;font:var(--t-headline-s);white-space:nowrap;text-overflow:ellipsis}
+.navbtn{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:.1rem;flex:none;min-width:3.6rem;min-height:3.4rem;
+  margin-left:-.35rem;padding:.25rem .4rem;border:0;border-radius:var(--sh-m);background:transparent;color:var(--md-on-surface);font:600 .8rem/1.2 var(--font)}
+.navbtn .ic{width:1.75rem;height:1.75rem}
+.navbtn.end{margin:0 -.35rem 0 0}
+.today{margin:.1rem auto 0;font:var(--t-title-m);color:var(--md-on-surface-variant)}
 .how{margin:.6rem auto 0;font:var(--t-body-l);color:var(--md-on-surface-variant)}
 .how .k{display:inline-flex;align-items:center;gap:.15rem;padding:0 .65rem 0 .4rem;border-radius:999px;vertical-align:-.15rem;background:var(--md-primary);color:var(--md-on-primary);font:var(--t-label-l);line-height:1.65}
 .how .k .ic{width:1.1rem;height:1.1rem}
@@ -226,10 +234,28 @@ html[data-size="l"] #bar .wrap,html[data-size="xl"] #bar .wrap{flex-direction:co
 .layer.dialog.open .sheet{opacity:1;transform:translateY(-50%)}
 .layer.dialog .wrap{padding:0 1.5rem}
 .layer.dialog .note{margin-left:0;margin-right:0;font-size:1rem}
+/* M3 modal navigation drawer: the genres, from the left; the scrim, とじる and the back gesture close it */
+.drawer-panel{position:absolute;top:0;bottom:0;left:0;width:min(90vw,24rem);overflow-y:auto;overscroll-behavior:contain;background:var(--sheet);
+  border-radius:0 var(--sh-l) var(--sh-l) 0;padding:env(safe-area-inset-top) .75rem calc(1rem + env(safe-area-inset-bottom)) max(.75rem,env(safe-area-inset-left));
+  transform:translateX(-100%);transition:transform .4s var(--ease-in)}
+.layer.open .drawer-panel{transform:none}
+/* 特大: a little wider, so にちようひん stays on one line */
+html[data-size="xl"] .drawer-panel{width:min(94vw,26rem);padding-right:.5rem;padding-left:max(.5rem,env(safe-area-inset-left))}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem;min-height:4.6rem;margin:0 0 .5rem .6rem}
+.drawer-head h2{margin:0;font:var(--t-headline-s);white-space:nowrap}
+.drawer-head h2:focus{outline:none}
+.navlist{display:flex;flex-direction:column;gap:.4rem;margin:0;padding:0;list-style:none}
+.navitem{display:flex;align-items:center;gap:.75rem;width:100%;min-height:4.2rem;padding:.5rem .75rem .5rem .5rem;border:0;border-radius:999px;
+  background:transparent;color:var(--md-on-surface);font:var(--t-title-l);text-align:left;transition:border-radius .2s var(--ease)}
+.navitem:active{border-radius:var(--sh-m)}
+.navitem[aria-current="true"]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.navitem .pic{width:2.75rem;height:2.75rem}
+.navitem .pic.lu svg{width:1.85rem;height:1.85rem}
+.gh:focus{outline:none}
 .hero{display:flex;justify-content:center;margin-bottom:.75rem;color:var(--md-secondary)}
 .hero .ic{width:2rem;height:2rem}
 .hero + h2{text-align:center}
-@media (prefers-reduced-motion:reduce){.sheet,.layer.dialog .sheet,.btn,.icon-btn,.row,.same,.tf > span,.level span{transition:none}.nudge,#toast{animation:none}}
+@media (prefers-reduced-motion:reduce){.sheet,.layer.dialog .sheet,.drawer-panel,.navitem,.appbar,.btn,.icon-btn,.row,.same,.tf > span,.level span{transition:none}.nudge,#toast{animation:none}}
 .acts{display:flex;flex-direction:column;gap:.6rem;margin-top:1.25rem}
 /* a sheet in two parts: the list scrolls, the buttons under it always stay in view */
 .sheet.split{display:flex;flex-direction:column;overflow:hidden;padding:0}

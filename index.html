@@ -16,7 +16,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/basket-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/basket-apple-touch.png">
-<link rel="stylesheet" href="style.css?v=1.10">
+<link rel="stylesheet" href="style.css?v=1.11">
 </head>
 <body>
 
@@ -28,7 +28,11 @@
 </div>
 
 <main id="home">
-  <header class="appbar wrap"><h1>かいものメモ</h1><p class="sub" id="today"></p></header>
+  <header class="appbar" id="appbar"><div class="wrap">
+    <button type="button" id="navBtn" class="navbtn sl" aria-haspopup="dialog" aria-controls="sh-nav" aria-expanded="false"><span data-ic="menu"></span><span class="navlbl">ジャンル</span></button>
+    <h1>かいものメモ</h1>
+  </div></header>
+  <p class="today wrap" id="today"></p>
   <p class="wrap placenote" id="placeNote" role="alert" hidden></p>
   <p class="how wrap" id="how"></p>
   <div class="wrap"><button type="button" id="sameBtn" class="same sl" hidden><span data-ic="history"></span><span class="same-txt"><b>まえと おなじものを 入れる</b><small id="sameDate"></small></span></button></div>
@@ -152,7 +156,7 @@
     <p class="note">スマホを 人に ゆずる ときなどに。品物・写真・送った記録・録音・設定を ぜんぶ けして、はじめの 状態に 戻します。先に バックアップを しておけば、あとで 読みこんで 戻せます。書き出した ファイルや ドライブの バックアップは 残ります。</p>
     <button type="button" id="wipeAll" class="btn danger sl"><span data-ic="trash-2"></span>データを ぜんぶ けす</button>
 
-    <p class="ver">かいものメモ 1.10</p>
+    <p class="ver">かいものメモ 1.11</p>
   </div>
 </section>
 
@@ -208,6 +212,14 @@
       <button type="button" id="typeToggle" class="btn text quiet sl"><span data-ic="keyboard"></span>文字で 入れるときは こちら</button>
     </div>
   </div></div>
+</div>
+
+<div class="layer drawer" id="sh-nav" hidden role="dialog" aria-modal="true" aria-labelledby="navTitle">
+  <div class="scrim" data-close></div>
+  <nav class="drawer-panel" aria-labelledby="navTitle">
+    <div class="drawer-head"><h2 id="navTitle">ジャンル</h2><button type="button" class="navbtn end sl" data-close><span data-ic="x"></span><span class="navlbl">とじる</span></button></div>
+    <ul class="navlist" id="navList"></ul>
+  </nav>
 </div>
 
 <div class="layer" id="sh-same" hidden role="dialog" aria-modal="true" aria-labelledby="sameTitle">
@@ -319,7 +331,7 @@
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="check.js?v=1.10"></script>
-<script src="app.js?v=1.10"></script>
+<script src="check.js?v=1.11"></script>
+<script src="app.js?v=1.11"></script>
 </body>
 </html>
