@@ -47,7 +47,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.15';
+const APP_VER = '1.16';
 const DAY = 864e5;
 
 // 1.15: たべもの is split into the genres of a supermarket's shelves, so the genre menu reaches each of them
@@ -152,8 +152,8 @@ const FROM_EMOJI = { '🍞': 'sandwich', '🥚': 'egg', '🌾': 'wheat', '🍚':
 const TO_EMOJI = {};
 for (const [e, n] of Object.entries(FROM_EMOJI)) TO_EMOJI[n] = TO_EMOJI[n] || e;
 // name, picture, unit, genre, and the catalog that brought it (none: the first one; 2: 1.14; 3: 1.15, a hundred
-// everyday things from a supermarket, none of them a maker's product). Each size is an item of its own, so the parent
-// is never asked which one.
+// everyday things from a supermarket, none of them a maker's product; 4: 1.16, ten more drinks). Each size is an item
+// of its own, so the parent is never asked which one.
 const DEFAULT_ITEMS = [
   ['食パン 6枚切り', 'sandwich', '袋', 'staple'],
   ['食パン 8枚切り', 'sandwich', '袋', 'staple'],
@@ -275,16 +275,26 @@ const DEFAULT_ITEMS = [
   ['ごま', '', '袋', 'dry', 3],
   ['牛乳 1L', 'milk', '本', 'drink'],
   ['牛乳 500ml', 'milk', '本', 'drink'],
+  ['とうにゅう', '', '本', 'drink', 3],
+  ['飲むヨーグルト', '', '本', 'drink', 4],
+  ['乳酸菌飲料', '', '本', 'drink', 4],
   ['お茶', 'coffee', '本', 'drink'],
+  ['ほうじ茶', '', '本', 'drink', 4],
+  ['ウーロン茶', '', '本', 'drink', 4],
   ['むぎちゃ', '', '袋', 'drink', 3],
   ['こうちゃ', '', '箱', 'drink', 3],
   ['コーヒー', '', '本', 'drink', 3],
+  ['ココア', '', '袋', 'drink', 4],
   ['お水', 'droplet', '本', 'drink'],
   ['たんさんすい', 'glass-water', '本', 'drink', 3],
+  ['スポーツドリンク', '', '本', 'drink', 4],
   ['ジュース', 'cup-soda', '本', 'drink', 2],
   ['やさいジュース', '', '本', 'drink', 3],
-  ['とうにゅう', '', '本', 'drink', 3],
+  ['トマトジュース', '', '本', 'drink', 4],
+  ['サイダー', '', '本', 'drink', 4],
   ['ビール', 'beer', '本', 'drink', 2],
+  ['日本酒', 'bottle-wine', '本', 'drink', 4],
+  ['ワイン', 'wine', '本', 'drink', 4],
   ['トイレットペーパー', 'toilet', 'パック', 'daily'],
   ['ティッシュ', 'box', '箱', 'daily'],
   ['せんたく洗剤', 'washing-machine', '個', 'daily'],
