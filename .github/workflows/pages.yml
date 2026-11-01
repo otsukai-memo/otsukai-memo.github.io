@@ -1,6 +1,8 @@
-# 公開の前に、アプリが動くかを自動で確かめる。だめなときは公開しない（公開中の版がそのまま残る）。
-# Before publishing, the app is opened in Chrome: the version must agree everywhere, the parent's list must appear,
-# and no script error may show. Only then does GitHub Pages get the new files.
+# 公開の前に、アプリが動くか・前の版のデータを正しく読めるかを自動で確かめる。だめなときは公開しない（公開中の版がそのまま残る）。
+# Before publishing: the version agrees everywhere, the app starts in Chrome without errors, data left by earlier
+# versions still reads, a backup goes out and comes back the same, unreadable data is kept, and the app opens
+# offline from its copy. Only then are the site's own files (an explicit list; never tests/ or .github/) published.
+# Actions are pinned to commits (Dependabot says when there are new ones); each job gets only the rights it needs.
 name: check and publish
 
 on:
@@ -8,10 +10,7 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+permissions: {}
 
 concurrency:
   group: pages
@@ -20,15 +19,19 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       LC_ALL: C.UTF-8
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: the version agrees everywhere
         run: |
           v=$(grep -oP "APP_VER = '\K[0-9.]+" app.js)
           echo "APP_VER $v"
           grep -q "app.js?v=$v\"" index.html
+          grep -q "check.js?v=$v\"" index.html
+          grep -q "style.css?v=$v\"" index.html
           grep -q "かいものメモ $v</p>" index.html
       - name: the app starts in Chrome without errors
         run: |
@@ -40,6 +43,30 @@ jobs:
           echo "rows on the parent's screen: $rows"
           if grep -q "Uncaught" chrome.log; then grep "Uncaught" chrome.log; exit 1; fi
           test "$rows" -ge 10
+      - name: old data, a backup out and back, a damaged file, unreadable data
+        run: |
+          python3 tests/sleepserver.py 8001 >/dev/null 2>&1 &
+          sleep 2
+          google-chrome --headless=new --no-sandbox --disable-gpu --user-data-dir=/tmp/prof-tests \
+            --dump-dom http://127.0.0.1:8001/tests/run.html > tests-out.html 2>/dev/null || true
+          sed -n '/<pre id="out">/,/<\/pre>/p' tests-out.html
+          grep -q "ALL OK" tests-out.html
+      - name: opens without the network, from the offline copy
+        run: |
+          python3 tests/sleepserver.py 8002 >/dev/null 2>&1 &
+          server=$!
+          sleep 2
+          google-chrome --headless=new --no-sandbox --disable-gpu --user-data-dir=/tmp/prof-off \
+            --dump-dom http://127.0.0.1:8002/tests/sw.html > sw-out.html 2>/dev/null || true
+          sed -n '/<pre id="out">/,/<\/pre>/p' sw-out.html
+          grep -q "SW READY" sw-out.html
+          kill $server
+          sleep 1
+          google-chrome --headless=new --no-sandbox --disable-gpu --user-data-dir=/tmp/prof-off \
+            --virtual-time-budget=5000 --dump-dom http://127.0.0.1:8002/index.html > off.html 2>/dev/null || true
+          rows=$(grep -o 'class="row' off.html | wc -l)
+          echo "rows offline: $rows"
+          test "$rows" -ge 10
       - name: the page for locked backups is there and opens
         run: |
           google-chrome --headless=new --no-sandbox --disable-gpu --virtual-time-budget=3000 \
@@ -49,14 +76,22 @@ jobs:
   deploy:
     needs: check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: only the site's own files
+        run: |
+          mkdir _site
+          cp -r index.html app.js check.js style.css sw.js manifest.webmanifest icons tools LICENSE-lucide.txt README.md _site/
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          path: .
+          path: _site
       - id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

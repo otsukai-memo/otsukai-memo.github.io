@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#ecefe6" id="themeColor">
 <!-- nothing on this page may talk to another server: what the parent keeps here leaves the phone only through LINE,
      when 「LINEで 送る」 is pressed (a navigation or the share menu, neither of which this policy blocks) -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' data: blob:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' data: blob:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,400 +16,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/basket-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/basket-apple-touch.png">
-<style>
-/* かいものメモ follows Material Design 3 (m3.material.io), the design language of the parent's Android phone, with its
-   2025 Expressive parts: a segmented list whose picked row rounds out, round buttons that square off while pressed,
-   a docked toolbar in place of the bottom app bar, a connected button group in place of segmented buttons.
-   It is made for a parent in their 80s who finds typing hard, so M3's sizes are scaled up: a 20px root (Body Large
-   16sp at 125%; 23 and 26 from 家族の設定), targets of 52px or more, no swipes, a long press that counts as a press,
-   and rows that never move by themselves, because the parent finds things by where they were last time.
-   The icons and the item pictures are Lucide's (lucide.dev), which the family chose: one drawing on every phone,
-   where emoji looked different from phone to phone. */
-:root{
-  /* M3 colour roles: the Tonal Spot scheme of seed #3E8E41, from Google's material-color-utilities 0.3.0 */
-  --md-primary:#3b693a;--md-on-primary:#ffffff;--md-primary-container:#bcf0b4;--md-on-primary-container:#235024;
-  --md-secondary:#52634f;--md-on-secondary:#ffffff;--md-secondary-container:#d5e8cf;--md-on-secondary-container:#3b4b38;
-  --md-tertiary:#38656a;--md-on-tertiary:#ffffff;--md-tertiary-container:#bcebf0;--md-on-tertiary-container:#1f4d52;
-  --md-error:#ba1a1a;--md-on-error:#ffffff;--md-error-container:#ffdad6;--md-on-error-container:#93000a;
-  --md-surface:#f7fbf1;--md-surface-container-lowest:#ffffff;--md-surface-container-low:#f1f5ec;--md-surface-container:#ecefe6;
-  --md-surface-container-high:#e6e9e0;--md-surface-container-highest:#e0e4db;
-  --md-on-surface:#191d17;--md-on-surface-variant:#424940;--md-outline:#72796f;--md-outline-variant:#c2c9bd;
-  --md-inverse-surface:#2d322c;--md-inverse-on-surface:#eef2e9;--md-inverse-primary:#a1d39a;
-  /* which surface goes where: white rows on a tinted page, as in Android's own settings */
-  --page:var(--md-surface-container);--item:var(--md-surface-container-lowest);--bar:var(--md-surface-container-high);
-  --sheet:var(--md-surface-container-low);--dialog:var(--md-surface-container-high);--picbg:var(--md-surface-container-high);
-  /* M3 type scale, enlarged (Body Large 16→20, Title Large 22→24, Headline Medium 28→32), Expressive emphasised weights */
-  --font:Roboto,system-ui,-apple-system,"Noto Sans JP","Noto Sans CJK JP","Hiragino Sans","Yu Gothic UI",sans-serif;
-  --t-headline:500 1.6rem/1.25 var(--font);
-  --t-headline-s:500 1.35rem/1.3 var(--font);
-  --t-title-l:500 1.2rem/1.35 var(--font);
-  --t-title-m:500 1rem/1.45 var(--font);
-  --t-body-l:400 1rem/1.6 var(--font);
-  --t-body-m:400 .875rem/1.5 var(--font);
-  --t-label-l:600 1rem/1.3 var(--font);
-  /* M3 corner scale ×1.25: extra small 4, small 8, medium 12, large 16, extra large 28 */
-  --sh-xs:5px;--sh-s:10px;--sh-m:15px;--sh-l:20px;--sh-xl:28px;
-  /* M3 easing: standard, and emphasised decelerate for things coming in */
-  --ease:cubic-bezier(.2,0,0,1);--ease-in:cubic-bezier(.05,.7,.1,1);
-  --barH:5.5rem;
-  color-scheme:light;font-size:20px;
-}
-/* dark colours only when 家族の設定 asks for them: light text on black blurs for eyes with cataracts or astigmatism,
-   so the light scheme stays even when the phone itself is dark ("自動" follows the phone) */
-html[data-theme="dark"]{
-  --md-primary:#a1d39a;--md-on-primary:#0a390f;--md-primary-container:#235024;--md-on-primary-container:#bcf0b4;
-  --md-secondary:#baccb3;--md-on-secondary:#253423;--md-secondary-container:#3b4b38;--md-on-secondary-container:#d5e8cf;
-  --md-tertiary:#a0cfd4;--md-on-tertiary:#00363b;--md-tertiary-container:#1f4d52;--md-on-tertiary-container:#bcebf0;
-  --md-error:#ffb4ab;--md-on-error:#690005;--md-error-container:#93000a;--md-on-error-container:#ffdad6;
-  --md-surface:#10140f;--md-surface-container-lowest:#0b0f0a;--md-surface-container-low:#191d17;--md-surface-container:#1d211b;
-  --md-surface-container-high:#272b25;--md-surface-container-highest:#323630;
-  --md-on-surface:#e0e4db;--md-on-surface-variant:#c2c9bd;--md-outline:#8c9388;--md-outline-variant:#424940;
-  --md-inverse-surface:#e0e4db;--md-inverse-on-surface:#2d322c;--md-inverse-primary:#3b693a;
-  --page:var(--md-surface);--item:var(--md-surface-container-high);--bar:var(--md-surface-container);--picbg:var(--md-surface-container-highest);
-  color-scheme:dark;
-}
-html[data-size="l"]{font-size:23px}
-html[data-size="xl"]{font-size:26px}
-/* the text size is for the parent's screen; 家族の設定 stays at the normal size */
-html.insettings{font-size:20px}
-*{box-sizing:border-box}
-html{background:var(--page);-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior-y:none}
-/* the text is written with spaces between phrases, so lines break only there and never mid-word */
-body{margin:0;background:var(--page);color:var(--md-on-surface);font:var(--t-body-l);overscroll-behavior-y:none;word-break:keep-all;overflow-wrap:anywhere}
-/* a slow press must not start selecting text or open a menu; only the fields keep text selection */
-body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-input,textarea{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
-html.lock,html.lock body{overflow:hidden}
-button,input,textarea{font:inherit;color:inherit}
-button{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
-a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-:focus-visible{outline:3px solid var(--md-secondary);outline-offset:2px}
-/* rules like `.row { display: grid }` would otherwise beat the hidden attribute */
-[hidden]{display:none!important}
-.wrap{max-width:640px;margin:0 auto;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
-.ic{display:block;flex:none;width:1.5rem;height:1.5rem}
-.ic.fill{fill:currentColor}
-.note{margin:.35rem .25rem .7rem;font:var(--t-body-m);color:var(--md-on-surface-variant)}
-
-/* M3 state layer and ripple: pressing tints the control and a circle grows from the finger */
-.sl{position:relative;overflow:hidden;isolation:isolate}
-.sl::before{content:"";position:absolute;inset:0;z-index:-1;background:currentColor;opacity:0;transition:opacity .15s var(--ease);pointer-events:none}
-.sl:active::before{opacity:.12}
-@media (hover:hover){.sl:hover::before{opacity:.08}.sl:active::before{opacity:.12}}
-.ripple{position:absolute;z-index:-1;border-radius:50%;background:currentColor;opacity:.18;transform:scale(0);animation:ripple .55s var(--ease) forwards;pointer-events:none}
-@keyframes ripple{to{transform:scale(1);opacity:0}}
-
-/* buttons: round, squaring off while pressed (M3 Expressive shape morph) */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:3rem;padding:0 1.25rem;border:0;border-radius:999px;
-  font:var(--t-label-l);text-align:center;text-decoration:none;transition:border-radius .2s var(--ease)}
-.btn:active{border-radius:var(--sh-m)}
-.btn .ic{width:1.25rem;height:1.25rem}
-.btn.filled{background:var(--md-primary);color:var(--md-on-primary)}
-.btn.tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-.btn.tertiary{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
-.btn.outlined{background:transparent;color:var(--md-on-surface-variant);box-shadow:inset 0 0 0 1px var(--md-outline)}
-.btn.text{background:transparent;color:var(--md-primary);padding:0 .75rem}
-.btn.danger{background:var(--md-error);color:var(--md-on-error)}
-.btn.text.danger-t{color:var(--md-error)}
-.btn.quiet{color:var(--md-on-surface-variant)}
-.btn[aria-disabled="true"]{background:color-mix(in srgb,var(--md-on-surface) 12%,transparent);color:color-mix(in srgb,var(--md-on-surface) 50%,transparent)}
-.btn.big{width:100%;min-height:3.5rem;font-size:1.1rem}
-.btn.big .ic{width:1.5rem;height:1.5rem}
-.icon-btn{display:inline-flex;align-items:center;justify-content:center;flex:none;width:3rem;height:3rem;margin:0;padding:0;border:0;border-radius:50%;
-  background:transparent;color:var(--md-on-surface-variant);transition:border-radius .2s var(--ease)}
-.icon-btn:active{border-radius:var(--sh-m)}
-.icon-btn:disabled{opacity:.38}
-
-/* top app bar with a subtitle (M3 Expressive) */
-.appbar{padding-top:calc(1rem + env(safe-area-inset-top));padding-bottom:.25rem}
-.appbar h1{margin:0;font:var(--t-headline);white-space:nowrap}
-.appbar .sub{margin:.1rem 0 0;font:var(--t-title-m);color:var(--md-on-surface-variant)}
-.how{margin:.6rem auto 0;font:var(--t-body-l);color:var(--md-on-surface-variant)}
-.how .k{display:inline-flex;align-items:center;gap:.15rem;padding:0 .65rem 0 .4rem;border-radius:999px;vertical-align:-.15rem;background:var(--md-primary);color:var(--md-on-primary);font:var(--t-label-l);line-height:1.65}
-.how .k .ic{width:1.1rem;height:1.1rem}
-.how .g{display:inline-flex;align-items:center;gap:.25rem;padding:0 .65rem 0 .5rem;border-radius:999px;vertical-align:-.15rem;background:var(--md-primary);color:var(--md-on-primary);font:var(--t-label-l);line-height:1.65}
-.how .g .ic{width:1rem;height:1rem}
-.same{display:flex;align-items:center;gap:.8rem;width:100%;min-height:4.2rem;margin:.8rem 0 .2rem;padding:.6rem .75rem .6rem 1rem;border:0;border-radius:var(--sh-l);
-  background:var(--md-secondary-container);color:var(--md-on-secondary-container);text-align:left;transition:border-radius .2s var(--ease)}
-.same:active{border-radius:var(--sh-xl)}
-.same .ic{width:1.75rem;height:1.75rem}
-.same-txt{flex:1;min-width:0;display:flex;flex-direction:column}
-.same-txt b{font:var(--t-title-m)}
-.same-txt small{font:var(--t-body-m)}
-.gh{margin:1.4rem .25rem .55rem;font:var(--t-title-m);color:var(--md-primary)}
-
-/* M3 Expressive segmented list: rows 2dp apart, 4dp inner and 16dp outer corners; a picked row rounds out all round */
-.rows,.clist,.slist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
-.row,.clist li,.slist > li{background:var(--item);border-radius:var(--sh-xs)}
-.rows > :first-child,.clist > :first-child,.slist > :first-child{border-top-left-radius:var(--sh-l);border-top-right-radius:var(--sh-l)}
-.rows > :last-child,.clist > :last-child,.slist > :last-child{border-bottom-left-radius:var(--sh-l);border-bottom-right-radius:var(--sh-l)}
-/* one row per item: the picture, the name, and under the name a ＋ that never moves (− and the count appear to its left) */
-.row{position:relative;display:grid;grid-template-columns:4.25rem 1fr;grid-template-areas:"pic txt" "pic step";
-  column-gap:1rem;row-gap:.35rem;align-items:center;padding:.75rem .9rem .75rem 1rem;
-  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:border-radius .25s var(--ease),background-color .2s var(--ease)}
-/* a picked row is told apart by more than a tint (the tint alone is 1.3:1 against white): a 3px primary edge (6.4:1),
-   a big check on the picture and a big count */
-.rows > .row.sel{border-radius:var(--sh-l);background:var(--md-primary-container);color:var(--md-on-primary-container);box-shadow:inset 0 0 0 3px var(--md-primary)}
-/* touching the row itself only points at its buttons: a look, or the start of a scroll, never adds anything */
-.hit{position:absolute;inset:0;z-index:1;margin:0;padding:0;border:0;border-radius:inherit;background:transparent}
-.picbox{grid-area:pic;position:relative;width:4.25rem;height:4.25rem}
-.pic{display:flex;align-items:center;justify-content:center;flex:none;width:4.25rem;height:4.25rem;border-radius:var(--sh-m);overflow:hidden;background:var(--picbg)}
-/* a drawing in its colour (tone 40) on that colour's tint (tone 95); tone 80 on tone 20 when dark: 5:1 or more */
-.pic.lu{background:var(--hb);color:var(--hf)}
-.h-red{--hf:#B3261E;--hb:#FDE7E4}
-.h-orange{--hf:#A3480F;--hb:#FDEADB}
-.h-amber{--hf:#855C00;--hb:#FCF0D2}
-.h-green{--hf:#2D6A2F;--hb:#E2F0DC}
-.h-teal{--hf:#006A66;--hb:#D9F1EE}
-.h-blue{--hf:#2059A6;--hb:#E1ECFA}
-.h-purple{--hf:#6B42A8;--hb:#EEE6F9}
-.h-pink{--hf:#A2336B;--hb:#FBE4EE}
-.h-brown{--hf:#7A4B26;--hb:#F4E7DB}
-.h-gray{--hf:#4F5B57;--hb:#E7EBE8}
-html[data-theme="dark"] .h-red{--hf:#FFB4AB;--hb:#4C1D19}
-html[data-theme="dark"] .h-orange{--hf:#FFB787;--hb:#4A2610}
-html[data-theme="dark"] .h-amber{--hf:#F2C35A;--hb:#3E2E04}
-html[data-theme="dark"] .h-green{--hf:#A3D59A;--hb:#1D381C}
-html[data-theme="dark"] .h-teal{--hf:#7FD6D0;--hb:#0D3734}
-html[data-theme="dark"] .h-blue{--hf:#A9C7FF;--hb:#172F50}
-html[data-theme="dark"] .h-purple{--hf:#D2BCFF;--hb:#33214F}
-html[data-theme="dark"] .h-pink{--hf:#FFB1D0;--hb:#4A1B32}
-html[data-theme="dark"] .h-brown{--hf:#E6C1A2;--hb:#3D2A1B}
-html[data-theme="dark"] .h-gray{--hf:#C1C9C5;--hb:#2D3431}
-.pic.lu svg{width:3rem;height:3rem}
-.pic.ini{background:var(--md-secondary-container);color:var(--md-on-secondary-container);font:500 1.7rem/1 var(--font)}
-.pic.memo{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
-.pic.memo .ic{width:2.1rem;height:2.1rem}
-.pic img{width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none}
-.selmark{position:absolute;top:-.5rem;right:-.5rem;display:none;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:50%;
-  background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 0 0 3px var(--md-primary-container)}
-.selmark .ic{width:1.3rem;height:1.3rem;stroke-width:3}
-.row.sel .selmark{display:flex}
-.txt{grid-area:txt;min-width:0}
-/* item names have no spaces, so they break between characters, but never before ー or a small kana */
-.nm,.cn,.stx b{word-break:normal;line-break:strict}
-.nm{display:block;font:var(--t-title-l)}
-.sub{display:block;font:var(--t-body-m);color:var(--md-on-surface-variant)}
-.sub.last{color:var(--md-tertiary);font-weight:500}
-.row.sel .sub{color:var(--md-on-primary-container)}
-.step{grid-area:step;justify-self:end;position:relative;z-index:2;display:flex;align-items:center;gap:.3rem;pointer-events:none}
-.step button{pointer-events:auto}
-.step .icon-btn{width:2.75rem;height:2.75rem}
-.step .icon-btn .ic{width:1.6rem;height:1.6rem}
-.step .minus{color:var(--md-on-surface-variant);box-shadow:inset 0 0 0 1px var(--md-outline)}
-.step .plus{background:var(--md-primary);color:var(--md-on-primary)}
-/* until something is picked the ＋ says 入れる, so its meaning is spelled out */
-.row:not(.sel) .step .plus{width:auto;gap:.2rem;padding:0 1.1rem 0 .8rem;border-radius:999px;font:var(--t-label-l)}
-.row:not(.sel) .step .plus:active{border-radius:var(--sh-m)}
-.step .plus .pl{display:none}
-.row:not(.sel) .step .plus .pl{display:inline}
-.row.sel .step .minus{color:var(--md-on-primary-container);box-shadow:inset 0 0 0 1px var(--md-on-primary-container)}
-.step .n{min-width:2.5rem;text-align:center;white-space:nowrap}
-.n b,.cq b{font:600 1.35rem/1 var(--font)}
-.step .n b{font-size:1.5rem}
-.n small,.cq small{margin-left:.1rem;font:var(--t-body-m)}
-.nudge{animation:nudge .5s var(--ease)}
-@keyframes nudge{30%{transform:scale(1.15)}60%{transform:scale(.95)}}
-.step .sum{text-align:right;font:var(--t-body-m);font-weight:600}
-.step .sum b{font-size:1.1rem}
-.step .del{min-height:2.75rem;padding:0 1rem 0 .8rem}
-.row.sel .btn.outlined{color:var(--md-on-primary-container);box-shadow:inset 0 0 0 1px var(--md-on-primary-container)}
-/* bigger text: the buttons get their own line so the name keeps its width */
-html[data-size="l"] .row,html[data-size="xl"] .row{grid-template-areas:"pic txt" "step step"}
-html .row.np,html[data-size] .row.np{grid-template-columns:1fr auto;grid-template-areas:"txt step";min-height:4.25rem}
-.foot{padding-top:1.4rem;padding-bottom:1rem;text-align:center}
-.empty{margin-top:1rem}
-#home{padding-bottom:calc(var(--barH) + 1rem)}
-
-/* docked toolbar (M3 Expressive): speak (tertiary) or send (filled primary) */
-#bar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--bar);box-shadow:0 -1px 3px rgba(0,0,0,.12),0 -4px 12px rgba(0,0,0,.06);
-  padding:.7rem 0 calc(.7rem + env(safe-area-inset-bottom))}
-#bar .wrap{display:flex;gap:.5rem}
-#bar .btn{flex:1;min-height:3.5rem;padding:0 .5rem;gap:.35rem;font-size:1rem}
-#bar .btn .ic{width:1.2rem;height:1.2rem}
-#voiceBtn{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
-#sendBtn{font-size:1.1rem}
-html[data-size="l"] #bar .wrap,html[data-size="xl"] #bar .wrap{flex-direction:column}
-.badge{display:inline-flex;align-items:center;justify-content:center;min-width:1.6rem;height:1.6rem;padding:0 .4rem;border-radius:999px;
-  background:var(--md-on-primary);color:var(--md-primary);font:600 .95rem/1 var(--font)}
-
-/* M3 bottom sheets (28dp corners, 32% scrim) and dialogs; each layer has its own scrim so they can stack */
-.layer{position:fixed;inset:0;z-index:40}
-.scrim{position:absolute;inset:0;background:rgba(0,0,0,.32)}
-.sheet{position:absolute;left:0;right:0;bottom:0;max-width:640px;margin:0 auto;max-height:92vh;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;
-  background:var(--sheet);border-radius:var(--sh-xl) var(--sh-xl) 0 0;padding:1.5rem 0 calc(1.25rem + env(safe-area-inset-bottom));
-  transform:translateY(100%);transition:transform .4s var(--ease-in)}
-.layer.open .sheet{transform:none}
-.sheet h2{margin:0 .25rem 1rem;font:var(--t-headline-s)}
-.sheet h2:focus{outline:none}
-.layer.dialog .sheet{top:50%;bottom:auto;left:1.25rem;right:1.25rem;max-width:560px;border-radius:var(--sh-xl);background:var(--dialog);padding:1.5rem 0;
-  opacity:0;transform:translateY(-50%) scale(.92);transition:transform .35s var(--ease-in),opacity .15s linear}
-.layer.dialog.open .sheet{opacity:1;transform:translateY(-50%)}
-.layer.dialog .wrap{padding:0 1.5rem}
-.layer.dialog .note{margin-left:0;margin-right:0;font-size:1rem}
-.hero{display:flex;justify-content:center;margin-bottom:.75rem;color:var(--md-secondary)}
-.hero .ic{width:2rem;height:2rem}
-.hero + h2{text-align:center}
-@media (prefers-reduced-motion:reduce){.sheet,.layer.dialog .sheet,.btn,.icon-btn,.row,.same,.tf > span,.level span{transition:none}.nudge,#toast{animation:none}}
-.acts{display:flex;flex-direction:column;gap:.6rem;margin-top:1.25rem}
-/* a sheet in two parts: the list scrolls, the buttons under it always stay in view */
-.sheet.split{display:flex;flex-direction:column;overflow:hidden;padding:0}
-.sheet-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:1.5rem 0 1.25rem}
-.sheet-foot{flex:none;padding:.9rem 0 calc(1rem + env(safe-area-inset-bottom));background:var(--sheet);box-shadow:0 -1px 0 var(--md-outline-variant),0 -8px 16px -8px rgba(0,0,0,.18)}
-.sheet-foot .acts{margin-top:0}
-/* what to press once LINE opens, with the family member's name */
-.steps-t{margin:0 .25rem .35rem;font:var(--t-body-m);color:var(--md-on-surface-variant)}
-.steps{list-style:none;margin:0 .25rem .8rem;padding:0;display:flex;flex-wrap:wrap;gap:.35rem .9rem;font:var(--t-title-m)}
-.steps li{display:inline-flex;align-items:center;gap:.4rem}
-.steps b{display:inline-flex;align-items:center;justify-content:center;flex:none;width:1.6rem;height:1.6rem;border-radius:50%;background:var(--md-primary);color:var(--md-on-primary);font:600 .95rem/1 var(--font)}
-/* 家族の設定 opens only after holding ひらく; the fill shows how long is left */
-.btn.hold::after{content:"";position:absolute;inset:0;z-index:-1;background:var(--md-primary);opacity:.25;transform:scaleX(0);transform-origin:left;pointer-events:none}
-.btn.hold.holding::after{transform:scaleX(1);transition:transform var(--hold,1.5s) linear}
-#sh-ask.gate .acts{flex-direction:column-reverse}
-/* 写真で そろえる */
-.photostep{display:flex;flex-direction:column;align-items:center;gap:.6rem;margin:.25rem 0}
-.photostep .pic.big{width:10rem;height:10rem;border-radius:var(--sh-xl)}
-.photostep .pic.big.lu svg{width:6.5rem;height:6.5rem}
-.photostep .pic.big.ini{font-size:4rem}
-.photostep .nm{font:var(--t-headline-s);text-align:center}
-.h3{margin:1.25rem .25rem .6rem;font:var(--t-title-m)}
-.h3 small{font:var(--t-body-m);color:var(--md-on-surface-variant)}
-.clist li{display:flex;align-items:center;gap:.9rem;min-height:4rem;padding:.6rem 1rem}
-.pic.sm{width:2.5rem;height:2.5rem;border-radius:var(--sh-s)}
-.pic.sm.lu svg{width:1.6rem;height:1.6rem}
-.pic.sm.ini{font-size:1.05rem}
-.pic.sm .ic{width:1.35rem;height:1.35rem}
-.cn{flex:1;min-width:0;font:var(--t-title-m)}
-.cn small{display:block;font:var(--t-body-m);color:var(--md-on-surface-variant)}
-.cq{flex:none;color:var(--md-primary);white-space:nowrap}
-/* M3 filter chips (single choice): a check and a tonal fill when picked */
-.chips{display:flex;flex-wrap:wrap;gap:.5rem}
-.chip{display:inline-flex;align-items:center;gap:.4rem;min-height:2.75rem;padding:0 1rem;border:0;border-radius:var(--sh-s);
-  background:transparent;color:var(--md-on-surface-variant);box-shadow:inset 0 0 0 1px var(--md-outline);font:var(--t-label-l)}
-.chip .ic{width:1.25rem;height:1.25rem}
-.chip.on{padding-left:.65rem;background:var(--md-secondary-container);color:var(--md-on-secondary-container);box-shadow:none}
-.sizehead{display:flex;align-items:center;gap:1rem;margin:0 .25rem 1rem}
-.sizehead .nm{font:var(--t-headline-s)}
-.sizehead .q{display:block;font:var(--t-body-l);color:var(--md-on-surface-variant)}
-
-/* voice: recorded, played back, then sent as a sound file */
-.micbig{width:100%;min-height:5rem;font-size:1.25rem;background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
-.micbig .ic{width:1.75rem;height:1.75rem}
-.micbig.on,#testRec.on{background:var(--md-error-container);color:var(--md-on-error-container);box-shadow:none}
-.vmsg{margin:0 .25rem 1rem}
-/* a bar that moves with the voice, so the parent sees the phone is hearing them */
-.level{height:.6rem;margin:.9rem .25rem 0;border-radius:999px;background:var(--md-surface-container-highest);overflow:hidden}
-.level span{display:block;width:0;height:100%;border-radius:inherit;background:var(--md-error);transition:width .08s linear}
-.vdone{display:flex;flex-direction:column;gap:.6rem}
-.vdone .btn.outlined{min-height:3.25rem}
-.step .play{color:var(--md-on-surface-variant);box-shadow:inset 0 0 0 1px var(--md-outline)}
-.row.sel .step .play{color:var(--md-on-primary-container);box-shadow:inset 0 0 0 1px var(--md-on-primary-container)}
-.dot{display:inline-block;flex:none;width:1rem;height:1rem;border-radius:50%;background:var(--md-error);animation:blink 1s infinite}
-@keyframes blink{50%{opacity:.25}}
-.msg{min-height:1.5rem;margin:.75rem .25rem 0;font:var(--t-body-l);color:var(--md-on-surface-variant)}
-/* M3 outlined text field: the label sits inside, then floats onto the border */
-.tf{position:relative;display:block;margin:0 0 1.25rem}
-.tf input,.tf textarea{display:block;width:100%;min-height:3.5rem;margin:0;padding:0 1rem;border:0;border-radius:var(--sh-xs);outline:none;
-  background:transparent;box-shadow:inset 0 0 0 1px var(--md-outline);font:var(--t-body-l);color:var(--md-on-surface)}
-.tf textarea{min-height:7rem;padding:1rem;resize:vertical;font-size:1.15rem}
-#voiceText{font-size:1.35rem;line-height:1.5}
-#settings .tf > span{background:var(--page)}
-.tf input:focus,.tf textarea:focus{box-shadow:inset 0 0 0 2px var(--md-primary)}
-.tf > span{position:absolute;left:.75rem;top:1.75rem;transform:translateY(-50%);padding:0 .25rem;background:var(--sheet);color:var(--md-on-surface-variant);
-  font:var(--t-body-l);line-height:1.2;pointer-events:none;transition:top .15s var(--ease),font-size .15s var(--ease),color .15s}
-.tf :focus + span,.tf :not(:placeholder-shown) + span{top:0;font-size:.75rem}
-.tf :focus + span{color:var(--md-primary)}
-.tf small{display:block;padding:.3rem 1rem 0;font:var(--t-body-m);color:var(--md-on-surface-variant)}
-
-/* snackbar: above the toolbar, or at the top while a sheet is open; bigger than M3's, and it rises in so it is noticed */
-#toast{position:fixed;left:.75rem;right:.75rem;bottom:calc(var(--barH) + .75rem);z-index:90;max-width:600px;margin:0 auto;
-  display:flex;align-items:center;gap:.35rem;min-height:4rem;padding:.6rem .35rem .6rem 1.1rem;border-radius:var(--sh-xs);
-  background:var(--md-inverse-surface);color:var(--md-inverse-on-surface);font:var(--t-body-l);font-size:1.1rem;box-shadow:0 4px 14px rgba(0,0,0,.35);
-  animation:toastIn .3s var(--ease-in)}
-@keyframes toastIn{from{opacity:0;transform:translateY(14px) scale(.96)}}
-html.lock #toast{top:calc(.75rem + env(safe-area-inset-top));bottom:auto}
-html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom))}
-#toast .tmsg{flex:1}
-/* a message that would wrap beside its button gets the whole line, and the button goes under it */
-#toast.two{flex-wrap:wrap;row-gap:0}
-#toast.two .tmsg{flex-basis:calc(100% - 3.5rem)}
-#toast.two .tclose{order:1}
-#toast.two .tact{order:2;margin-left:auto}
-#toast .tact{flex:none;min-height:3rem;padding:0 .8rem;border:0;border-radius:999px;background:transparent;color:var(--md-inverse-primary);font:var(--t-label-l)}
-#toast .tclose{color:var(--md-inverse-on-surface)}
-
-/* 家族の設定 */
-#settings{padding-bottom:3rem}
-.topbar{position:sticky;top:0;z-index:5;padding-top:env(safe-area-inset-top);background:var(--page)}
-.topbar .wrap{display:flex;align-items:center;gap:.35rem;min-height:4rem}
-.topbar h1{margin:0;font:var(--t-title-l);font-size:1.375rem}
-.sh{margin:1.75rem .25rem .6rem;font:var(--t-title-m);color:var(--md-primary)}
-.btnrow{display:flex;flex-wrap:wrap;gap:.5rem}
-.sgrp h3{display:flex;justify-content:space-between;margin:1.1rem .25rem .45rem;font:var(--t-title-m);font-size:.95rem;color:var(--md-on-surface-variant)}
-.srow{display:flex;align-items:center;gap:.25rem;min-height:4.25rem;padding:.35rem .5rem .35rem .4rem}
-.srow.empty{padding:.75rem 1rem;color:var(--md-on-surface-variant)}
-.sedit{flex:1;min-width:0;display:flex;align-items:center;gap:.8rem;min-height:3.5rem;padding:.35rem .5rem;border:0;border-radius:var(--sh-m);background:none;text-align:left}
-.stx{flex:1;min-width:0;display:flex;flex-direction:column;padding-left:.35rem}
-.stx b{font:var(--t-title-m)}
-.stx small{font:var(--t-body-m);font-size:.8rem;color:var(--md-on-surface-variant)}
-.sedit .stx{padding-left:0}
-.mv{display:flex;flex:none}
-.srow .btn{flex:none;min-height:2.75rem;padding:0 1rem;font-size:.95rem}
-/* connected button group (M3 Expressive): 2dp apart, round outside, small corners inside; the picked one rounds out */
-.seg{display:flex;gap:3px}
-.seg button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.3rem;min-height:3.25rem;padding:0 .6rem;border:0;border-radius:var(--sh-s);
-  background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);font:var(--t-label-l);transition:border-radius .2s var(--ease)}
-.seg button:first-child{border-radius:999px var(--sh-s) var(--sh-s) 999px}
-.seg button:last-child{border-radius:var(--sh-s) 999px 999px var(--sh-s)}
-.seg button.on{border-radius:999px;background:var(--md-primary);color:var(--md-on-primary)}
-.seg button .ic{display:none;width:1.2rem;height:1.2rem}
-.seg button.on .ic{display:block}
-.sizeprev{margin:.75rem 0 0;padding:.75rem 1rem;border-radius:var(--sh-m);background:var(--item);box-shadow:inset 0 0 0 1px var(--md-outline-variant);font-weight:500;line-height:1.35}
-.ver{margin-top:2rem;text-align:center;font:var(--t-body-m);color:var(--md-on-surface-variant)}
-
-/* item editor */
-.fl{margin:0 0 1.4rem}
-.fl-t{display:block;margin:0 .25rem .55rem;font:var(--t-title-m);color:var(--md-on-surface-variant)}
-.fl > small,.fl-help{display:block;margin:.4rem .25rem 0;font:var(--t-body-m);color:var(--md-on-surface-variant)}
-.picrow{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
-.pics{display:grid;grid-template-columns:repeat(auto-fill,minmax(3rem,1fr));gap:.3rem;max-height:12.5rem;overflow-y:auto;margin-top:.7rem;padding:.4rem;
-  border-radius:var(--sh-m);background:var(--item)}
-.pics button{display:flex;align-items:center;justify-content:center;height:3rem;padding:0;border:0;border-radius:var(--sh-s);background:var(--hb,none);color:var(--hf,inherit)}
-.pics button svg{width:1.75rem;height:1.75rem}
-.pics button.on{box-shadow:inset 0 0 0 3px var(--md-primary)}
-.pics .ini{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:var(--sh-s);
-  background:var(--md-secondary-container);color:var(--md-on-secondary-container);font:600 1rem/1 var(--font)}
-.addrow{display:flex;align-items:flex-start;gap:.5rem;margin-top:.7rem}
-.addrow .tf{flex:1;margin:0}
-.addrow .btn{min-height:3.5rem}
-.fl .tf.inline{margin:.7rem 0 0}
-/* M3 input chips: the size, and an × to take it away */
-.tag{display:inline-flex;align-items:center;gap:.15rem;min-height:2.75rem;padding:0 .25rem 0 1rem;border-radius:var(--sh-s);
-  background:var(--md-secondary-container);color:var(--md-on-secondary-container);font:var(--t-label-l)}
-.tag button{display:inline-flex;align-items:center;justify-content:center;width:2.4rem;height:2.4rem;padding:0;border:0;border-radius:50%;background:none;color:inherit}
-.tag .ic{width:1.2rem;height:1.2rem}
-
-/* a save that failed stays in view until it goes through */
-.savebar{position:fixed;left:0;right:0;top:0;z-index:95;padding:calc(.75rem + env(safe-area-inset-top)) 0 .75rem;
-  background:var(--md-error-container);color:var(--md-on-error-container);box-shadow:0 2px 12px rgba(0,0,0,.25)}
-.savebar p{margin:0 .25rem .6rem;font:var(--t-body-m);font-size:.95rem}
-/* backups and data: a card that asks for a backup while one is due, quiet once it is done */
-.card{margin:.6rem 0 0;padding:1rem;border-radius:var(--sh-l);background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
-.card.ok{background:var(--item);color:var(--md-on-surface);box-shadow:inset 0 0 0 1px var(--md-outline-variant)}
-.card p{margin:0 0 .75rem;font:var(--t-body-m);font-size:.95rem}
-.card.ok p{margin-bottom:.5rem}
-.card.warn{background:var(--md-error-container);color:var(--md-on-error-container)}
-.homenote{margin-top:1.25rem;color:var(--md-on-surface-variant)}
-.warnnote{color:var(--md-error)}
-.photohint{display:block;margin:.4rem .25rem 0;color:var(--md-on-surface-variant)}
-.facts{margin:.25rem 0 .75rem;padding-left:1.3rem;font:var(--t-body-m);color:var(--md-on-surface-variant)}
-.facts li{margin:.35rem 0}
-.datarow{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:.75rem 0}
-.datarow p{flex:1 1 12rem;margin:0 .25rem;font:var(--t-body-m);color:var(--md-on-surface-variant)}
-.sh.danger-h{color:var(--md-error)}
-.btn.outlined.danger-o{color:var(--md-error);box-shadow:inset 0 0 0 1px var(--md-error)}
-.btn.hold.danger-o::after{background:var(--md-error)}
-</style>
+<link rel="stylesheet" href="style.css?v=1.9">
 </head>
 <body>
 
@@ -422,6 +29,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 
 <main id="home">
   <header class="appbar wrap"><h1>かいものメモ</h1><p class="sub" id="today"></p></header>
+  <p class="wrap placenote" id="placeNote" role="alert" hidden></p>
   <p class="how wrap" id="how"></p>
   <div class="wrap"><button type="button" id="sameBtn" class="same sl" hidden><span data-ic="history"></span><span class="same-txt"><b>まえと おなじものを 入れる</b><small id="sameDate"></small></span></button></div>
   <section id="extrasSec" class="wrap" hidden><h2 class="gh">ほかに たのむもの</h2><ul id="extrasList" class="rows"></ul></section>
@@ -466,7 +74,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <div class="seg" id="sendSeg"><button type="button" class="sl" data-v="line"><span data-ic="check"></span>LINEを ひらく</button><button type="button" class="sl" data-v="share"><span data-ic="check"></span>共有メニュー</button></div>
     <p class="note">「LINEで 送る」を 押したときの 動き方です。LINE が うまく ひらかないときは「共有メニュー」に して、出てきた中から LINE を えらんでください。「LINEを ひらく」は 送る 文を アドレスに 入れて 渡すので、スマホに よっては 履歴などに 残る ことが あります。声の メッセージが あるときは、音声ファイルを 渡すため いつも 共有メニューで 送ります。</p>
     <a id="testSend" class="btn outlined sl" href="#" target="_blank" rel="noopener"><span data-ic="send"></span>ためしに 送ってみる</a>
-    <label class="tf" style="margin-top:1.4rem"><input id="toName" type="text" maxlength="20" autocomplete="off" placeholder=" "><span>送る相手の 名前（LINEに 出る 名前）</span><small>送る前の 画面に「①（この名前）を 押す ② 送信を 押す」と 出ます。LINEで この人を お気に入りに しておくと、見つけやすく なります。</small></label>
+    <label class="mt-xl tf"><input id="toName" type="text" maxlength="20" autocomplete="off" placeholder=" "><span>送る相手の 名前（LINEに 出る 名前）</span><small>送る前の 画面に「①（この名前）を 押す ② 送信を 押す」と 出ます。LINEで この人を お気に入りに しておくと、見つけやすく なります。グループでは なく、その人の 名前に して ください。</small></label>
 
     <h2 class="sh">画面の 色</h2>
     <div class="seg" id="themeSeg"><button type="button" class="sl" data-v="light"><span data-ic="check"></span>明るい</button><button type="button" class="sl" data-v="dark"><span data-ic="check"></span>暗い</button><button type="button" class="sl" data-v="auto"><span data-ic="check"></span>自動</button></div>
@@ -476,7 +84,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <p class="note" id="recNote"></p>
     <button type="button" id="testRec" class="btn outlined sl"></button>
     <p class="msg" id="testRecMsg" aria-live="polite"></p>
-    <div class="btnrow" id="testRecDone" hidden style="margin-top:.6rem">
+    <div class="mt-s btnrow" id="testRecDone" hidden>
       <button type="button" id="testRecPlay" class="btn tonal sl"></button>
       <button type="button" id="testVoiceSend" class="btn outlined sl"><span data-ic="send"></span>この声を ためしに 送る</button>
     </div>
@@ -488,14 +96,14 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <h2 class="sh" id="backupSec">バックアップ</h2>
     <p class="note">品物と 写真と 設定を、ファイルに して 残します。スマホが こわれたり、機種を かえたり したときに 読みこめば 戻せます。この スマホの 中だけだと、スマホと いっしょに 消えて しまうので、Google ドライブなど スマホの 外に 置いて ください。LINEの トークや Keepメモに 置いた ファイルは、しばらくすると 開けなく なる ことが あるので、バックアップには 使わないで ください。</p>
     <div class="chips" id="backupHistBox"></div>
-    <div class="btnrow" style="margin-top:.75rem"><button type="button" id="backupShare" class="btn filled sl"><span data-ic="cloud-upload"></span>Google ドライブに 保存</button><button type="button" id="verifyBtn" class="btn outlined sl"><span data-ic="file-check"></span>バックアップを たしかめる</button></div>
+    <div class="mt-m btnrow"><button type="button" id="backupShare" class="btn filled sl"><span data-ic="cloud-upload"></span>Google ドライブに 保存</button><button type="button" id="verifyBtn" class="btn outlined sl"><span data-ic="file-check"></span>バックアップを たしかめる</button></div>
     <p class="note">「Google ドライブに 保存」を 押すと、共有の メニューが 出ます。「ドライブ」を えらんで「保存」を 押して ください。保存したら「バックアップを たしかめる」で その ファイルを えらぶと、ちゃんと 読めるか 見られます（いまの データは 変わりません）。</p>
-    <div class="btnrow" style="margin-top:.6rem"><button type="button" id="exportBtn" class="btn outlined sl"><span data-ic="download"></span>この スマホに 書き出す</button><button type="button" id="importBtn" class="btn outlined sl"><span data-ic="upload"></span>ファイルから 読みこむ</button><button type="button" id="undoImport" class="btn text sl" hidden><span data-ic="history"></span><span class="lbl">読みこむ前に もどす</span></button></div>
+    <div class="mt-s btnrow"><button type="button" id="exportBtn" class="btn outlined sl"><span data-ic="download"></span>この スマホに 書き出す</button><button type="button" id="importBtn" class="btn outlined sl"><span data-ic="upload"></span>ファイルから 読みこむ</button><button type="button" id="undoImport" class="btn text sl" hidden><span data-ic="history"></span><span class="lbl">読みこむ前に もどす</span></button></div>
     <p class="note">ドライブには 新しい 3つほど 残して、古い バックアップは けして かまいません。パスワードを かけた ファイルは、アプリが なくても <a href="tools/open-backup.html" target="_blank" rel="noopener">開く ページ</a> で 開けます（その ページは 保存して おけます）。</p>
     <p class="note">「この スマホに 書き出す」は、スマホの「ダウンロード」に 置きます。ここは ほかの アプリからも 見える 場所なので、ドライブに 入れたら、ファイルアプリの「ダウンロード」から けして おくと 安心です。<span id="dlState"></span></p>
     <input type="file" id="importFile" accept=".json,.txt,application/json,text/plain" hidden>
     <input type="file" id="verifyFile" accept=".json,.txt,application/json,text/plain" hidden>
-    <p class="note" id="persistNote" style="margin-top:1rem"></p>
+    <p class="mt-l note" id="persistNote"></p>
     <button type="button" id="persistBtn" class="btn tonal sl" hidden>消えにくく する</button>
     <p class="note" id="usage"></p>
 
@@ -503,6 +111,13 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <p class="note">週に 1回（中身が かわった ときだけ）と、アプリが 新しく なる 前に、この スマホの 中に 自動で 控えを 取ります（週の 控えは 3つ、新しく なる 前の 控えは 2つまで）。品物や 写真を まちがえて かえた ときに 戻せます。スマホが こわれると 控えも 消えるので、バックアップも して ください。</p>
     <ul class="slist" id="copyList"></ul>
     <button type="button" id="clearCopies" class="btn text sl" hidden><span data-ic="trash-2"></span>控えを ぜんぶ けす</button>
+    <p class="lbl-above note">控えを 残す 日数</p>
+    <div class="seg" id="copyDaysSeg"><button type="button" class="sl" data-v="30"><span data-ic="check"></span>30日</button><button type="button" class="sl" data-v="60"><span data-ic="check"></span>60日</button><button type="button" class="sl" data-v="90"><span data-ic="check"></span>90日</button></div>
+
+    <h2 class="sh">この スマホの チェック</h2>
+    <p class="note">保存・写真・録音・共有・パスワードが、この スマホで 使えるかを その場で ためします（いまの データは 変わりません）。親の スマホで 一度 ためして おくと 安心です。</p>
+    <button type="button" id="selfCheck" class="btn outlined sl"><span data-ic="file-check"></span>チェックする</button>
+    <ul class="checks" id="checkList"></ul>
 
     <h2 class="sh">家族の設定の 暗証番号</h2>
     <p class="note" id="pinState"></p>
@@ -514,16 +129,21 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
       <li>外に 出るのは、「LINEで 送る」を 押して LINE で 送信した ときの、リストの 文と 声の ファイルだけです。</li>
       <li id="factKeep">送った記録は 3か月、送らなかった 録音は 7日で、自動で けします。</li>
       <li>写真は 保存する ときに 描き直すので、撮った 場所などの 情報は 残りません。名前や 住所が 写らない ように 撮って ください（くすりの 袋や 届いた 箱の ラベルなど）。</li>
+      <li>Chrome の 設定で「閲覧データ」や「サイトの データ」を 消すと、この アプリの データも 消えます。消す 前に バックアップを して ください。お店などで スマホの 片づけを たのむ ときも 同じです。</li>
+      <li>スマホを なくした ときは、Google の「デバイスを 探す」で スマホの 中身を 遠くから 消せます。</li>
+      <li>送って いない 声の メッセージは、バックアップに 入りません（送るまでの あいだだけ この スマホに 残ります）。</li>
+      <li>送った リストは、相手の スマホの 通知にも 出る ことが あります。気に なる ときは、相手の LINE の 通知で メッセージの 内容を 出さない 設定に して もらって ください。</li>
+      <li>送る 相手は、1人と 話す トークに して ください。グループに 送ると、全員に 届きます。</li>
       <li>スマホには 画面ロック（暗証番号や 指紋）を かけて おいて ください。かけて いないと、スマホを 拾った 人が 写真や 記録を 見られます。</li>
       <li>送り方が「LINEを ひらく」の ときは、送る 文を LINE の アドレスに 入れて 渡します。スマホに よっては、ブラウザの 履歴などに 残る ことが あります。気に なる ときは「共有メニュー」に して ください。</li>
       <li>バックアップの ファイルには、品物と 写真と 設定（えらんだ ときは 送った記録も）が 入ります。置いた 場所で 大切に 保管して ください。</li>
       <li>書き出した ファイルや ドライブの バックアップは、この アプリの「データを ぜんぶ けす」では 消えません。</li>
-      <li>この スマホの 中には、自動の 控え（週の 控え 3つと、新しく なる 前の 控え 2つ。60日まで）、けした 品物（30日）、ファイルを 読みこむ 前の 状態（7日）も 残ります。「送った記録を けす」は 控えの 中の 記録も けします。「データを ぜんぶ けす」は これらも ぜんぶ けします。</li>
+      <li id="factCopies">この スマホの 中には、自動の 控え（週の 控え 3つと、新しく なる 前の 控え 2つ。60日まで）、けした 品物（30日）、ファイルを 読みこむ 前の 状態（7日）も 残ります。「送った記録を けす」は 控えの 中の 記録も けします。「データを ぜんぶ けす」は これらも ぜんぶ けします。</li>
       <li>パスワードを かけた バックアップは、パスワードを 知って いる 人しか 読めません。</li>
       <li>古い 記録や 控えは、スマホの 時計で 日数を 数えて 片づけます。時計が 大きく ずれて いる ときは、片づけを 止めます。</li>
     </ul>
     <p class="note warnnote" id="clockNote" hidden>スマホの 時計が ずれて いるようです。日付と 時刻を たしかめて ください。合うまで、古い 記録や 控えを 日付で けすのは 止めて います。</p>
-    <p class="note" style="margin:1rem .25rem .45rem">送った 記録を 残す 長さ</p>
+    <p class="lbl-above note">送った 記録を 残す 長さ</p>
     <div class="seg" id="keepSeg"><button type="button" class="sl" data-v="one"><span data-ic="check"></span>1回分</button><button type="button" class="sl" data-v="month"><span data-ic="check"></span>1か月</button><button type="button" class="sl" data-v="three"><span data-ic="check"></span>3か月</button></div>
     <div class="datarow"><p id="histState"></p><button type="button" id="clearHist" class="btn outlined sl"><span data-ic="trash-2"></span>送った記録を けす</button></div>
     <div class="datarow"><p id="voiceState"></p><button type="button" id="clearVoices" class="btn outlined sl"><span data-ic="trash-2"></span>録音を ぜんぶ けす</button></div>
@@ -532,7 +152,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <p class="note">スマホを 人に ゆずる ときなどに。品物・写真・送った記録・録音・設定を ぜんぶ けして、はじめの 状態に 戻します。先に バックアップを しておけば、あとで 読みこんで 戻せます。書き出した ファイルや ドライブの バックアップは 残ります。</p>
     <button type="button" id="wipeAll" class="btn danger sl"><span data-ic="trash-2"></span>データを ぜんぶ けす</button>
 
-    <p class="ver">かいものメモ 1.8</p>
+    <p class="ver">かいものメモ 1.9</p>
   </div>
 </section>
 
@@ -581,7 +201,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
       <button type="button" id="recPlay" class="btn tonal big sl"></button>
       <button type="button" id="recAgain" class="btn outlined sl"><span data-ic="rotate-ccw"></span>とりなおす</button>
     </div>
-    <div id="typeBox" hidden><label class="tf" style="margin:1rem 0 0"><textarea id="voiceText" rows="3" placeholder=" "></textarea><span>ほしいもの（文字で）</span></label></div>
+    <div id="typeBox" hidden><label class="mt-only tf"><textarea id="voiceText" rows="3" placeholder=" "></textarea><span>ほしいもの（文字で）</span></label></div>
     <div class="acts">
       <button type="button" id="voiceAdd" class="btn filled big sl"><span data-ic="plus"></span>リストに 入れる</button>
       <button type="button" class="btn outlined big sl" data-close>やめる</button>
@@ -679,6 +299,20 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
   </div></div>
 </div>
 
+<div class="layer" id="sh-peek" hidden role="dialog" aria-modal="true" aria-labelledby="peekTitle">
+  <div class="scrim" data-close></div>
+  <div class="sheet split">
+    <div class="sheet-body"><div class="wrap">
+      <h2 id="peekTitle"></h2>
+      <p class="note" id="peekText"></p>
+      <ul class="slist" id="peekList"></ul>
+    </div></div>
+    <div class="sheet-foot"><div class="wrap">
+      <div class="acts"><button type="button" class="btn outlined big sl" data-close>とじる</button></div>
+    </div></div>
+  </div>
+</div>
+
 <div class="layer dialog" id="sh-pass" hidden role="dialog" aria-modal="true" aria-labelledby="passTitle">
   <div class="scrim" data-close></div>
   <div class="sheet"><div class="wrap">
@@ -686,6 +320,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <p class="note" id="passText"></p>
     <label class="tf"><input id="passIn" type="password" autocomplete="new-password" maxlength="64" placeholder=" "><span id="passLabel">パスワード</span><small id="passHint"></small></label>
     <label class="tf" id="passAgainBox"><input id="passAgain" type="password" autocomplete="new-password" maxlength="64" placeholder=" "><span>もう一度</span><small>同じ パスワードを もう一度</small></label>
+    <label class="tf" id="passHintBox" hidden><input id="passHintIn" type="text" maxlength="40" autocomplete="off" placeholder=" "><span>ヒント（なくても よい）</span><small>どこに 書いて しまったか など。パスワード そのものは 書かないで ください</small></label>
     <p class="msg" id="passMsg" aria-live="polite"></p>
     <div class="acts">
       <button type="button" id="passOk" class="btn filled big sl">つぎへ</button>
@@ -696,6 +331,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="app.js?v=1.8"></script>
+<script src="check.js?v=1.9"></script>
+<script src="app.js?v=1.9"></script>
 </body>
 </html>

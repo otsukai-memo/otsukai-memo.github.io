@@ -1,0 +1,28 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>かいものメモ: オフラインの テスト（その1）</title>
+<!-- not published: the publish check opens this first, so the offline copy is made; then it stops the server and
+     opens index.html again, which must come from that copy -->
+<pre id="out">start</pre>
+<img hidden src="/__sleep?ms=12000" alt="">
+<script>
+(async () => {
+  const out = document.getElementById('out');
+  const log = s => { out.textContent += '\n' + s; };
+  try {
+    await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+    const f = document.createElement('iframe');
+    f.src = '/index.html';
+    document.body.appendChild(f);
+    await new Promise(r => { f.onload = r; });
+    await new Promise(r => setTimeout(r, 2500));
+    const names = await caches.keys();
+    const c = names.length ? await caches.open(names[names.length - 1]) : null;
+    const have = c ? (await c.keys()).map(r => new URL(r.url).pathname) : [];
+    log('controlled ' + !!f.contentWindow.navigator.serviceWorker.controller);
+    log('cached ' + have.join(' '));
+    if (['/index.html', '/app.js', '/check.js', '/style.css'].every(p => have.includes(p))) log('SW READY');
+  } catch (e) { log('ERR ' + e.message); }
+})();
+</script>

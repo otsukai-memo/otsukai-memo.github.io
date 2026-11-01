@@ -1,0 +1,50 @@
+# 毎日1回、公開中のサイトを開いて確かめる。おかしければ Issue を立てる（GitHub からメールが届く）。
+# Every morning: the live site must serve the version on main and show the parent's list. When it doesn't, an issue
+# is opened (one at a time, labelled "watch"), which GitHub mails to the owner.
+name: watch the live site
+
+on:
+  schedule:
+    - cron: '0 21 * * *' # 6:00 in Japan
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    env:
+      LC_ALL: C.UTF-8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: the live site serves this version and starts
+        id: look
+        run: |
+          v=$(grep -oP "APP_VER = '\K[0-9.]+" app.js)
+          site=https://otsukai-memo.github.io
+          if ! curl -fsS "$site/?v=$(date +%s)" -o page.html; then echo "problem=サイトが 開けません" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if ! grep -q "かいものメモ $v</p>" page.html; then echo "problem=公開中の 版が $v では ありません" >> "$GITHUB_OUTPUT"; exit 0; fi
+          for f in "app.js?v=$v" "check.js?v=$v" "style.css?v=$v" sw.js manifest.webmanifest tools/open-backup.html; do
+            if ! curl -fsS -o /dev/null "$site/$f"; then echo "problem=$f が 開けません" >> "$GITHUB_OUTPUT"; exit 0; fi
+          done
+          google-chrome --headless=new --no-sandbox --disable-gpu --virtual-time-budget=8000 --dump-dom "$site/" > live.html 2>/dev/null || true
+          rows=$(grep -o 'class="row' live.html | wc -l)
+          if [ "$rows" -lt 10 ]; then echo "problem=親の 画面に 品物が 出ません（$rows）" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "all good: $v, $rows rows"
+      - name: tell the family
+        if: steps.look.outputs.problem != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROBLEM: ${{ steps.look.outputs.problem }}
+        run: |
+          gh label create watch --repo "$GITHUB_REPOSITORY" --color d93f0b --description "毎日の 見回り" --force
+          if [ -n "$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --label watch --json number --jq '.[0].number')" ]; then
+            echo "an issue is already open"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --label watch --title "公開中の サイトに 問題: $PROBLEM" \
+              --body "毎日の 見回りで 見つかりました（$(date -u +%Y-%m-%dT%H:%MZ)）。README の「まちがった 版を 出して しまった とき」を 見て ください。"
+          fi
+          exit 1

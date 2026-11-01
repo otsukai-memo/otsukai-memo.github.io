@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-xa0TQp/CSOdcdlTad6FmDtv1JHg2dVh43enW8hBLy54='; style-src 'sha256-T+cNcdryRPe66BUwJwpPzPXu7Ca9jwitFasq/AAvR60='; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-66Dy1MAoaF++9qUYVOf8gF/RRcCSto3BzmGzcIY7GCg='; style-src 'sha256-T+cNcdryRPe66BUwJwpPzPXu7Ca9jwitFasq/AAvR60='; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>かいものメモ：パスワードつきの バックアップを 開く</title>
 <style>
@@ -28,6 +28,7 @@ ul{padding-left:1.3rem}
 <input id="file" type="file" accept=".txt,.json,text/plain,application/json">
 <label for="pass">パスワード</label>
 <input id="pass" type="password" autocomplete="off">
+<p id="hint" class="note"></p>
 <button id="go" type="button">開く</button>
 <p id="msg" role="status"></p>
 <section id="out" hidden>
@@ -41,7 +42,7 @@ ul{padding-left:1.3rem}
 <script>
 (() => {
 'use strict';
-// the format: { app: 'kaimono', version: 1, locked: { cipher: 'AES-GCM', kdf: 'PBKDF2-SHA256', iter, salt, iv }, data }
+// the format: { app: 'kaimono', version: 1, locked: { cipher: 'AES-GCM', kdf: 'PBKDF2-SHA256', iter, salt, iv, hint? }, data }
 // data is the backup's JSON text encrypted with AES-GCM (256-bit key from PBKDF2-SHA256 over the password); all base64
 const $ = s => document.querySelector(s);
 const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
@@ -53,6 +54,13 @@ async function unlock(locked, data, pass) {
   return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(locked.iv) }, key, unb64(data)));
 }
 let url = '';
+// a hint written when the backup was made (never the password itself) shows as soon as the file is chosen
+$('#file').addEventListener('change', async () => {
+  $('#hint').textContent = '';
+  const f = $('#file').files[0];
+  if (!f) return;
+  try { const d = JSON.parse(await f.text()); if (d && d.locked && d.locked.hint) $('#hint').textContent = 'ヒント：' + String(d.locked.hint).slice(0, 40); } catch (e) {}
+});
 $('#go').addEventListener('click', async () => {
   const f = $('#file').files[0];
   $('#out').hidden = true;
@@ -65,7 +73,7 @@ $('#go').addEventListener('click', async () => {
     if (!$('#pass').value) { say('パスワードを 入れて ください。'); return; }
     say('開いて います…');
     try { text = await unlock(d.locked, d.data, $('#pass').value); plain = JSON.parse(text); }
-    catch (e) { say('パスワードが ちがう ようです。'); return; }
+    catch (e) { say('パスワードが ちがう ようです。' + (d.locked.hint ? 'ヒント：' + String(d.locked.hint).slice(0, 40) : '')); return; }
   }
   const items = Array.isArray(plain.items) ? plain.items : [];
   const at = Date.parse(plain.exportedAt);

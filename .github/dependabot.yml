@@ -1,0 +1,7 @@
+# The Actions in .github/workflows are pinned to commits; Dependabot opens a pull request when there are new ones.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

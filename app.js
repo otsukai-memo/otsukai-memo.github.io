@@ -1,8 +1,10 @@
 // かいものメモ: the app itself. It lives apart from index.html so the page's CSP can refuse every script written
 // into the page (script-src 'self'): words read in from a backup file can never run as a program.
-// When APP_VER changes, change ?v= on the script tag in index.html too, so no old copy of this file is used.
+// When APP_VER changes, change ?v= on the script, check.js and style.css tags in index.html too, so no old copy is used.
 (() => {
 'use strict';
+// check.js found this browser too old, or the page inside another site's page: nothing runs
+if (window.kaimonoStop) return;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 // Lucide (lucide.dev, lucide-static 1.66.0), ISC License; a few come from Feather, MIT License: see LICENSE-lucide.txt.
@@ -43,7 +45,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.8';
+const APP_VER = '1.9';
 const DAY = 864e5;
 
 const GROUPS = [
@@ -277,7 +279,8 @@ const VOICE_DAYS = 7;
 const MAX_ITEMS = 200, MAX_LINES = 100, MAX_EXTRAS = 30;
 // to: the family member's name as LINE shows it; theme: light unless the family picks dark or 自動
 // lock: backups get a password; keep: how long sent lists stay (one: only the newest, for まえと おなじ)
-const defaultSettings = () => ({ size: 'm', send: 'line', theme: 'light', to: '', lock: false, keep: 'three' });
+// copyDays: how long the automatic copies stay
+const defaultSettings = () => ({ size: 'm', send: 'line', theme: 'light', to: '', lock: false, keep: 'three', copyDays: 60 });
 const KEEP_DAYS = { month: 30, three: 90 };
 // stored data that can't be read (all of it, or some entries) is noted here, kept aside at start, and never
 // written over in silence
@@ -341,6 +344,29 @@ function trimHist() {
   const n = hist.length;
   hist = keptHist(hist);
   if (hist.length !== n) save('history', hist);
+  if (syncStats()) save('items', items);
+}
+// when the family keeps less than three months, each item's count and last day come from the lists still kept,
+// so nothing older stays behind in the items
+function syncStats() {
+  if (settings.keep === 'three') return false;
+  const st = statsOf(hist);
+  let changed = false;
+  for (const it of items) {
+    const s = st.get(it.id) || { count: 0, lastAt: 0 };
+    if (it.count !== s.count || it.lastAt !== s.lastAt) { it.count = s.count; it.lastAt = s.lastAt; changed = true; }
+  }
+  return changed;
+}
+function statsOf(list) {
+  const st = new Map();
+  for (const h of list) for (const id of new Set((h.lines || []).map(l => l.id))) {
+    const s = st.get(id) || { count: 0, lastAt: 0 };
+    s.count++;
+    s.lastAt = Math.max(s.lastAt, +h.at || 0);
+    st.set(id, s);
+  }
+  return st;
 }
 function noteChange() { backupInfo.changes++; save('backup', backupInfo); if (!$('#settings').hidden) paintBackupState(); }
 
@@ -1086,7 +1112,8 @@ $('#whenChips').addEventListener('click', e => {
 // whether the message really went out is only known to the parent, so the app asks once they come back
 let wentAway = false, askTimer = 0;
 function markPending(text) {
-  pending = { at: Date.now(), text, cart: clone(cart) };
+  // the list is kept (the message text says the same in more words, so it isn't)
+  pending = { at: Date.now(), cart: clone(cart) };
   save('pending', pending);
   wentAway = false;
   clearTimeout(askTimer);
@@ -1155,6 +1182,7 @@ function markSent() {
   save('history', hist);
   const ids = new Set(lines.map(l => l.id));
   items.forEach(it => { if (ids.has(it.id)) { it.count++; it.lastAt = now; } });
+  syncStats();
   save('items', items);
   cart = fixCart(null);
   saveCart();
@@ -1223,6 +1251,38 @@ let homeScroll = 0;
 $('#openSettings').addEventListener('click', async () => {
   if (await ask('ご家族用の 設定です', '品物の 登録や、送り方の 設定を します。ご家族の方は「ひらく」を 押したまま 2びょう まって ください。', 'ひらく（押したまま）', 'もどる', { gate: true }) && await pinOK()) openSettings();
 });
+/* ---------- この スマホの チェック: what this phone can do, tried on the spot, nothing kept ---------- */
+$('#selfCheck').addEventListener('click', async () => {
+  const out = [];
+  // the advice shows only for what isn't working
+  const row = (ok, name, hint = '') => out.push(`<li class="${ok === true ? 'ok' : ok === false ? 'ng' : 'mid'}"><b>${ok === true ? '○' : ok === false ? '×' : '△'} ${name}</b>${hint && ok !== true ? `<small>${hint}</small>` : ''}</li>`);
+  const tryIt = async f => { try { return !!(await f()); } catch (e) { return false; } };
+  $('#checkList').innerHTML = '<li><b>ためして います…</b></li>';
+  row(!PLACE, 'いつもの ブラウザで ひらいて いる', PLACE ? 'LINE の 中などでは データが 別に なります。ホーム画面の アイコンから ひらいて ください。' : '');
+  row(standalone() ? true : null, 'ホーム画面の アイコンから ひらいて いる', standalone() ? '' : 'アイコンを 作ると、データが 消えにくく なります（家族の設定 → ホーム画面に アイコンを 置く）。');
+  row(await tryIt(async () => { localStorage.setItem(KEY + 'selftest', '1'); const ok = localStorage.getItem(KEY + 'selftest') === '1'; localStorage.removeItem(KEY + 'selftest'); return ok; }), '品物や 記録を 保存できる', 'スマホの 空きを ふやして ください。');
+  row(await tryIt(async () => { await idbPut('snaps', 'selftest', { at: Date.now() }); const ok = !!(await idbGet('snaps', 'selftest')); await idbDel('snaps', 'selftest'); return ok; }), '写真・録音・控えを 保存できる', 'スマホの 空きを ふやして ください。');
+  row(await tryIt(async () => { const c = document.createElement('canvas'); c.width = c.height = 8; const b = await new Promise(r => c.toBlob(r, 'image/jpeg')); (await createImageBitmap(b)).close(); return true; }), '写真を 小さく して 保存できる');
+  row(await tryIt(async () => {
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), key = await passKey('selftest', salt, 1000);
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode('ok'));
+    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct)) === 'ok';
+  }), 'バックアップに パスワードを かけられる');
+  const shareOK = await tryIt(async () => navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.txt', { type: 'text/plain' })] }));
+  row(shareOK || null, '共有メニューで ファイルを 渡せる', shareOK ? '' : 'ドライブへの 保存は「この スマホに 書き出す」を 使って ください。声の メッセージも 送れません。');
+  let mic = canRecord ? 'prompt' : 'none';
+  try { if (canRecord && navigator.permissions) mic = (await navigator.permissions.query({ name: 'microphone' })).state; } catch (e) {}
+  row(mic === 'granted' ? true : mic === 'denied' || mic === 'none' ? false : null, '声を 録音できる',
+    mic === 'granted' ? '' : mic === 'denied' ? 'Chrome の「サイトの 設定」で マイクを 許可して ください。' : mic === 'none' ? 'この ブラウザでは 録音できません。' : 'はじめて 録音する ときに「許可」を 押して ください。');
+  const kept = await tryIt(async () => navigator.storage && navigator.storage.persisted && navigator.storage.persisted());
+  row(kept || null, 'データが 消えにくく なって いる', kept ? '' : '「バックアップ」の 下の「消えにくく する」を 押して ください。');
+  let room = null;
+  try { const est = await navigator.storage.estimate(); room = est.quota ? est.quota - est.usage : null; } catch (e) {}
+  row(room == null ? null : room > 50 * 1048576, 'スマホの 空きが じゅうぶん ある', room != null && room <= 50 * 1048576 ? 'いらない 写真や アプリを けして、空きを ふやして ください。' : '');
+  row(clockOK, 'スマホの 時計が 合って いる', clockOK ? '' : 'スマホの 設定で 日付と 時刻を 合わせて ください。');
+  $('#checkList').innerHTML = out.join('');
+});
+
 /* ---------- the family's PIN (kept apart from backups and copies, so restoring one never brings it back) ---------- */
 const PIN_ITER = 200000;
 async function pinHash(v, salt, iter) {
@@ -1230,16 +1290,19 @@ async function pinHash(v, salt, iter) {
   return b64(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: unb64(salt), iterations: iter, hash: 'SHA-256' }, base, 256));
 }
 // asked after the hold when one is set; five wrong tries wait a minute
-let pinFails = 0, pinWait = 0;
+// wrong tries are kept (pinTry), so opening the app again starts no fresh count; from the fifth, each one waits
+// twice as long as the last (1 minute, 2, 4 … up to a day)
 async function pinOK() {
   const pin = load('pin', null);
   if (!pin || !pin.hash) return true;
   for (let text = '家族の設定の 暗証番号を 入れて ください。'; ;) {
-    if (Date.now() < pinWait) { toast('まちがいが 続いたので、1分 待ってから ためして ください。'); return false; }
+    const t = load('pinTry', { fails: 0, until: 0 });
+    if (Date.now() < t.until) { toast(`まちがいが 続いたので、${Math.ceil((t.until - Date.now()) / 60000)}分 ほど 待ってから ためして ください。`); return false; }
     const v = await askPass('暗証番号', text, false, { pin: true });
     if (v == null) return false;
-    if (await pinHash(v, pin.salt, pin.iter || PIN_ITER) === pin.hash) { pinFails = 0; return true; }
-    if (++pinFails >= 5) { pinFails = 0; pinWait = Date.now() + 60000; }
+    if (await pinHash(v, pin.salt, pin.iter || PIN_ITER) === pin.hash) { drop('pinTry'); return true; }
+    const fails = (+t.fails || 0) + 1;
+    save('pinTry', { fails, until: fails >= 5 ? Date.now() + Math.min(60000 * 2 ** (fails - 5), DAY) : 0 });
     text = '暗証番号が ちがいます。もう一度 入れて ください。';
   }
 }
@@ -1344,6 +1407,8 @@ function renderSettings() {
   $('#histState').textContent = (hist.length ? `送った 記録：${hist.length}回分（${md(hist[hist.length - 1].at)}から）。` : '送った 記録は ありません。') + keepText;
   $('#factKeep').textContent = `送った記録は ${settings.keep === 'one' ? '1回分だけ 残し' : settings.keep === 'month' ? '1か月' : '3か月'}、送らなかった 録音は 7日で、自動で けします。`;
   setSeg('#keepSeg', settings.keep);
+  setSeg('#copyDaysSeg', String(settings.copyDays || 60));
+  $('#factCopies').textContent = `この スマホの 中には、自動の 控え（週の 控え 3つと、新しく なる 前の 控え 2つ。${settings.copyDays || 60}日まで）、けした 品物（30日）、ファイルを 読みこむ 前の 状態（7日）も 残ります。「送った記録を けす」は 控えの 中の 記録も けします。「データを ぜんぶ けす」は これらも ぜんぶ けします。`;
   paintPin();
   paintTrouble();
   $('#clearHist').hidden = !hist.length && !items.some(it => it.count || it.lastAt);
@@ -1442,7 +1507,18 @@ $('#keepSeg').addEventListener('click', async e => {
   if (gone > 0 && !(await ask('送った 記録を へらしますか？', `${gone}回分の 記録を けします。この スマホの 中の 控えに ある 記録も、同じように けします。`, 'けす', 'やめる', { danger: true }))) { settings.keep = before; setSeg('#keepSeg', before); return; }
   save('settings', settings);
   trimHist();
-  scrubHistory(keptHist, false);
+  scrubHistory(keptHist, settings.keep === 'three' ? 'keep' : 'sync');
+  renderSettings();
+});
+$('#copyDaysSeg').addEventListener('click', async e => {
+  const b = e.target.closest('[data-v]');
+  if (!b || +b.dataset.v === +settings.copyDays) return;
+  const days = +b.dataset.v;
+  const gone = (await copiesList().catch(() => [])).filter(c => clockOK && Date.now() - c.at > days * DAY).length;
+  if (gone && !(await ask('控えを へらしますか？', `${days}日より 前の 控え（${gone}つ）を けします。`, 'けす', 'やめる', { danger: true }))) return;
+  settings.copyDays = days;
+  save('settings', settings);
+  await pruneCopies().catch(() => {});
   renderSettings();
 });
 $('#themeSeg').addEventListener('click', e => {
@@ -1825,10 +1901,13 @@ async function passKey(pass, salt, iter) {
   const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 }
-async function lockText(text, pass) {
+async function lockText(text, pass, hint = '') {
   const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await passKey(pass, salt, ITER), new TextEncoder().encode(text));
-  return JSON.stringify({ app: 'kaimono', version: 1, locked: { cipher: 'AES-GCM', kdf: 'PBKDF2-SHA256', iter: ITER, salt: b64(salt), iv: b64(iv) }, data: b64(ct) });
+  const locked = { cipher: 'AES-GCM', kdf: 'PBKDF2-SHA256', iter: ITER, salt: b64(salt), iv: b64(iv) };
+  // the hint is written in plain words (never the password), shown when the file asks for its password
+  if (hint) locked.hint = hint;
+  return JSON.stringify({ app: 'kaimono', version: 1, locked, data: b64(ct) });
 }
 async function unlockText(locked, data, pass) {
   const key = await passKey(pass, unb64(locked.salt), +locked.iter || ITER);
@@ -1837,7 +1916,7 @@ async function unlockText(locked, data, pass) {
 // the password: twice when it is being set; null when the family gives up
 // set twice (a password of 8 or more, not digits alone under 12, not one letter repeated; a PIN of 4 to 8 digits),
 // asked once to open something (any length, so older ones still work)
-function askPass(title, text, twice, { pin = false } = {}) {
+function askPass(title, text, twice, { pin = false, hint = false } = {}) {
   return new Promise(res => {
     let done = false;
     const a = $('#passIn'), b = $('#passAgain'), msg = $('#passMsg'), word = pin ? '暗証番号' : 'パスワード';
@@ -1849,6 +1928,9 @@ function askPass(title, text, twice, { pin = false } = {}) {
     a.value = b.value = '';
     msg.textContent = '';
     $('#passAgainBox').hidden = !twice;
+    const h = $('#passHintIn');
+    h.value = '';
+    $('#passHintBox').hidden = !hint;
     $('#passOk').onclick = async () => {
       const p = a.value;
       const bad = !p ? `${word}を 入れて ください。` : !twice ? ''
@@ -1858,10 +1940,11 @@ function askPass(title, text, twice, { pin = false } = {}) {
         : /^(.)\1+$/.test(p) ? '同じ 文字だけの パスワードは 使えません。' : '';
       if (bad) { msg.textContent = bad; return; }
       if (twice && p !== b.value) { msg.textContent = `2つの ${word}が ちがいます。`; return; }
+      if (hint && h.value && h.value.toLowerCase().includes(p.toLowerCase())) { msg.textContent = 'ヒントに パスワードを 入れないで ください。'; return; }
       if (done) return;
       done = true;
-      const v = a.value;
-      a.value = b.value = '';
+      const v = hint ? { pass: a.value, hint: h.value.trim().slice(0, 40) } : a.value;
+      a.value = b.value = h.value = '';
       await closeSheet();
       res(v);
     };
@@ -1875,9 +1958,9 @@ function askPass(title, text, twice, { pin = false } = {}) {
 async function backupOut(withHist, withCart) {
   const text = await backupText(withHist, withCart);
   if (!settings.lock) return text;
-  const pass = await askPass('パスワードを きめて ください', '読みこむ ときに いります。忘れると だれにも 読めなく なるので、紙に 書いて しまって おいて ください。', true);
-  if (pass == null) return null;
-  return lockText(text, pass);
+  const r = await askPass('パスワードを きめて ください', '読みこむ ときに いります。忘れると だれにも 読めなく なるので、紙に 書いて しまって おいて ください。', true, { hint: true });
+  if (r == null) return null;
+  return lockText(text, r.pass, r.hint);
 }
 
 // a backup file, or why it can't be used
@@ -1888,11 +1971,12 @@ async function readBackup(f) {
   // a file with a password is opened with it, asked again until it fits or the family gives up
   if (data && data.app === 'kaimono' && data.locked && typeof data.data === 'string') {
     locked = true;
-    for (let text = 'この バックアップには パスワードが かかって います。'; ;) {
+    const hintText = data.locked.hint ? `ヒント：${String(data.locked.hint).slice(0, 40)}` : '';
+    for (let text = 'この バックアップには パスワードが かかって います。' + hintText; ;) {
       const pass = await askPass('パスワードを 入れて ください', text, false);
       if (pass == null) return { quiet: true };
       try { data = JSON.parse(await unlockText(data.locked, data.data, pass)); break; }
-      catch (e) { text = 'パスワードが ちがう ようです。もう一度 入れて ください。'; }
+      catch (e) { text = 'パスワードが ちがう ようです。もう一度 入れて ください。' + hintText; }
     }
   }
   if (!data || data.app !== 'kaimono' || !Array.isArray(data.items)) return { err: 'かいものメモの ファイルでは ないようです。' };
@@ -1927,11 +2011,15 @@ $('#verifyFile').addEventListener('change', async e => {
   const same = list.length === items.length && list.every(x => byId(x.id) && byId(x.id).name === x.name);
   // the newest backup made on this phone counts as checked when this file is that one, or newer
   if (at && backupInfo.at && at >= backupInfo.at - 10 * 60000) { backupInfo.checked = Date.now(); save('backup', backupInfo); paintBackupState(); }
-  await ask('この バックアップは 読めます',
+  if (await ask('この バックアップは 読めます',
     `${at ? `${md(at)} ${hm(at)}に 作った ` : ''}${locked ? 'パスワードつきの ' : ''}バックアップです${data.appVersion ? `（${data.appVersion}で 作成）` : ''}。品物 ${list.length}こ・写真 ${good}まい${nHist >= 0 ? `・送った記録 ${nHist}回分` : ''}が 入って います。`
     + (bad ? `写真 ${bad}まいは こわれて いて 読めません。` : '')
     + (same ? 'いまの 品物と 同じ 中身です。' : 'いまの 品物とは ちがう ところが あります（前に 作った ファイルかも しれません）。')
-    + 'いまの データは 何も 変えて いません。', 'とじる', '', { one: true });
+    + 'いまの データは 何も 変えて いません。', '中身を 見る', 'とじる')) {
+    const entries = [];
+    for (const it of list) entries.push({ item: it, photo: it.photo ? await photoBlobOf(photos[it.id]) : null });
+    openPeek('バックアップの 中身', `${at ? `${md(at)} ${hm(at)}の バックアップです。` : ''}品物を 1つずつ 戻せます（いまの ものは「けした 品物」に 入ります）。`, entries);
+  }
 });
 
 // what there was just before a file was read in, kept a week, so a wrong file can be taken back
@@ -2043,7 +2131,7 @@ const trashList = () => snapsOf('trash');
 async function pruneCopies() {
   const list = await copiesList();
   for (const [group, keep] of [[list.filter(c => c.why === 'update'), UPDATE_KEEP], [list.filter(c => c.why !== 'update'), COPY_KEEP]]) {
-    for (const [i, c] of group.entries()) if (i >= keep || (clockOK && Date.now() - c.at > COPY_DAYS * DAY)) await idbDel('snaps', c.key);
+    for (const [i, c] of group.entries()) if (i >= keep || (clockOK && Date.now() - c.at > (+settings.copyDays || COPY_DAYS) * DAY)) await idbDel('snaps', c.key);
   }
 }
 // once a week, and only when something changed since the newest copy (photos included)
@@ -2065,11 +2153,21 @@ async function paintCopies() {
     try { n = (JSON.parse(c.ls.items) || []).length; } catch (e) {}
     const what = c.why === 'update' ? `${esc(c.to || '')} に なる 前` : c.why === 'restore' ? '戻す 前の 状態' : c.why === 'conflict' ? 'ほかの 窓が 保存した 状態' : '週の 控え';
     return `<li class="srow"><span class="stx"><b>${md(c.at)} ${hm(c.at)}</b><small>${what}・品物 ${n}こ・写真 ${(c.photos || []).length}まい</small></span>`
-      + `<button type="button" class="btn tonal sl" data-k="${esc(c.key)}">もどす</button></li>`;
+      + `<button type="button" class="btn text sl" data-peek="${esc(c.key)}">中身</button><button type="button" class="btn tonal sl" data-k="${esc(c.key)}">もどす</button></li>`;
   }).join('') : '<li class="srow empty">まだ ありません。</li>';
   $('#clearCopies').hidden = !list.length;
 }
 $('#copyList').addEventListener('click', async e => {
+  const pk = e.target.closest('[data-peek]');
+  if (pk) {
+    const c = await idbGet('snaps', pk.dataset.peek).catch(() => null);
+    if (!c) return;
+    let its = [];
+    try { its = (JSON.parse(c.ls.items) || []).filter(okItem).map(fixItem); } catch (e2) {}
+    const ph = new Map(c.photos || []);
+    openPeek('控えの 中身', `${md(c.at)} ${hm(c.at)}の 控えです。品物を 1つずつ 戻せます（いまの ものは「けした 品物」に 入ります）。`, its.map(it => ({ item: it, photo: it.photo ? ph.get(it.id) || null : null })));
+    return;
+  }
   const b = e.target.closest('[data-k]');
   if (!b) return;
   const c = await idbGet('snaps', b.dataset.k).catch(() => null);
@@ -2093,8 +2191,8 @@ async function paintTrash() {
   let list = [];
   try { list = await trashList(); } catch (e) {}
   // one that is back on the list already (from a copy or a file) leaves the bin
-  for (const t of list.filter(t => t.item && byId(t.item.id))) idbDel('snaps', t.key).catch(() => {});
-  list = list.filter(t => !(t.item && byId(t.item.id)));
+  for (const t of list.filter(t => t.item && !t.replaced && byId(t.item.id))) idbDel('snaps', t.key).catch(() => {});
+  list = list.filter(t => !(t.item && !t.replaced && byId(t.item.id)));
   $('#trashBox').hidden = !list.length;
   $('#trashList').innerHTML = list.map(t => {
     const it = fixItem(t.item);
@@ -2147,12 +2245,15 @@ $('#brokenClose').addEventListener('click', async () => {
 function paintWelcome() { $('#welcomeCard').hidden = !load('welcome', 0); }
 // a save into IndexedDB that went wrong (copies are skipped when nothing changed, so an old newest copy is no sign
 // of trouble; a failed one is)
-let brokenUnseen = false;
+let brokenUnseen = false, spaceLow = false, persistOff = false;
 function paintTrouble() {
   const t = load('trouble', null);
   const kinds = { copy: '自動の 控え', trash: 'けした 品物', photo: '写真', broken: '読めなかった データの 取りおき' };
-  $('#troubleCard').hidden = !t;
-  if (t) $('#troubleText').innerHTML = `<b>この スマホの 中の 保存で、うまく いかない ことが ありました</b>（${kinds[t.kind] || '保存'}・${md(t.at)}）。スマホの 空きを たしかめて ください。写真の ときは、とり直すと なおります。`;
+  const lines = [];
+  if (t) lines.push(`<b>この スマホの 中の 保存で、うまく いかない ことが ありました</b>（${kinds[t.kind] || '保存'}・${md(t.at)}）。スマホの 空きを たしかめて ください。写真の ときは、とり直すと なおります。`);
+  if (spaceLow) lines.push('<b>保存の 場所の 残りが 少なく なって います。</b>いらない 写真や アプリを けして、空きを ふやして ください。');
+  $('#troubleCard').hidden = !lines.length;
+  $('#troubleText').innerHTML = lines.join('<br>');
   paintHomeNote();
 }
 $('#troubleClose').addEventListener('click', () => { drop('trouble'); paintTrouble(); });
@@ -2161,16 +2262,56 @@ function paintHomeNote() {
   const el = $('#homeWelcome');
   if (!el) return;
   const b = backupInfo;
-  const text = load('trouble', null) || brokenUnseen ? 'ご家族の 方へ：保存で 気に なる ことが あります。下の「家族の設定」を 見て ください。'
+  const text = load('trouble', null) || brokenUnseen || spaceLow ? 'ご家族の 方へ：保存で 気に なる ことが あります。下の「家族の設定」を 見て ください。'
     : !clockOK ? 'ご家族の 方へ：スマホの 時計が ずれて いるようです。下の「家族の設定」を 見て ください。'
     : load('welcome', 0) ? 'ご家族の 方へ：はじめての 状態です。前の データを 戻すときは、下の「家族の設定」から どうぞ。'
     : (!b.at && b.changes >= 3) || (b.at && b.changes >= 3 && Date.now() - b.at > 30 * DAY) ? 'ご家族の 方へ：バックアップを おすすめします（下の「家族の設定」から）。'
+    : persistOff && !standalone() ? 'ご家族の 方へ：ホーム画面に アイコンを 作ると、データが 消えにくく なります（下の「家族の設定」から）。'
     : '';
   el.textContent = text;
   el.hidden = !text;
 }
 $('#welcomeClose').addEventListener('click', () => { drop('welcome'); paintWelcome(); });
 $('#welcomeImport').addEventListener('click', () => $('#importFile').click());
+
+// the inside of a copy or a backup, with pictures; each item can come back alone (what is there now goes to the bin)
+let peekURLs = [];
+function openPeek(title, text, entries) {
+  for (const u of peekURLs) URL.revokeObjectURL(u);
+  peekURLs = [];
+  $('#peekTitle').textContent = title;
+  $('#peekText').textContent = text;
+  $('#peekList').innerHTML = entries.length ? entries.map((x, i) => {
+    let pic = picHTML({ ...x.item, photo: false }, 'sm');
+    if (x.photo) { const u = URL.createObjectURL(x.photo); peekURLs.push(u); pic = picHTML(x.item, 'sm', u); }
+    return `<li class="srow"><span class="sedit">${pic}<span class="stx"><b>${esc(x.item.name)}</b><small>${esc(sline(x.item))}${x.photo ? '・写真 あり' : ''}</small></span></span>`
+      + `<button type="button" class="btn tonal sl" data-i="${i}">戻す</button></li>`;
+  }).join('') : '<li class="srow empty">品物は ありません。</li>';
+  $('#peekList').onclick = async e => {
+    const b = e.target.closest('[data-i]');
+    if (!b || b.disabled) return;
+    if (await restoreOne(entries[+b.dataset.i])) { b.disabled = true; b.textContent = '戻しました'; }
+  };
+  openSheet('sh-peek');
+}
+$('#sh-peek').addEventListener('closed', () => { for (const u of peekURLs) URL.revokeObjectURL(u); peekURLs = []; renderSettings(); });
+async function restoreOne({ item, photo }) {
+  const it = fixItem(item), cur = byId(it.id);
+  if (cur && !(await ask(`いまの「${cur.name}」を 入れかえますか？`, 'いまの ものは「けした 品物」に 入るので、あとから 戻せます。', '入れかえる'))) return false;
+  if (cur) {
+    // what is there now goes to the bin first, photo and all
+    // (a replaced version keeps its place in the bin even though an item of the same id is back on the list)
+    try { await idbPut('snaps', 'trash:' + cur.id + ':' + Date.now(), { at: Date.now(), item: clone(cur), idx: items.indexOf(cur), photo: cur.photo ? await photoBlob(cur.id) : null, replaced: true }); } catch (e) { noteTrouble('trash'); }
+  }
+  it.photo = false;
+  if (photo) { try { await putPhoto(it.id, photo); it.photo = true; } catch (e) { noteTrouble('photo'); } }
+  else if (cur && cur.photo) await delPhoto(cur.id);
+  if (cur) items[items.indexOf(cur)] = it; else items.push(it);
+  save('items', items);
+  noteChange();
+  toast(`「${it.name}」を 戻しました。`);
+  return true;
+}
 
 /* ---------- 送った記録・録音・ぜんぶ けす ---------- */
 $('#clearHist').addEventListener('click', async () => {
@@ -2189,26 +2330,52 @@ $('#clearHist').addEventListener('click', async () => {
   scrubHistory();
 });
 // the sent lists also go from the copies kept on this phone, with each item's count and last day
-async function scrubHistory(keep = () => [], counts = true) {
-  const zero = its => Array.isArray(its) ? its.map(it => (it && typeof it === 'object' ? { ...it, count: 0, lastAt: 0 } : it)) : its;
-  const cut = raw => { try { const h = JSON.parse(raw); return Array.isArray(h) ? JSON.stringify(keep(h)) : raw; } catch (e) { return counts ? null : raw; } };
+// counts: 'zero' (送った記録を けす), 'sync' (a shorter keep: counts from the lists kept), 'keep'
+async function scrubHistory(keep = () => [], counts = 'zero') {
+  const fix = (its, h) => !Array.isArray(its) || counts === 'keep' ? its : (() => {
+    const st = counts === 'sync' ? statsOf(h || []) : new Map();
+    return its.map(it => (it && typeof it === 'object' ? { ...it, count: (st.get(it.id) || {}).count || 0, lastAt: (st.get(it.id) || {}).lastAt || 0 } : it));
+  })();
   try {
     for (const { key, ...c } of await copiesList()) {
-      const ls = { ...c.ls, history: c.ls.history == null ? null : cut(c.ls.history) };
-      if (counts) try { ls.items = JSON.stringify(zero(JSON.parse(c.ls.items))); } catch (e) {}
+      let h = null;
+      try { h = JSON.parse(c.ls.history); } catch (e) {}
+      const kept = Array.isArray(h) ? keep(h) : null;
+      const ls = { ...c.ls, history: kept ? JSON.stringify(kept) : counts === 'zero' ? null : c.ls.history };
+      try { ls.items = JSON.stringify(fix(JSON.parse(c.ls.items), kept)); } catch (e) {}
       await idbPut('snaps', key, { ...c, ls });
     }
-    for (const { key, ...b } of await snapsOf('broken')) await idbPut('snaps', key, { ...b, ls: { ...b.ls, history: counts ? null : b.ls.history } });
+    for (const { key, ...b } of await snapsOf('broken')) await idbPut('snaps', key, { ...b, ls: { ...b.ls, history: counts === 'zero' ? null : b.ls.history } });
     const s = await idbGet('snaps', 'beforeImport');
-    if (s) await idbPut('snaps', 'beforeImport', { ...s, hist: keep(s.hist || []), items: counts ? zero(s.items) : s.items });
+    if (s) { const kept = keep(s.hist || []); await idbPut('snaps', 'beforeImport', { ...s, hist: kept, items: fix(s.items, kept) }); }
   } catch (e) {}
 }
 $('#clearTrash').addEventListener('click', async () => {
-  if (!(await ask('けした 品物を 完全に けしますか？', '写真も いっしょに 消えて、もう 戻せなく なります。', 'けす', 'やめる', { danger: true }))) return;
-  try { for (const t of await trashList()) await idbDel('snaps', t.key); } catch (e) {}
+  if (!(await ask('けした 品物を 完全に けしますか？', '写真も いっしょに 消えて、もう 戻せなく なります。この スマホの 中の 控えからも けします。', 'けす', 'やめる', { danger: true }))) return;
+  const ids = new Set();
+  // (a replaced version leaves the bin only: the item of that id is still on the list, and its copies stay)
+  try { for (const t of await trashList()) { if (t.item && !t.replaced && !byId(t.item.id)) ids.add(t.item.id); await idbDel('snaps', t.key); } } catch (e) {}
+  await scrubItems(ids);
   paintTrash();
   toast('けした 品物を 完全に けしました。');
 });
+// items gone for good leave the copies too, photos and all
+async function scrubItems(ids) {
+  if (!ids.size) return;
+  const sigOf = photos => photos.map(([k, b]) => k + ':' + ((b && b.size) || 0)).sort().join(',');
+  try {
+    for (const { key, ...c } of await copiesList()) {
+      let its = null;
+      try { its = JSON.parse(c.ls.items); } catch (e) {}
+      const photos = (c.photos || []).filter(([k]) => !ids.has(k));
+      const left = Array.isArray(its) ? its.filter(i => !(i && ids.has(i.id))) : its;
+      if (photos.length === (c.photos || []).length && (!Array.isArray(its) || left.length === its.length)) continue;
+      await idbPut('snaps', key, { ...c, ls: { ...c.ls, items: Array.isArray(its) ? JSON.stringify(left) : c.ls.items }, photos, sig: sigOf(photos) });
+    }
+    const s = await idbGet('snaps', 'beforeImport');
+    if (s) await idbPut('snaps', 'beforeImport', { ...s, items: (s.items || []).filter(i => !ids.has(i.id)), photos: (s.photos || []).filter(([k]) => !ids.has(k)) });
+  } catch (e) {}
+}
 $('#clearCopies').addEventListener('click', async () => {
   if (!(await ask('控えを ぜんぶ けしますか？', 'この スマホの 中の 自動の 控えを ぜんぶ けします。けした 控えには 戻せなく なります。', 'けす', 'やめる', { danger: true }))) return;
   try { for (const c of await copiesList()) await idbDel('snaps', c.key); } catch (e) {}
@@ -2243,6 +2410,7 @@ $('#wipeAll').addEventListener('click', async () => {
   dbp = null;
   await new Promise(res => { const q = indexedDB.deleteDatabase(DB_NAME); q.onsuccess = q.onerror = q.onblocked = () => res(); });
   announce('wiped');
+  try { sessionStorage.setItem(KEY + 'note', 'データを ぜんぶ けしました。ホーム画面の アイコンも いらなければ、長押しして けして ください。マイクの 許可は Chrome の「サイトの 設定」で 消せます。'); } catch (e) {}
   location.replace(location.pathname);
 });
 
@@ -2262,8 +2430,19 @@ $('#saveRetry').addEventListener('click', () => {
 $('#saveOut').addEventListener('click', async () => { const t = await backupOut(true, true); if (t != null) downloadText(t); });
 
 /* ---------- start ---------- */
+// another browser keeps its own storage, empty: inside LINE (or a browser other than Chrome on Android) the parent
+// is pointed to the home-screen icon, where their list and photos are
+const PLACE = /\bLine\//i.test(navigator.userAgent) ? 'line'
+  : /Android/.test(navigator.userAgent) && /SamsungBrowser|Firefox|EdgA|OPR\/|YaBrowser|UCBrowser/.test(navigator.userAgent) ? 'other' : '';
+function paintPlace() {
+  const el = $('#placeNote');
+  el.hidden = !PLACE;
+  if (PLACE) el.textContent = (PLACE === 'line' ? 'いまは LINE の 中で ひらいて います。' : 'いつもと ちがう ブラウザで ひらいて います。')
+    + 'ここでは いつもの 品物や 写真が 出ません。ホーム画面の「かいもの」の アイコンから ひらいて ください。';
+}
 applySize();
 applyTheme();
+paintPlace();
 if (!canStore()) { unsaved.add('probe'); paintSaveBar(); }
 renderHome();
 if (pending) setTimeout(askSent, 700);
@@ -2291,6 +2470,14 @@ if (pending) setTimeout(askSent, 700);
   await pruneSnap();
   // and a copy once a week
   await maybeWeekCopy();
+  // room left: localStorage near its usual 5 MB, or the phone's storage nearly full
+  try {
+    let ls = 0;
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); ls += (k.length + (localStorage.getItem(k) || '').length) * 2; }
+    const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : {};
+    spaceLow = ls > 3.5 * 1048576 || !!(est.quota && est.quota - est.usage < 50 * 1048576);
+  } catch (e) {}
+  try { persistOff = !!(navigator.storage && navigator.storage.persisted) && !(await navigator.storage.persisted()); } catch (e) {}
   paintHomeNote();
 })();
 // after going back to a copy, the page starts again and says so
