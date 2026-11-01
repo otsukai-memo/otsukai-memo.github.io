@@ -20,6 +20,7 @@ const ICONS = {
   'arrow-up': '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
   'camera': '<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>',
   'check': '<path d="M20 6 9 17l-5-5"/>',
+  'copy-plus': '<line x1="15" x2="15" y1="12" y2="18"/><line x1="12" x2="18" y1="15" y2="15"/><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
   'download': '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
   'history': '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
   'image-off': '<line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="13.5" x2="6" y1="13.5" y2="21"/><line x1="18" x2="21" y1="12" y2="15"/><path d="M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59"/><path d="M21 15V5a2 2 0 0 0-2-2H9"/>',
@@ -45,7 +46,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.9';
+const APP_VER = '1.10';
 const DAY = 864e5;
 
 const GROUPS = [
@@ -135,18 +136,21 @@ const FROM_EMOJI = { '🍞': 'sandwich', '🥚': 'egg', '🌾': 'wheat', '🍚':
 // and what that window saves comes back as the same drawing
 const TO_EMOJI = {};
 for (const [e, n] of Object.entries(FROM_EMOJI)) TO_EMOJI[n] = TO_EMOJI[n] || e;
-// name, picture, unit, group, sizes (two or more: the parent is asked which one)
+// name, picture, unit, group; each size is an item of its own, so the parent is never asked which one
 const DEFAULT_ITEMS = [
-  ['食パン', 'sandwich', '袋', 'food', ['6枚切り', '8枚切り']],
+  ['食パン 6枚切り', 'sandwich', '袋', 'food'],
+  ['食パン 8枚切り', 'sandwich', '袋', 'food'],
   ['たまご', 'egg', 'パック', 'food'],
-  ['お米', 'wheat', '袋', 'food', ['2kg', '5kg']],
+  ['お米 2kg', 'wheat', '袋', 'food'],
+  ['お米 5kg', 'wheat', '袋', 'food'],
   ['バナナ', 'banana', 'ふさ', 'food'],
   ['トマト', '', '個', 'food'],
   ['たまねぎ', '', '個', 'food'],
   ['おさかな', 'fish', 'パック', 'food'],
   ['お肉', 'beef', 'g', 'food'],
   ['おせんべい', 'cookie', '袋', 'food'],
-  ['牛乳', 'milk', '本', 'drink', ['1L', '500ml']],
+  ['牛乳 1L', 'milk', '本', 'drink'],
+  ['牛乳 500ml', 'milk', '本', 'drink'],
   ['お茶', 'coffee', '本', 'drink'],
   ['お水', 'droplet', '本', 'drink'],
   ['トイレットペーパー', 'toilet', 'パック', 'daily'],
@@ -232,17 +236,24 @@ function paintSaveBar() {
 }
 
 function okItem(x) { return x && typeof x === 'object' && String(x.name || '').trim() !== ''; }
+// 1.10: an item with sizes to pick from (お米: 2kg・5kg) becomes one item for each size (お米 2kg, お米 5kg), so the
+// parent presses the one they want and is never asked which. The new id is the old one with the size, so the list
+// being picked, the sent lists, the copies and the backups made before all still find it.
+const sizeId = (id, size) => id + '~' + size.replace(/\|/g, '/');
+const withSize = (name, size) => name.slice(0, 59 - size.length) + ' ' + size;
 function fixItem(x) {
   const icon = typeof x.icon === 'string' ? (PIC[x.icon] ? x.icon : '') : (FROM_EMOJI[x.emoji] || '');
   return {
     id: String(x.id || uid()),
-    name: String(x.name).trim().slice(0, 40),
+    // names and notes have room for a size joined to them (1.10)
+    name: String(x.name).trim().slice(0, 60),
     icon,
     emoji: TO_EMOJI[icon] || '',
     unit: String(x.unit || '個').slice(0, 8),
     group: GROUPS.some(g => g.key === x.group) ? x.group : 'other',
+    // read only to split what 1.9 and before kept (splitSizes); empty from then on, and kept for a window still on 1.9
     sizes: Array.isArray(x.sizes) ? [...new Set(x.sizes.map(s => String(s).trim().slice(0, 12)).filter(Boolean))].slice(0, 8) : [],
-    note: String(x.note || '').slice(0, 40),
+    note: String(x.note || '').slice(0, 60),
     photo: !!x.photo,
     count: Math.max(0, +x.count || 0),
     lastAt: Math.max(0, +x.lastAt || 0),
@@ -251,7 +262,11 @@ function fixItem(x) {
 function fixCart(c) {
   c = c && typeof c === 'object' ? c : {};
   const lines = {};
-  if (c.lines && typeof c.lines === 'object') for (const [k, v] of Object.entries(c.lines).slice(0, MAX_ITEMS * 2)) if (+v > 0) lines[String(k).slice(0, 80)] = Math.min(+v, 9900);
+  // 1.9 and before kept an amount picked under a size as id|size: it belongs to the item of that size now
+  if (c.lines && typeof c.lines === 'object') for (const [k, v] of Object.entries(c.lines).slice(0, MAX_ITEMS * 2)) if (+v > 0) {
+    const i = k.indexOf('|'), key = (i < 0 ? k : sizeId(k.slice(0, i), k.slice(i + 1))).slice(0, 80);
+    lines[key] = Math.max(lines[key] || 0, Math.min(+v, 9900));
+  }
   // an extra is typed words, or a recording kept in IndexedDB under its id (at: when it was recorded)
   const extras = Array.isArray(c.extras) ? c.extras.filter(x => x && (x.voice || String(x.text || '').trim())).slice(0, MAX_EXTRAS)
     .map(x => x.voice ? { id: String(x.id || uid()), voice: true, sec: Math.max(0, +x.sec || 0), at: +x.at || Date.now() } : { id: String(x.id || uid()), text: String(x.text).slice(0, 200) }) : [];
@@ -261,17 +276,40 @@ function okHist(h) { return h && typeof h === 'object' && +h.at > 0 && Array.isA
 function fixHist(h) {
   return {
     at: +h.at,
-    lines: h.lines.filter(l => l && l.name).slice(0, MAX_LINES).map(l => ({ id: String(l.id || '').slice(0, 40), name: String(l.name).slice(0, 40),
-      size: String(l.size || '').slice(0, 12), unit: String(l.unit || '').slice(0, 8), qty: Math.min(Math.max(1, +l.qty || 1), 9900) })),
+    // a size picked in 1.9 and before is the item of that size now; size stays in each line, empty, for a window still on 1.9
+    lines: h.lines.filter(l => l && l.name).slice(0, MAX_LINES).map(l => {
+      const id = String(l.id || '').slice(0, 80), name = String(l.name).slice(0, 60), size = String(l.size || '').trim().slice(0, 12);
+      return { id: size && id ? sizeId(id, size) : id, name: size ? withSize(name, size) : name, size: '', unit: String(l.unit || '').slice(0, 8), qty: Math.min(Math.max(1, +l.qty || 1), 9900) };
+    }),
     extras: Array.isArray(h.extras) ? h.extras.map(String).filter(Boolean).slice(0, MAX_EXTRAS).map(t => t.slice(0, 200)) : [],
     when: String(h.when || '').slice(0, 20),
   };
 }
-function cleanItems(arr) {
+function cleanItems(arr, made) {
   const seen = new Set();
-  return arr.filter(okItem).slice(0, MAX_ITEMS).map(fixItem).map(it => { if (seen.has(it.id)) it.id = uid(); seen.add(it.id); return it; });
+  return splitSizes(arr.filter(okItem).slice(0, MAX_ITEMS).map(fixItem), made).slice(0, MAX_ITEMS)
+    .map(it => { if (seen.has(it.id)) it.id = uid(); seen.add(it.id); return it; });
 }
-const freshItems = () => DEFAULT_ITEMS.map(([name, icon, unit, group, sizes]) => fixItem({ name, icon, unit, group, sizes }));
+// made gets each new item's id and the old one's, for its photo; a single size moves into くわしく, where it showed already
+function splitSizes(list, made = new Map()) {
+  const out = [];
+  for (const it of list) {
+    if (it.sizes.length < 2) { out.push(it.sizes.length ? { ...it, sizes: [], note: [it.sizes[0], it.note].filter(Boolean).join('・').slice(0, 60) } : it); continue; }
+    for (const size of it.sizes) {
+      const n = { ...it, id: sizeId(it.id, size), name: withSize(it.name, size), sizes: [], count: 0, lastAt: 0 };
+      made.set(n.id, it.id);
+      out.push(n);
+    }
+  }
+  return out;
+}
+// a split item's count and last day: from the sent lists kept, size by size
+function statsFor(list, made, h = hist) {
+  if (!made.size) return;
+  const st = statsOf(h);
+  for (const it of list) if (made.has(it.id)) Object.assign(it, st.get(it.id) || { count: 0, lastAt: 0 });
+}
+const freshItems = () => DEFAULT_ITEMS.map(([name, icon, unit, group]) => fixItem({ name, icon, unit, group }));
 
 // a recording never sent is kept a week (how long sent lists stay is the family's choice, settings.keep)
 const VOICE_DAYS = 7;
@@ -285,12 +323,15 @@ const KEEP_DAYS = { month: 30, three: 90 };
 // stored data that can't be read (all of it, or some entries) is noted here, kept aside at start, and never
 // written over in silence
 const broken = new Set();
+// items split by size as they were read (new id → old id): saved, each with its own copy of the photo, only once the
+// copy taken on an update is made (finishSplit)
+const splitMade = new Map();
 const loadItems = () => {
   const v = load('items', null);
   if (!Array.isArray(v)) { if (RAW.items != null) broken.add('items'); return null; }
   const ok = v.filter(okItem);
   if (ok.length < v.length) broken.add('items');
-  return ok.map(fixItem);
+  return splitSizes(ok.map(fixItem), splitMade);
 };
 const loadHist = () => {
   const v = load('history', []);
@@ -310,6 +351,7 @@ if (!items) { items = freshItems(); if (RAW.items == null) save('items', items);
 if (RAW.items == null && lastVer == null) save('welcome', Date.now());
 let cart = fixCart(load('cart', null));
 let hist = loadHist();
+statsFor(items, splitMade);
 const loadSettings = () => {
   const v = load('settings', null);
   if (v === null || typeof v !== 'object' || Array.isArray(v)) { if (RAW.settings != null) broken.add('settings'); return defaultSettings(); }
@@ -414,7 +456,7 @@ const okPhoto = p => typeof p === 'string' && /^data:image\/(jpeg|png|webp);base
 // photos: JPEG blobs in IndexedDB, shown through object URLs read once into memory
 const photoURLs = new Map(), badPhotos = new Set();
 let photosIn = false;
-const photoOf = it => (it && it.photo && !badPhotos.has(it.id) && photoURLs.get(it.id)) || '';
+const photoOf = it => (it && it.photo && !badPhotos.has(it.id) && (photoURLs.get(it.id) || photoURLs.get(splitMade.get(it.id)))) || '';
 async function loadPhotos() {
   try {
     const all = await idbAll('photos');
@@ -437,6 +479,27 @@ async function delPhoto(id) {
   announce('photos');
 }
 async function photoBlob(id) { try { return await idbGet('photos', id); } catch (e) { return null; } }
+// an item just split by size has its photo in the old item's place until it is copied
+const itemPhoto = async it => (await photoBlob(it.id)) || (splitMade.has(it.id) ? await photoBlob(splitMade.get(it.id)) : null);
+// once the copy taken on an update is made: each item split by size gets its own copy of the old item's photo, the
+// split is saved and the old photo goes. When a photo can't be copied (the phone is full) nothing is saved, and the
+// next start tries again; till then the photo shows from its old place.
+async function finishSplit() {
+  if (!splitMade.size) return;
+  try {
+    for (const [to, from] of splitMade) {
+      const it = byId(to);
+      if (it && it.photo && !(await photoBlob(to))) { const b = await photoBlob(from); if (b) await idbPut('photos', to, b); }
+    }
+  } catch (e) { noteTrouble('photo'); return; }
+  // what couldn't be read is kept aside and saved over only by the family's own changes
+  if (!broken.size && save('items', items)) {
+    save('history', hist); saveCart();
+    for (const from of new Set(splitMade.values())) if (!byId(from)) { try { await idbDel('photos', from); } catch (e) {} }
+  }
+  splitMade.clear();
+  announce('photos');
+}
 // photos saved by 1.3 and before sit in localStorage as data URLs; they move to IndexedDB once, one by one
 async function movePhotos() {
   const keys = [];
@@ -460,7 +523,12 @@ window.addEventListener('storage', e => {
   if (!e.key.startsWith(KEY)) return;
   const name = e.key.slice(KEY.length);
   if (name === 'cart') cart = fixCart(load('cart', null));
-  else if (name === 'items') { items = loadItems() || items; seen.items = localStorage.getItem(e.key); }
+  else if (name === 'items') {
+    items = loadItems() || items;
+    seen.items = localStorage.getItem(e.key);
+    // a window still on 1.9 saved an item with sizes
+    if (splitMade.size) { statsFor(items, splitMade); finishSplit().then(loadPhotos).then(redraw); }
+  }
   else if (name === 'history') { hist = loadHist(); seen.history = localStorage.getItem(e.key); }
   else if (name === 'settings') { settings = loadSettings(); applySize(); applyTheme(); }
   else if (name === 'pending') pending = load('pending', null);
@@ -477,33 +545,19 @@ if (chan) chan.onmessage = async e => {
 function redraw() {
   if (!$('#settings').hidden) renderSettings(); else renderHome();
   if (isOpen('sh-confirm')) renderConfirm();
-  if (isOpen('sh-size') && sizeItem) {
-    // the item may have been deleted (or lost its sizes) in the other window
-    const it = byId(sizeItem.id);
-    if (it && sized(it)) { sizeItem = it; renderSize(); }
-    else if (layers[layers.length - 1].name === 'sh-size') closeSheet();
-  }
 }
 
 /* ---------- items and the cart ---------- */
 const byId = id => items.find(it => it.id === id);
 const inGroup = key => items.filter(it => it.group === key);
-const sized = it => it.sizes.length >= 2;
 const stepOf = it => it.unit === 'g' ? 100 : 1;
-const keyOf = (id, size) => size ? id + '|' + size : id;
-function splitKey(k) { const i = k.indexOf('|'); return i < 0 ? [k, ''] : [k.slice(0, i), k.slice(i + 1)]; }
-function linesOf(it, c = cart) {
-  if (sized(it)) return it.sizes.map(size => ({ size, qty: c.lines[keyOf(it.id, size)] || 0 })).filter(l => l.qty > 0);
-  const qty = c.lines[it.id] || 0;
-  return qty > 0 ? [{ size: '', qty }] : [];
-}
-// a single size works like a note: it goes into the name's brackets
-const detailOf = (it, size) => [size || (it.sizes.length === 1 ? it.sizes[0] : ''), it.note].filter(Boolean).join('・');
-const cartCount = () => items.reduce((n, it) => n + linesOf(it).length, 0) + cart.extras.length;
-function change(it, size, dir) {
-  const k = keyOf(it.id, size), step = stepOf(it);
-  const q = Math.max(0, Math.min((cart.lines[k] || 0) + dir * step, 99 * step));
-  if (q) cart.lines[k] = q; else delete cart.lines[k];
+// how many of an item are on the list: the cart keeps an amount under each item's id
+const qtyIn = (it, c = cart) => c.lines[it.id] || 0;
+const cartCount = () => items.filter(it => qtyIn(it) > 0).length + cart.extras.length;
+function change(it, dir) {
+  const step = stepOf(it);
+  const q = Math.max(0, Math.min(qtyIn(it) + dir * step, 99 * step));
+  if (q) cart.lines[it.id] = q; else delete cart.lines[it.id];
   saveCart(); buzz();
 }
 const qtyHTML = (it, q) => `<b>${q}</b><small>${esc(it.unit)}</small>`;
@@ -697,32 +751,23 @@ function rowEl(it, g) {
   li.className = 'row';
   li.dataset.id = it.id;
   const subs = [];
-  const det = detailOf(it, '');
-  if (det) subs.push(`<span class="sub">${esc(det)}</span>`);
-  if (sized(it)) subs.push(`<span class="sub">${esc(it.sizes.join('・'))}</span>`);
+  if (it.note) subs.push(`<span class="sub">${esc(it.note)}</span>`);
   if (g.showLast && it.lastAt) subs.push(`<span class="sub last">前回 ${ago(it.lastAt)}</span>`);
   const nm = esc(it.name);
   li.innerHTML = `<button type="button" class="hit sl" tabindex="-1" aria-hidden="true"></button>`
     + `<span class="picbox">${picHTML(it)}<span class="selmark">${ic('check')}</span></span>`
     + `<span class="txt"><span class="nm">${nm}</span>${subs.join('')}</span>`
-    + `<span class="step"><span class="sum"></span><button type="button" class="minus icon-btn sl" aria-label="${nm}を へらす">${ic('minus')}</button>`
+    + `<span class="step"><button type="button" class="minus icon-btn sl" aria-label="${nm}を へらす">${ic('minus')}</button>`
     + `<span class="n"></span><button type="button" class="plus icon-btn sl" aria-label="${nm}を ふやす">${ic('plus')}<span class="pl">入れる</span></button></span>`;
   paintRow(li, it);
   return li;
 }
 function paintRow(li, it) {
-  const ls = linesOf(it), on = ls.length > 0;
+  const q = qtyIn(it), on = q > 0;
   li.classList.toggle('sel', on);
-  const minus = $('.minus', li), n = $('.n', li), sum = $('.sum', li);
-  if (sized(it)) {
-    minus.hidden = n.hidden = true;
-    sum.hidden = !on;
-    sum.innerHTML = ls.map(l => `${esc(l.size)} ${qtyHTML(it, l.qty)}`).join('<br>');
-  } else {
-    sum.hidden = true;
-    minus.hidden = n.hidden = !on;
-    n.innerHTML = on ? qtyHTML(it, ls[0].qty) : '';
-  }
+  const minus = $('.minus', li), n = $('.n', li);
+  minus.hidden = n.hidden = !on;
+  n.innerHTML = on ? qtyHTML(it, q) : '';
 }
 // a trembling finger can land twice in a row; a second tap on the same button within 350 ms is dropped
 let lastTap = { el: null, t: 0 };
@@ -743,9 +788,8 @@ groupsEl.addEventListener('click', e => {
   const it = li && byId(li.dataset.id);
   if (!it || tooFast(b)) return;
   if (b.classList.contains('hit')) { nudge(li); return; }
-  if (b.classList.contains('minus')) { change(it, '', -1); paintRow(li, it); renderBar(); return; }
-  if (sized(it)) { openSize(it); return; }
-  change(it, '', 1);
+  if (b.classList.contains('minus')) { change(it, -1); paintRow(li, it); renderBar(); return; }
+  change(it, 1);
   paintRow(li, it);
   renderBar();
 });
@@ -792,30 +836,6 @@ function renderBar() {
 }
 const bar = $('#bar');
 new ResizeObserver(() => { if (bar.offsetHeight) document.documentElement.style.setProperty('--barH', bar.offsetHeight + 'px'); }).observe(bar);
-
-/* ---------- sizes ---------- */
-let sizeItem = null;
-function openSize(it) { sizeItem = it; renderSize(); openSheet('sh-size'); }
-function renderSize() {
-  const it = sizeItem;
-  $('#sizeHead').innerHTML = `${picHTML(it)}<span><span class="nm" id="sizeName">${esc(it.name)}</span><span class="q">どれに しますか？</span></span>`;
-  $('#sizeRows').innerHTML = it.sizes.map((s, i) => {
-    const q = cart.lines[keyOf(it.id, s)] || 0;
-    return `<li class="row np${q ? ' sel' : ''}" data-i="${i}"><button type="button" class="hit sl" tabindex="-1" aria-hidden="true"></button>`
-      + `<span class="txt"><span class="nm">${esc(s)}</span></span><span class="step">`
-      + (q ? `<button type="button" class="minus icon-btn sl" aria-label="${esc(s)}を へらす">${ic('minus')}</button><span class="n">${qtyHTML(it, q)}</span>` : '')
-      + `<button type="button" class="plus icon-btn sl" aria-label="${esc(s)}を ふやす">${ic('plus')}<span class="pl">入れる</span></button></span></li>`;
-  }).join('');
-}
-$('#sizeRows').addEventListener('click', e => {
-  const b = e.target.closest('button');
-  if (!b || !sizeItem || tooFast(b)) return;
-  if (b.classList.contains('hit')) { nudge(b.closest('.row')); return; }
-  const s = sizeItem.sizes[+b.closest('[data-i]').dataset.i];
-  change(sizeItem, s, b.classList.contains('minus') ? -1 : 1);
-  renderSize();
-});
-$('#sh-size').addEventListener('closed', () => renderHome());
 
 /* ---------- 声で たのむ ---------- */
 // LINE's own voice messages can only be recorded inside LINE, so the parent's voice is recorded here and goes to LINE
@@ -1041,9 +1061,9 @@ $('#voiceAdd').addEventListener('click', async () => {
 function buildText(c = cart) {
   const out = [`🛒 かいものリスト（${md(Date.now())}）`];
   const itemLines = [];
-  for (const g of GROUPS) for (const it of inGroup(g.key)) for (const l of linesOf(it, c)) {
-    const det = detailOf(it, l.size);
-    itemLines.push(`・${it.name}${det ? `（${det}）` : ''} ${l.qty}${it.unit}`);
+  for (const g of GROUPS) for (const it of inGroup(g.key)) {
+    const q = qtyIn(it, c);
+    if (q) itemLines.push(`・${it.name}${it.note ? `（${it.note}）` : ''} ${q}${it.unit}`);
   }
   out.push(...itemLines);
   const texts = c.extras.filter(x => !x.voice);
@@ -1063,9 +1083,9 @@ $('#sendBtn').addEventListener('click', () => {
 });
 function renderConfirm() {
   const rows = [];
-  for (const g of GROUPS) for (const it of inGroup(g.key)) for (const l of linesOf(it)) {
-    const det = detailOf(it, l.size);
-    rows.push(`<li>${picHTML(it, 'sm')}<span class="cn">${esc(it.name)}${det ? `<small>${esc(det)}</small>` : ''}</span><span class="cq">${qtyHTML(it, l.qty)}</span></li>`);
+  for (const g of GROUPS) for (const it of inGroup(g.key)) {
+    const q = qtyIn(it);
+    if (q) rows.push(`<li>${picHTML(it, 'sm')}<span class="cn">${esc(it.name)}${it.note ? `<small>${esc(it.note)}</small>` : ''}</span><span class="cq">${qtyHTML(it, q)}</span></li>`);
   }
   cart.extras.forEach(x => rows.push(x.voice
     ? `<li>${notePic('sm', 'mic')}<span class="cn">${VOICE_LABEL}<small>${secText(x.sec)}・音声ファイルで 送ります</small></span></li>`
@@ -1174,7 +1194,7 @@ function markSent() {
   const c = pending ? fixCart(pending.cart) : cart;
   const now = Date.now();
   const lines = [];
-  for (const g of GROUPS) for (const it of inGroup(g.key)) for (const l of linesOf(it, c)) lines.push({ id: it.id, name: it.name, size: l.size, unit: it.unit, qty: l.qty });
+  for (const g of GROUPS) for (const it of inGroup(g.key)) { const q = qtyIn(it, c); if (q) lines.push({ id: it.id, name: it.name, size: '', unit: it.unit, qty: q }); }
   const before = { cart: clone(cart), hist: hist.slice(), stats: items.map(it => [it.id, it.count, it.lastAt]) };
   // a recording is not kept in the history: まえと おなじ must never send an old voice again
   hist.unshift({ at: now, lines, extras: c.extras.filter(x => !x.voice).map(x => x.text), when: c.when });
@@ -1216,8 +1236,7 @@ $('#sameBtn').addEventListener('click', () => {
   $('#sameTitle').textContent = `${md(h.at)}に 送ったもの`;
   $('#slist').innerHTML = h.lines.map(l => {
     const it = byId(l.id);
-    const det = [l.size, it ? it.note : ''].filter(Boolean).join('・');
-    return `<li>${it ? picHTML(it, 'sm') : notePic('sm')}<span class="cn">${esc(l.name)}${det ? `<small>${esc(det)}</small>` : ''}</span><span class="cq"><b>${l.qty}</b><small>${esc(l.unit)}</small></span></li>`;
+    return `<li>${it ? picHTML(it, 'sm') : notePic('sm')}<span class="cn">${esc(l.name)}${it && it.note ? `<small>${esc(it.note)}</small>` : ''}</span><span class="cq"><b>${l.qty}</b><small>${esc(l.unit)}</small></span></li>`;
   }).join('') + h.extras.map(t => `<li>${notePic('sm')}<span class="cn">${esc(t)}</span></li>`).join('');
   openSheet('sh-same');
 });
@@ -1227,13 +1246,10 @@ $('#sameAdd').addEventListener('click', async () => {
   const before = clone(cart);
   for (const l of h.lines) {
     const it = byId(l.id);
-    let k = null;
-    if (it && sized(it)) { if (it.sizes.includes(l.size)) k = keyOf(it.id, l.size); }
-    else if (it && (!l.size || it.sizes[0] === l.size)) k = it.id;
     // pressing it twice must not double the amounts
-    if (k) cart.lines[k] = Math.max(cart.lines[k] || 0, l.qty);
+    if (it) cart.lines[it.id] = Math.max(qtyIn(it), l.qty);
     else {
-      const text = `${l.name}${l.size ? `（${l.size}）` : ''} ${l.qty}${l.unit}`;
+      const text = `${l.name} ${l.qty}${l.unit}`;
       if (!cart.extras.some(x => x.text === text)) cart.extras.push({ id: uid(), text });
     }
   }
@@ -1371,7 +1387,6 @@ $('#closeSettings').addEventListener('click', () => popLayer());
 
 function sline(it) {
   const a = [it.unit];
-  if (it.sizes.length) a.push(it.sizes.join('・'));
   if (it.note) a.push(it.note);
   a.push(it.lastAt ? `前回 ${md(it.lastAt)}・${it.count}回` : 'まだ たのまれていない');
   return a.join('／');
@@ -1626,13 +1641,15 @@ function renderRecent() {
 }
 
 /* ---------- item editor ---------- */
-let editing = null, draft = null;
+// copyOf: the item a new one is being made from (この品物を もとに ふやす), which it goes in right after
+let editing = null, draft = null, copyOf = null;
 $('#addItem').addEventListener('click', () => openEdit(null));
 function openEdit(it, name = '') {
   editing = it;
+  copyOf = null;
   dropPreview();
-  draft = it ? { ...it, sizes: it.sizes.slice() }
-    : { id: uid(), name, icon: '', unit: '個', group: 'food', sizes: [], note: '', photo: false, count: 0, lastAt: 0 };
+  draft = it ? { ...it }
+    : { id: uid(), name, icon: '', unit: '個', group: 'food', note: '', photo: false, count: 0, lastAt: 0 };
   // newPhoto: a photo picked in this sheet, saved only with 保存する; preview: the picture the sheet shows
   draft.newPhoto = null;
   draft.preview = photoOf(it);
@@ -1641,11 +1658,10 @@ function openEdit(it, name = '') {
   $('#editTitle').textContent = it ? '品物を なおす' : '品物を ふやす';
   $('#fName').value = draft.name;
   $('#fNote').value = draft.note;
-  $('#fSizeIn').value = '';
-  $('#fDelete').hidden = !it;
+  $('#fDelete').hidden = $('#fCopyBox').hidden = !it;
   $('#fPics').innerHTML = `<button type="button" class="sl" data-p="" aria-label="絵なし（名前の 1文字目）" title="絵なし"><span class="ini"></span></button>`
     + PICS.map(([n, label, hue, d]) => `<button type="button" class="sl h-${hue}" data-p="${n}" aria-label="${label}" title="${label}">${svgOf(d)}</button>`).join('');
-  paintEdit(); paintUnits(); paintSizes(); paintGroup();
+  paintEdit(); paintUnits(); paintGroup();
   openSheet('sh-edit');
   const grid = $('#fPics'), on = $('.on', grid);
   grid.scrollTop = on ? on.getBoundingClientRect().top - grid.getBoundingClientRect().top + grid.scrollTop - 8 : 0;
@@ -1661,9 +1677,6 @@ function paintUnits() {
   $('#fUnitOther').value = UNITS.includes(draft.unit) ? '' : draft.unit;
   $('#fUnitNote').hidden = draft.unit !== 'g';
 }
-function paintSizes() {
-  $('#fSizes').innerHTML = draft.sizes.map((s, i) => `<span class="tag">${esc(s)}<button type="button" class="sl" data-i="${i}" aria-label="${esc(s)}を けす">${ic('x')}</button></span>`).join('');
-}
 function paintGroup() {
   $('#fGroup').innerHTML = GROUPS.map(g => chipHTML(draft.group === g.key, `data-g="${g.key}"`, g.label)).join('');
 }
@@ -1677,16 +1690,24 @@ $('#fUnitOther').addEventListener('input', e => {
   else paintUnits();
   $('#fUnitNote').hidden = draft.unit !== 'g';
 });
-function addSize() {
-  const v = $('#fSizeIn').value.trim().slice(0, 12);
-  if (v && !draft.sizes.includes(v) && draft.sizes.length < 8) draft.sizes.push(v);
-  $('#fSizeIn').value = '';
-  paintSizes();
-}
-$('#fSizeAdd').addEventListener('click', addSize);
-$('#fSizeIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); addSize(); } });
-$('#fSizes').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) { draft.sizes.splice(+b.dataset.i, 1); paintSizes(); } });
 $('#fGroup').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (b) { draft.group = b.dataset.g; paintGroup(); } });
+// another size or kind: the sheet becomes a new item with what it shows (picture, photo, unit, note, group), and the
+// item it was opened for stays as it was saved
+$('#fCopy').addEventListener('click', async () => {
+  const from = editing;
+  if (!from) return;
+  const photo = draft.newPhoto || (draft.photo ? await itemPhoto(from) : null);
+  editing = null; copyOf = from;
+  Object.assign(draft, { id: uid(), name: $('#fName').value.trim(), note: $('#fNote').value.trim(), count: 0, lastAt: 0, newPhoto: photo, photo: !!photo });
+  if (!photo) { dropPreview(); draft.preview = ''; }
+  $('#editTitle').textContent = '品物を ふやす';
+  $('#fDelete').hidden = $('#fCopyBox').hidden = true;
+  paintEdit();
+  const f = $('#fName');
+  f.focus();
+  f.setSelectionRange(f.value.length, f.value.length);
+  toast('写しました。なまえを なおして、保存して ください。');
+});
 $('#fPhoto').addEventListener('click', () => $('#fPhotoFile').click());
 // a preview made for a photo picked in the sheet is let go when the sheet closes or another photo is picked
 function dropPreview() { if (draft && draft.ownURL) { URL.revokeObjectURL(draft.preview); draft.ownURL = false; } }
@@ -1727,7 +1748,7 @@ function shrink(file) {
 $('#fSave').addEventListener('click', async () => {
   const name = $('#fName').value.trim();
   if (!name) { toast('なまえを 入れてください。'); $('#fName').focus(); return; }
-  if ($('#fSizeIn').value.trim()) addSize();
+  if (copyOf && name === copyOf.name && $('#fNote').value.trim() === copyOf.note) { toast('もとの 品物と 同じ なまえです。なまえか くわしくを なおして ください。'); $('#fName').focus(); return; }
   draft.name = name;
   draft.note = $('#fNote').value.trim();
   try {
@@ -1737,13 +1758,10 @@ $('#fSave').addEventListener('click', async () => {
   const { newPhoto, preview, ownURL, ...rest } = draft;
   const item = fixItem(rest);
   const at = editing ? items.indexOf(editing) : -1;
-  if (at >= 0) items[at] = item; else items.push(item);
-  // amounts picked under sizes that no longer exist are dropped
-  for (const k of Object.keys(cart.lines)) {
-    const [id, size] = splitKey(k);
-    if (id === item.id && (sized(item) ? !item.sizes.includes(size) : size !== '')) delete cart.lines[k];
-  }
-  save('items', items); saveCart();
+  if (at >= 0) items[at] = item;
+  else if (copyOf && items.includes(copyOf)) items.splice(items.indexOf(copyOf) + 1, 0, item);
+  else items.push(item);
+  save('items', items);
   noteChange();
   const isNew = !editing;
   await closeSheet();
@@ -1754,8 +1772,8 @@ $('#fDelete').addEventListener('click', async () => {
   const it = editing;
   if (!it || !(await ask(`「${it.name}」を けしますか？`, '親の 画面から この ボタンが なくなります。', 'けす', 'やめる', { danger: true }))) return;
   await closeSheet();
-  const idx = items.indexOf(it), photo = it.photo ? await photoBlob(it.id) : null;
-  const keys = Object.entries(cart.lines).filter(([k]) => splitKey(k)[0] === it.id);
+  const idx = items.indexOf(it), photo = it.photo ? await itemPhoto(it) : null;
+  const keys = Object.entries(cart.lines).filter(([k]) => k === it.id);
   // kept in けした 品物 for 30 days, photo and all, in case it was the wrong one
   try { await idbPut('snaps', 'trash:' + it.id, { at: Date.now(), item: clone(it), idx, photo }); } catch (e) { noteTrouble('trash'); }
   items.splice(idx, 1);
@@ -1835,7 +1853,7 @@ $('#installBtn').addEventListener('click', async () => {
 let backupHist = false;
 async function backupText(withHist, withCart) {
   const photos = {};
-  for (const it of items) if (it.photo) { const b = await photoBlob(it.id); if (b) photos[it.id] = await blobData(b); }
+  for (const it of items) if (it.photo) { const b = await itemPhoto(it); if (b) photos[it.id] = await blobData(b); }
   const data = { app: 'kaimono', version: 1, appVersion: APP_VER, exportedAt: new Date().toISOString(), items, photos, settings };
   if (withHist) data.history = hist;
   // 書き出して 残す also keeps the list being picked, which is most often what could not be saved (recordings stay out)
@@ -2002,10 +2020,12 @@ $('#verifyFile').addEventListener('change', async e => {
   const { data, err, quiet, locked } = await readBackup(f);
   if (quiet) return;
   if (err) { await ask('この ファイルは 使えません', err, 'とじる', '', { one: true }); return; }
-  const list = cleanItems(data.items);
+  const made = new Map(), list = cleanItems(data.items, made);
   const photos = data.photos && typeof data.photos === 'object' ? data.photos : {};
+  const photoIn = it => photos[it.id] || photos[made.get(it.id)];
+  statsFor(list, made, Array.isArray(data.history) ? data.history.filter(okHist).map(fixHist) : hist);
   let good = 0, bad = 0;
-  for (const it of list) if (it.photo) { if (await photoBlobOf(photos[it.id])) good++; else bad++; }
+  for (const it of list) if (it.photo) { if (await photoBlobOf(photoIn(it))) good++; else bad++; }
   const at = Date.parse(data.exportedAt) || 0;
   const nHist = Array.isArray(data.history) ? data.history.filter(okHist).length : -1;
   const same = list.length === items.length && list.every(x => byId(x.id) && byId(x.id).name === x.name);
@@ -2017,7 +2037,7 @@ $('#verifyFile').addEventListener('change', async e => {
     + (same ? 'いまの 品物と 同じ 中身です。' : 'いまの 品物とは ちがう ところが あります（前に 作った ファイルかも しれません）。')
     + 'いまの データは 何も 変えて いません。', '中身を 見る', 'とじる')) {
     const entries = [];
-    for (const it of list) entries.push({ item: it, photo: it.photo ? await photoBlobOf(photos[it.id]) : null });
+    for (const it of list) entries.push({ item: it, photo: it.photo ? await photoBlobOf(photoIn(it)) : null });
     openPeek('バックアップの 中身', `${at ? `${md(at)} ${hm(at)}の バックアップです。` : ''}品物を 1つずつ 戻せます（いまの ものは「けした 品物」に 入ります）。`, entries);
   }
 });
@@ -2025,7 +2045,7 @@ $('#verifyFile').addEventListener('change', async e => {
 // what there was just before a file was read in, kept a week, so a wrong file can be taken back
 async function snapshot() {
   const photos = [];
-  for (const it of items) if (it.photo) { const b = await photoBlob(it.id); if (b) photos.push([it.id, b]); }
+  for (const it of items) if (it.photo) { const b = await itemPhoto(it); if (b) photos.push([it.id, b]); }
   await idbPut('snaps', 'beforeImport', { at: Date.now(), items: clone(items), hist: clone(hist), settings: clone(settings), cart: clone(cart), photos });
 }
 async function undoImport(why) {
@@ -2033,13 +2053,15 @@ async function undoImport(why) {
   try { s = await idbGet('snaps', 'beforeImport'); } catch (e) {}
   if (!s) { toast('戻せる 状態が 見つかりませんでした。'); return; }
   try { await idbReplace('photos', s.photos || []); } catch (e) { toast('戻せませんでした。スマホの 空きを たしかめて ください。'); return; }
-  await loadPhotos();
-  announce('photos');
-  items = (s.items || []).filter(okItem).map(fixItem);
+  items = splitSizes((s.items || []).filter(okItem).map(fixItem), splitMade);
   hist = (s.hist || []).filter(okHist).map(fixHist);
+  statsFor(items, splitMade);
   settings = Object.assign(defaultSettings(), s.settings || {});
   if (s.cart) cart = fixCart(s.cart);
   save('items', items); save('history', hist); save('settings', settings); saveCart();
+  await finishSplit();
+  await loadPhotos();
+  announce('photos');
   applySize(); applyTheme();
   try { await idbDel('snaps', 'beforeImport'); } catch (e) {}
   renderSettings();
@@ -2067,13 +2089,13 @@ $('#importFile').addEventListener('change', async e => {
   const { data, err, quiet } = await readBackup(f);
   if (quiet) return;
   if (err) { toast(err); return; }
-  const list = cleanItems(data.items);
+  const made = new Map(), list = cleanItems(data.items, made);
   const withHist = Array.isArray(data.history);
   // a list the parent was picking, kept by 書き出して 残す when the phone could not save it
   const fileCart = data.cart ? fixCart(data.cart) : null;
   if (fileCart) {
     const ids = new Set(list.map(it => it.id));
-    for (const k of Object.keys(fileCart.lines)) if (!ids.has(splitKey(k)[0])) delete fileCart.lines[k];
+    for (const k of Object.keys(fileCart.lines)) if (!ids.has(k)) delete fileCart.lines[k];
     fileCart.extras = fileCart.extras.filter(x => !x.voice);
   }
   const nCart = fileCart ? Object.keys(fileCart.lines).length + fileCart.extras.length : 0;
@@ -2090,7 +2112,7 @@ $('#importFile').addEventListener('change', async e => {
   let lost = 0;
   for (const it of list) {
     if (!it.photo) continue;
-    const b = await photoBlobOf(photos[it.id]);
+    const b = await photoBlobOf(photos[it.id] || photos[made.get(it.id)]);
     if (b) { entries.push([it.id, b]); continue; }
     it.photo = false; lost++;
   }
@@ -2099,6 +2121,7 @@ $('#importFile').addEventListener('change', async e => {
   announce('photos');
   items = list;
   if (withHist) { hist = data.history.filter(okHist).map(fixHist); trimHist(); }
+  statsFor(items, made);
   const s = data.settings || {};
   if (['m', 'l', 'xl'].includes(s.size)) settings.size = s.size;
   if (['line', 'share'].includes(s.send)) settings.send = s.send;
@@ -2150,7 +2173,7 @@ async function paintCopies() {
   try { list = await copiesList(); } catch (e) {}
   $('#copyList').innerHTML = list.length ? list.map(c => {
     let n = 0;
-    try { n = (JSON.parse(c.ls.items) || []).length; } catch (e) {}
+    try { n = splitSizes((JSON.parse(c.ls.items) || []).filter(okItem).map(fixItem)).length; } catch (e) {}
     const what = c.why === 'update' ? `${esc(c.to || '')} に なる 前` : c.why === 'restore' ? '戻す 前の 状態' : c.why === 'conflict' ? 'ほかの 窓が 保存した 状態' : '週の 控え';
     return `<li class="srow"><span class="stx"><b>${md(c.at)} ${hm(c.at)}</b><small>${what}・品物 ${n}こ・写真 ${(c.photos || []).length}まい</small></span>`
       + `<button type="button" class="btn text sl" data-peek="${esc(c.key)}">中身</button><button type="button" class="btn tonal sl" data-k="${esc(c.key)}">もどす</button></li>`;
@@ -2163,9 +2186,11 @@ $('#copyList').addEventListener('click', async e => {
     const c = await idbGet('snaps', pk.dataset.peek).catch(() => null);
     if (!c) return;
     let its = [];
-    try { its = (JSON.parse(c.ls.items) || []).filter(okItem).map(fixItem); } catch (e2) {}
+    const made = new Map();
+    try { its = splitSizes((JSON.parse(c.ls.items) || []).filter(okItem).map(fixItem), made); } catch (e2) {}
+    try { statsFor(its, made, (JSON.parse(c.ls.history) || []).filter(okHist).map(fixHist)); } catch (e2) {}
     const ph = new Map(c.photos || []);
-    openPeek('控えの 中身', `${md(c.at)} ${hm(c.at)}の 控えです。品物を 1つずつ 戻せます（いまの ものは「けした 品物」に 入ります）。`, its.map(it => ({ item: it, photo: it.photo ? ph.get(it.id) || null : null })));
+    openPeek('控えの 中身', `${md(c.at)} ${hm(c.at)}の 控えです。品物を 1つずつ 戻せます（いまの ものは「けした 品物」に 入ります）。`, its.map(it => ({ item: it, photo: it.photo ? ph.get(it.id) || ph.get(made.get(it.id)) || null : null })));
     return;
   }
   const b = e.target.closest('[data-k]');
@@ -2191,12 +2216,13 @@ async function paintTrash() {
   let list = [];
   try { list = await trashList(); } catch (e) {}
   // one that is back on the list already (from a copy or a file) leaves the bin
-  for (const t of list.filter(t => t.item && !t.replaced && byId(t.item.id))) idbDel('snaps', t.key).catch(() => {});
-  list = list.filter(t => !(t.item && !t.replaced && byId(t.item.id)));
+  const back = t => t.item && !t.replaced && splitSizes([fixItem(t.item)]).every(x => byId(x.id));
+  for (const t of list.filter(back)) idbDel('snaps', t.key).catch(() => {});
+  list = list.filter(t => !back(t));
   $('#trashBox').hidden = !list.length;
   $('#trashList').innerHTML = list.map(t => {
-    const it = fixItem(t.item);
-    return `<li class="srow"><span class="sedit">${picHTML({ ...it, photo: false }, 'sm')}<span class="stx"><b>${esc(it.name)}</b><small>${md(t.at)}に けしました${t.photo ? '（写真も あります）' : ''}</small></span></span>`
+    const its = splitSizes([fixItem(t.item)]), it = its[0];
+    return `<li class="srow"><span class="sedit">${picHTML({ ...it, photo: false }, 'sm')}<span class="stx"><b>${esc(its.map(x => x.name).join('・'))}</b><small>${md(t.at)}に けしました${t.photo ? '（写真も あります）' : ''}</small></span></span>`
       + `<button type="button" class="btn tonal sl" data-t="${esc(t.key)}">もどす</button></li>`;
   }).join('');
 }
@@ -2205,16 +2231,18 @@ $('#trashList').addEventListener('click', async e => {
   if (!b) return;
   const t = await idbGet('snaps', b.dataset.t).catch(() => null);
   if (!t) return;
-  const it = fixItem(t.item);
-  if (byId(it.id)) it.id = uid();
-  it.photo = false;
-  if (t.photo) { try { await putPhoto(it.id, t.photo); it.photo = true; } catch (err) {} }
-  items.splice(Math.min(t.idx, items.length), 0, it);
+  const its = splitSizes([fixItem(t.item)]);
+  for (const it of its) {
+    if (byId(it.id)) it.id = uid();
+    it.photo = false;
+    if (t.photo) { try { await putPhoto(it.id, t.photo); it.photo = true; } catch (err) {} }
+  }
+  items.splice(Math.min(t.idx, items.length), 0, ...its);
   save('items', items);
   noteChange();
   await idbDel('snaps', b.dataset.t).catch(() => {});
   renderSettings();
-  toast(`「${it.name}」を 戻しました。`);
+  toast(`「${its.map(it => it.name).join('」と「')}」を 戻しました。`);
 });
 
 // what could not be read, kept aside at start (once for each different content)
@@ -2301,7 +2329,7 @@ async function restoreOne({ item, photo }) {
   if (cur) {
     // what is there now goes to the bin first, photo and all
     // (a replaced version keeps its place in the bin even though an item of the same id is back on the list)
-    try { await idbPut('snaps', 'trash:' + cur.id + ':' + Date.now(), { at: Date.now(), item: clone(cur), idx: items.indexOf(cur), photo: cur.photo ? await photoBlob(cur.id) : null, replaced: true }); } catch (e) { noteTrouble('trash'); }
+    try { await idbPut('snaps', 'trash:' + cur.id + ':' + Date.now(), { at: Date.now(), item: clone(cur), idx: items.indexOf(cur), photo: cur.photo ? await itemPhoto(cur) : null, replaced: true }); } catch (e) { noteTrouble('trash'); }
   }
   it.photo = false;
   if (photo) { try { await putPhoto(it.id, photo); it.photo = true; } catch (e) { noteTrouble('photo'); } }
@@ -2456,6 +2484,8 @@ if (pending) setTimeout(askSent, 700);
     if (RAW.items == null) save('ver', APP_VER);
     else { try { await autoCopy('update', RAW, lastVer || ''); save('ver', APP_VER); } catch (e) { noteTrouble('copy'); } }
   }
+  // 1.10: items with sizes, split as they were read, are saved only now, with their photos copied
+  await finishSplit();
   await loadPhotos();
   renderHome();
   // the clock is checked before anything is cleared by date

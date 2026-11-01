@@ -19,6 +19,10 @@
       return await new Promise(res => { const r = db.transaction(store).objectStore(store).getAllKeys(); r.onsuccess = () => res(r.result.map(String)); });
     } finally { db.close(); }
   }
+  async function value(store, key) {
+    const db = await idb();
+    try { return await new Promise(res => { const r = db.transaction(store).objectStore(store).get(key); r.onsuccess = () => res(r.result); }); } finally { db.close(); }
+  }
   async function clean() {
     for (const f of document.querySelectorAll('iframe')) f.remove();
     await wait(300);
@@ -36,6 +40,15 @@
   }
   const $in = (f, s) => f.contentDocument.querySelector(s);
   const rows = f => f.contentDocument.querySelectorAll('#groups .row').length;
+  // 1.10: an item with two sizes or more is shown as one item for each size
+  const splitN = list => list.reduce((n, it) => n + ((it.sizes || []).length >= 2 ? it.sizes.length : 1), 0);
+  const named = (f, name) => [...f.contentDocument.querySelectorAll('#groups .row')].find(r => r.querySelector('.nm').textContent === name);
+  const giveFile = (f, input, text) => {
+    const dt = new f.contentWindow.DataTransfer();
+    dt.items.add(new f.contentWindow.File([text], 'kaimono-backup.json', { type: 'application/json' }));
+    $in(f, input).files = dt.files;
+    $in(f, input).dispatchEvent(new f.contentWindow.Event('change'));
+  };
   const stored = name => { try { return JSON.parse(localStorage.getItem(KEY + name)); } catch (e) { return undefined; } };
   async function photoURL(color) {
     const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -46,8 +59,10 @@
     localStorage.setItem(KEY + 'items', JSON.stringify(fx.items));
     localStorage.setItem(KEY + 'cart', JSON.stringify(fx.cart));
     localStorage.setItem(KEY + 'settings', JSON.stringify(fx.settings));
-    const line = it => ({ id: it.id, name: it.name, size: '', unit: it.unit, qty: 1 });
-    localStorage.setItem(KEY + 'history', JSON.stringify(Array.from({ length: fx.history }, (_, i) => ({ at: Date.now() - (i + 1) * 3 * 864e5, lines: [line(fx.items[i % fx.items.length])], extras: i ? [] : ['ふつうの メモ'], when: '' }))));
+    // an item with sizes was always sent with one of them
+    const line = it => ({ id: it.id, name: it.name, size: (it.sizes || []).length >= 2 ? it.sizes[0] : '', unit: it.unit, qty: 1 });
+    localStorage.setItem(KEY + 'history', JSON.stringify(Array.from({ length: fx.history }, (_, i) => ({ at: Date.now() - (i + 1) * 3 * 864e5,
+      lines: [line(fx.items[i % fx.items.length]), ...(i ? [] : fx.histSized || [])], extras: i ? [] : ['ふつうの メモ'], when: '' }))));
     if (fx.backup) localStorage.setItem(KEY + 'backup', JSON.stringify(fx.backup));
     if (fx.ver) localStorage.setItem(KEY + 'ver', JSON.stringify(fx.ver));
   }
@@ -60,7 +75,8 @@
     // ---------- a first start ----------
     await clean();
     let f = await openApp();
-    check(rows(f) >= 20, `はじめて 開くと はじめの 品物が 出る（${rows(f)}行）`);
+    check(rows(f) >= 23, `はじめて 開くと はじめの 品物が 出る（${rows(f)}行）`);
+    check(!!named(f, 'お米 2kg') && !!named(f, 'お米 5kg') && (stored('items') || []).every(it => !it.sizes.length), 'はじめの 品物は 大きさごとに 分かれて いる');
     check($in(f, '.ver').textContent === 'かいものメモ ' + appVer, `表示の 版が ${appVer}`);
     check(stored('ver') === appVer, 'ver が 保存される');
 
@@ -70,26 +86,36 @@
     put(f13);
     for (const [i, id] of f13.photos.entries()) localStorage.setItem(KEY + 'photo:' + id, await photoURL(i ? '#36c' : '#c63'));
     f = await openApp();
-    check(rows(f) === f13.items.length, `1.3 の 品物が ぜんぶ 出る（${rows(f)}/${f13.items.length}）`);
+    check(rows(f) === splitN(f13.items), `1.3 の 品物が 大きさごとに ぜんぶ 出る（${rows(f)}/${splitN(f13.items)}）`);
     const moved = await keys('photos');
-    check(f13.photos.every(id => moved.includes(id)), '1.3 の 写真が IndexedDB に 移る');
+    check(['a1~6枚切り', 'a1~8枚切り', 'a2'].every(id => moved.includes(id)) && !moved.includes('a1'), '1.3 の 写真が IndexedDB に 移る（分けた 品物には それぞれ）');
     check(!Object.keys(localStorage).some(k => k.startsWith(KEY + 'photo:')), '1.3 の 写真の 古い 置き場所は 空に なる');
-    check(f.contentDocument.querySelectorAll('#groups .pic img').length === f13.photos.length, '写真が 出る');
+    check(f.contentDocument.querySelectorAll('#groups .pic img').length === 3, '写真が 出る');
     const pic = $in(f, '#groups [data-id="a2"] .pic');
     check(!!pic, '絵文字の 品物が 出る');
     check((stored('cart') || {}).extras && stored('cart').extras.every(x => !x.voice), 'なくなった 録音は リストから 外れる');
     check((stored('history') || []).length === 1, '1.3 の 送った 記録が 残る');
-    check((await keys('snaps')).some(k => k.startsWith('auto:')), '新しい 版の 前の 控えが 取られる');
+    const auto13 = (await keys('snaps')).filter(k => k.startsWith('auto:')).sort().pop();
+    check(!!auto13, '新しい 版の 前の 控えが 取られる');
+    const copy13 = auto13 ? await value('snaps', auto13) : null;
+    check(!!copy13 && (copy13.photos || []).some(p => p[0] === 'a1') && /"sizes":\["6枚切り"/.test(copy13.ls.items), '分ける 前の 品物と 写真が 控えに 残る');
 
     // ---------- what 1.8 left ----------
     await clean();
     const f18 = FIXTURES['1.8'];
     put(f18);
     f = await openApp();
-    check(rows(f) === f18.items.length, `1.8 の 品物が ぜんぶ 出る（${rows(f)}/${f18.items.length}）`);
+    check(rows(f) === splitN(f18.items), `1.8 の 品物が 大きさごとに ぜんぶ 出る（${rows(f)}/${splitN(f18.items)}）`);
     check((stored('history') || []).length === f18.history, '1.8 の 送った 記録が 残る');
     check(f.contentDocument.documentElement.dataset.size === 'l', '文字の 大きさの 設定が 残る');
     check((stored('cart') || {}).when === 'こんど来るとき', 'えらんで いる リストが 残る');
+    check(((stored('cart') || {}).lines || {})['b1~6枚切り'] === 1 && named(f, '食パン 6枚切り').classList.contains('sel'), '大きさを えらんで いた 分は、その 大きさの 品物に 入る');
+    const sent18 = ((stored('history') || [])[0] || { lines: [] }).lines.find(l => l.id === 'b1~8枚切り');
+    check(!!sent18 && sent18.name === '食パン 8枚切り' && sent18.size === '' && ((stored('items') || []).find(it => it.id === 'b1~8枚切り') || {}).count === 1, '送った 記録の 大きさも その 品物に つく（回数も）');
+    check(!$in(f, '#sh-size'), '大きさを 聞く 画面は ない');
+    named(f, '食パン 8枚切り').querySelector('.plus').click();
+    await wait(400);
+    check(/^1/.test(named(f, '食パン 8枚切り').querySelector('.n').textContent) && ![...f.contentDocument.querySelectorAll('.layer')].some(l => !l.hidden), '＋ を 押すと すぐ 入る（どれか 聞かない）');
     check(!!$in(f, '#groups [data-id="b2"] .pic.lu'), 'Lucide の 絵が 出る');
     check((await keys('snaps')).some(k => k.startsWith('auto:')), '新しい 版の 前の 控えが 取られる');
 
@@ -102,29 +128,49 @@
     check(!!href, 'バックアップを 書き出せる');
     const text = href ? await (await f.contentWindow.fetch(href)).text() : '{}';
     const file = JSON.parse(text);
-    check(file.items && file.items.length === f18.items.length && typeof file.sum === 'string' && file.appVersion === appVer, '書き出した ファイルに 品物・版・印が 入る');
+    check(file.items && file.items.length === splitN(f18.items) && typeof file.sum === 'string' && file.appVersion === appVer, '書き出した ファイルに 品物・版・印が 入る');
     await clean();
     f = await openApp();
     await openSettings(f);
-    const dt = new f.contentWindow.DataTransfer();
-    dt.items.add(new f.contentWindow.File([text], 'kaimono-backup.json', { type: 'application/json' }));
-    $in(f, '#importFile').files = dt.files;
-    $in(f, '#importFile').dispatchEvent(new f.contentWindow.Event('change'));
+    giveFile(f, '#importFile', text);
     await wait(800);
     $in(f, '#askOk').click();
     await wait(2000);
     const back = stored('items') || [];
-    check(back.length === f18.items.length && f18.items.every(it => back.some(b => b.id === it.id && b.name === it.name && b.icon === it.icon)), 'バックアップを 読みこむと 同じ 品物に 戻る');
+    check(back.length === file.items.length && file.items.every(it => back.some(b => b.id === it.id && b.name === it.name && b.icon === it.icon)), 'バックアップを 読みこむと 同じ 品物に 戻る');
     check((stored('settings') || {}).to === 'ゆうこ', '送る 相手の 名前も 戻る');
 
     // ---------- a damaged file is refused ----------
     const bad = JSON.parse(text); bad.items[0].name += 'x';
-    const dt2 = new f.contentWindow.DataTransfer();
-    dt2.items.add(new f.contentWindow.File([JSON.stringify(bad)], 'bad.json', { type: 'application/json' }));
-    $in(f, '#verifyFile').files = dt2.files;
-    $in(f, '#verifyFile').dispatchEvent(new f.contentWindow.Event('change'));
+    giveFile(f, '#verifyFile', JSON.stringify(bad));
     await wait(800);
     check(/こわれて/.test($in(f, '#askText').textContent), '中身が かわった ファイルは「こわれて います」と 断る');
+
+    // ---------- a backup made by 1.9, with sizes, looked at and read in ----------
+    await clean();
+    f = await openApp();
+    await openSettings(f);
+    const old = JSON.parse(JSON.stringify(FIXTURES['1.9 backup']));
+    old.photos = Object.fromEntries(await Promise.all(old.photos.map(async id => [id, await photoURL('#3a3')])));
+    old.history[0].at = Date.now() - 864e5;
+    giveFile(f, '#verifyFile', JSON.stringify(old));
+    await wait(800);
+    const told = ($in(f, '#askText').textContent.match(/品物 \d+こ・写真 \d+まい/) || [''])[0];
+    check(told === '品物 4こ・写真 2まい', `1.9 の バックアップは 大きさごとに 数える（${told}）`);
+    $in(f, '#askNo').click();
+    await wait(500);
+    giveFile(f, '#importFile', JSON.stringify(old));
+    await wait(800);
+    $in(f, '#askOk').click();
+    await wait(2000);
+    const its = stored('items') || [];
+    check(['お米 2kg', 'お米 5kg', 'たまご', 'ヨーグルト'].every(n => its.some(it => it.name === n)) && its.length === 4 && its.every(it => !it.sizes.length), '1.9 の バックアップを 読みこむと 大きさごとの 品物に なる');
+    check((its.find(it => it.name === 'ヨーグルト') || {}).note === '400g・プレーン', '大きさが 1つの ものは「くわしく」に 入る');
+    const ph = await keys('photos');
+    check(ph.includes('c1~2kg') && ph.includes('c1~5kg') && !ph.includes('c1'), 'その 写真も 大きさごとの 品物に つく');
+    const lines19 = ((stored('history') || [])[0] || { lines: [] }).lines;
+    check(lines19.some(l => l.id === 'c1~5kg' && l.name === 'お米 5kg') && (its.find(it => it.id === 'c1~5kg') || {}).count === 1, 'ファイルの 送った 記録も 大きさごとの 品物に つく');
+    check(((stored('cart') || {}).lines || {})['c1~2kg'] === 2, 'ファイルの えらんで いた リストも 大きさごとの 品物に 入る');
 
     // ---------- data that can't be read is kept, not written over ----------
     await clean();

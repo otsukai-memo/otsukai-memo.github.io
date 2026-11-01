@@ -15,7 +15,7 @@ window.FIXTURES = {
     history: 1,
     settings: { size: 'm', send: 'line', theme: 'light', to: '' },
   },
-  // 1.6 to 1.8: Lucide pictures, a sent list or three, family settings, the backup record
+  // 1.6 to 1.9: Lucide pictures, a sent list or three (the newest with a size picked), family settings, the backup record
   '1.8': {
     items: [
       { id: 'b1', name: '食パン', icon: 'sandwich', emoji: '🍞', unit: '袋', group: 'food', sizes: ['6枚切り', '8枚切り'], note: '', photo: false, count: 4, lastAt: 1790000000000 },
@@ -28,8 +28,23 @@ window.FIXTURES = {
     photos: [],
     cart: { lines: { b2: 1, 'b1|6枚切り': 1 }, extras: [{ id: 't1', text: 'しょうゆ' }], when: 'こんど来るとき' },
     history: 3,
+    histSized: [{ id: 'b1', name: '食パン', size: '8枚切り', unit: '袋', qty: 2 }],
     settings: { size: 'l', send: 'line', theme: 'light', to: 'ゆうこ', lock: false, keep: 'three' },
     backup: { at: 1790000000000, changes: 2, dl: [1790000000000] },
     ver: '1.8',
+  },
+  // a backup file made by 1.9: an item with sizes and a photo (filled in by run.js), a sent list with a size picked,
+  // the list being picked with an amount under a size, no check sum
+  '1.9 backup': {
+    app: 'kaimono', version: 1, appVersion: '1.9', exportedAt: '2026-10-30T09:00:00.000Z',
+    items: [
+      { id: 'c1', name: 'お米', icon: 'wheat', emoji: '🌾', unit: '袋', group: 'food', sizes: ['2kg', '5kg'], note: '無洗米', photo: true, count: 4, lastAt: 1790000000000 },
+      { id: 'c2', name: 'たまご', icon: 'egg', emoji: '🥚', unit: 'パック', group: 'food', sizes: [], note: '', photo: false, count: 2, lastAt: 1790000000000 },
+      { id: 'c3', name: 'ヨーグルト', icon: '', emoji: '', unit: '個', group: 'food', sizes: ['400g'], note: 'プレーン', photo: false, count: 0, lastAt: 0 },
+    ],
+    photos: ['c1'],
+    settings: { size: 'm', send: 'line', theme: 'light', to: 'たろう' },
+    history: [{ at: 0, lines: [{ id: 'c1', name: 'お米', size: '5kg', unit: '袋', qty: 1 }, { id: 'c2', name: 'たまご', size: '', unit: 'パック', qty: 1 }], extras: [], when: '' }],
+    cart: { lines: { 'c1|2kg': 2 }, extras: [{ id: 't1', text: 'みそ' }], when: '' },
   },
 };

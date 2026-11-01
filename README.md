@@ -70,6 +70,7 @@ Actions の 部品は コミットの 番号で 固定して あり、新しい 
 | 1.7 | 読めない データの 取りおき `broken:<時刻>`、`welcome`、`clock`、バックアップの パスワード（`locked`） |
 | 1.8 | `settings.keep`、暗証番号 `pin`、`trouble`、`copyCheck`、バックアップに `appVersion` と `sum` |
 | 1.9 | `settings.copyDays`、暗証番号の まちがい `pinTry`、パスワードの ヒント `locked.hint`、`pending` に 文を 入れない |
+| 1.10 | 大きさが 2つ 以上の 品物（`sizes`）は 大きさごとの 品物に 分ける：id は `<もとの id>~<大きさ>`、名前は「名前 大きさ」、写真は それぞれに 写す。リストの `id\|大きさ` と 送った記録の `size` も その 品物に つけかえる。大きさ 1つは `note` へ。`sizes` と 記録の `size` は 1.9 の 窓の ために 空で 残す。名前と `note` は 60文字まで |
 
 形を 変える ときは：前の 形も 読める ように する、`tests/fixtures.js` に その版の 見本を 足す、この 表に 書く。
 

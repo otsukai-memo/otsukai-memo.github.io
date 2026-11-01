@@ -16,7 +16,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/basket-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/basket-apple-touch.png">
-<link rel="stylesheet" href="style.css?v=1.9">
+<link rel="stylesheet" href="style.css?v=1.10">
 </head>
 <body>
 
@@ -152,7 +152,7 @@
     <p class="note">スマホを 人に ゆずる ときなどに。品物・写真・送った記録・録音・設定を ぜんぶ けして、はじめの 状態に 戻します。先に バックアップを しておけば、あとで 読みこんで 戻せます。書き出した ファイルや ドライブの バックアップは 残ります。</p>
     <button type="button" id="wipeAll" class="btn danger sl"><span data-ic="trash-2"></span>データを ぜんぶ けす</button>
 
-    <p class="ver">かいものメモ 1.9</p>
+    <p class="ver">かいものメモ 1.10</p>
   </div>
 </section>
 
@@ -210,15 +210,6 @@
   </div></div>
 </div>
 
-<div class="layer" id="sh-size" hidden role="dialog" aria-modal="true" aria-labelledby="sizeName">
-  <div class="scrim" data-close></div>
-  <div class="sheet"><div class="wrap">
-    <div class="sizehead" id="sizeHead"></div>
-    <ul class="rows" id="sizeRows"></ul>
-    <div class="acts"><button type="button" class="btn filled big sl" data-close><span data-ic="check"></span>できた</button></div>
-  </div></div>
-</div>
-
 <div class="layer" id="sh-same" hidden role="dialog" aria-modal="true" aria-labelledby="sameTitle">
   <div class="scrim" data-close></div>
   <div class="sheet split">
@@ -266,12 +257,9 @@
       <small id="fUnitNote" hidden>g は 100g ずつ ふえます。</small>
     </div>
     <label class="tf"><input id="fNote" type="text" maxlength="30" autocomplete="off" placeholder=" "><span>くわしく</span><small>名前の下と、LINE の文に 小さく入ります。</small></label>
-    <div class="fl"><span class="fl-t">えらべる大きさ・種類</span>
-      <div class="chips" id="fSizes"></div>
-      <div class="addrow"><label class="tf"><input id="fSizeIn" type="text" maxlength="12" autocomplete="off" placeholder=" "><span>大きさ・種類</span></label><button type="button" id="fSizeAdd" class="btn tonal sl">足す</button></div>
-      <small class="fl-help">2つ 以上 入れると、押したときに「どれに しますか？」と 聞きます。</small>
-    </div>
     <div class="fl"><span class="fl-t">グループ</span><div class="chips" id="fGroup"></div></div>
+    <div class="fl" id="fCopyBox"><button type="button" id="fCopy" class="btn tonal sl"><span data-ic="copy-plus"></span>この品物を もとに ふやす</button>
+      <small class="fl-help">大きさや 種類が ちがう ものは、べつの 品物に します。絵・写真・数え方は 同じに なります。</small></div>
     <div class="acts"><button type="button" id="fDelete" class="btn text danger-t sl"><span data-ic="trash-2"></span>この品物を けす</button></div>
     </div></div>
     <div class="sheet-foot"><div class="wrap">
@@ -331,7 +319,7 @@
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="check.js?v=1.9"></script>
-<script src="app.js?v=1.9"></script>
+<script src="check.js?v=1.10"></script>
+<script src="app.js?v=1.10"></script>
 </body>
 </html>
