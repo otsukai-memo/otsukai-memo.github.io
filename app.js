@@ -47,16 +47,30 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.14';
+const APP_VER = '1.15';
 const DAY = 864e5;
 
+// 1.15: たべもの is split into the genres of a supermarket's shelves, so the genre menu reaches each of them
 const GROUPS = [
-  { key: 'food', label: 'たべもの' },
+  { key: 'staple', label: 'ごはん・パン・めん' },
+  { key: 'veg', label: 'やさい' },
+  { key: 'fruit', label: 'くだもの' },
+  { key: 'meat', label: 'お肉' },
+  { key: 'fish', label: 'おさかな' },
+  { key: 'chilled', label: 'たまご・とうふ・乳製品' },
+  { key: 'season', label: 'ちょうみりょう' },
+  { key: 'snack', label: 'おかし' },
+  { key: 'deli', label: 'おそうざい・れいとう' },
+  { key: 'dry', label: 'かんづめ・かんぶつ' },
+  // what the family put under たべもの before 1.15 and isn't one of the starting items
+  { key: 'food', label: 'ほかの たべもの' },
   { key: 'drink', label: 'のみもの' },
   // daily goods are asked for at uneven times, so their rows say when they were last asked for
   { key: 'daily', label: 'にちようひん', showLast: true },
   { key: 'other', label: 'そのほか' },
 ];
+// which genres an item has been sorted by: 2 since 1.15 (items from before are moved out of たべもの once, by name)
+const GSET = 2;
 const UNITS = ['個', '本', 'パック', '袋', '箱', 'たば', 'ふさ', 'g'];
 const WHEN = ['きょう中に', 'あしたまでに', 'こんど来るとき', 'いそがない'];
 // Emoji 13 or older, so they show on older Android phones too
@@ -137,38 +151,139 @@ const FROM_EMOJI = { '🍞': 'sandwich', '🥚': 'egg', '🌾': 'wheat', '🍚':
 // and what that window saves comes back as the same drawing
 const TO_EMOJI = {};
 for (const [e, n] of Object.entries(FROM_EMOJI)) TO_EMOJI[n] = TO_EMOJI[n] || e;
-// name, picture, unit, group, and the catalog that brought it (none: the first one). Each size is an item of its own,
-// so the parent is never asked which one.
+// name, picture, unit, genre, and the catalog that brought it (none: the first one; 2: 1.14; 3: 1.15, a hundred
+// everyday things from a supermarket, none of them a maker's product). Each size is an item of its own, so the parent
+// is never asked which one.
 const DEFAULT_ITEMS = [
-  ['食パン 6枚切り', 'sandwich', '袋', 'food'],
-  ['食パン 8枚切り', 'sandwich', '袋', 'food'],
-  ['たまご', 'egg', 'パック', 'food'],
-  ['お米 2kg', 'wheat', '袋', 'food'],
-  ['お米 5kg', 'wheat', '袋', 'food'],
-  ['とうふ', '', '丁', 'food', 2],
-  ['なっとう', 'bean', 'パック', 'food', 2],
-  ['ヨーグルト', '', '個', 'food', 2],
-  ['バナナ', 'banana', 'ふさ', 'food'],
-  ['りんご', 'apple', '個', 'food', 2],
-  ['みかん', 'citrus', '袋', 'food', 2],
-  ['トマト', '', '個', 'food'],
-  ['たまねぎ', '', '個', 'food'],
-  ['にんじん', 'carrot', '本', 'food', 2],
-  ['キャベツ', 'leafy-green', '個', 'food', 2],
-  ['じゃがいも', '', '袋', 'food', 2],
-  ['おさかな', 'fish', 'パック', 'food'],
-  ['お肉', 'beef', 'g', 'food'],
-  ['とり肉', 'drumstick', 'g', 'food', 2],
-  ['ハム', 'ham', 'パック', 'food', 2],
-  ['うどん', 'soup', '袋', 'food', 2],
-  ['しょうゆ', '', '本', 'food', 2],
-  ['みそ', '', '個', 'food', 2],
-  ['おせんべい', 'cookie', '袋', 'food'],
+  ['食パン 6枚切り', 'sandwich', '袋', 'staple'],
+  ['食パン 8枚切り', 'sandwich', '袋', 'staple'],
+  ['ロールパン', 'croissant', '袋', 'staple', 3],
+  ['お米 2kg', 'wheat', '袋', 'staple'],
+  ['お米 5kg', 'wheat', '袋', 'staple'],
+  ['パックごはん', '', 'パック', 'staple', 3],
+  ['もち', '', '袋', 'staple', 3],
+  ['うどん', 'soup', '袋', 'staple', 2],
+  ['そば', '', '袋', 'staple', 3],
+  ['そうめん', '', '袋', 'staple', 3],
+  ['ラーメン', '', '袋', 'staple', 3],
+  ['焼きそば', '', '袋', 'staple', 3],
+  ['スパゲッティ', '', '袋', 'staple', 3],
+  ['トマト', '', '個', 'veg'],
+  ['ミニトマト', '', 'パック', 'veg', 3],
+  ['たまねぎ', '', '個', 'veg'],
+  ['にんじん', 'carrot', '本', 'veg', 2],
+  ['じゃがいも', '', '袋', 'veg', 2],
+  ['キャベツ', 'leafy-green', '個', 'veg', 2],
+  ['白菜', '', '個', 'veg', 3],
+  ['レタス', 'salad', '個', 'veg', 3],
+  ['大根', '', '本', 'veg', 3],
+  ['ねぎ', '', '本', 'veg', 3],
+  ['きゅうり', '', '本', 'veg', 3],
+  ['なす', '', '本', 'veg', 3],
+  ['ピーマン', '', '袋', 'veg', 3],
+  ['ほうれんそう', '', 'たば', 'veg', 3],
+  ['もやし', '', '袋', 'veg', 3],
+  ['ブロッコリー', '', '個', 'veg', 3],
+  ['かぼちゃ', '', '個', 'veg', 3],
+  ['さつまいも', '', '本', 'veg', 3],
+  ['しいたけ', '', 'パック', 'veg', 3],
+  ['しょうが', '', '個', 'veg', 3],
+  ['にんにく', '', '個', 'veg', 3],
+  ['バナナ', 'banana', 'ふさ', 'fruit'],
+  ['りんご', 'apple', '個', 'fruit', 2],
+  ['みかん', 'citrus', '袋', 'fruit', 2],
+  ['いちご', '', 'パック', 'fruit', 3],
+  ['ぶどう', 'grape', 'ふさ', 'fruit', 3],
+  ['なし', '', '個', 'fruit', 3],
+  ['かき', '', '個', 'fruit', 3],
+  ['もも', '', '個', 'fruit', 3],
+  ['キウイ', '', '個', 'fruit', 3],
+  ['メロン', '', '個', 'fruit', 3],
+  ['レモン', '', '個', 'fruit', 3],
+  ['お肉', 'beef', 'g', 'meat'],
+  ['ぶた肉', '', 'g', 'meat', 3],
+  ['牛肉', '', 'g', 'meat', 3],
+  ['とり肉', 'drumstick', 'g', 'meat', 2],
+  ['ささみ', '', 'パック', 'meat', 3],
+  ['ひき肉', '', 'g', 'meat', 3],
+  ['ハム', 'ham', 'パック', 'meat', 2],
+  ['ソーセージ', '', '袋', 'meat', 3],
+  ['ベーコン', '', 'パック', 'meat', 3],
+  ['おさかな', 'fish', 'パック', 'fish'],
+  ['さけ', '', 'パック', 'fish', 3],
+  ['さば', '', 'パック', 'fish', 3],
+  ['あじ', '', 'パック', 'fish', 3],
+  ['ぶり', '', 'パック', 'fish', 3],
+  ['さしみ', '', 'パック', 'fish', 3],
+  ['いか', '', 'パック', 'fish', 3],
+  ['えび', 'shrimp', 'パック', 'fish', 3],
+  ['あさり', '', 'パック', 'fish', 3],
+  ['しらす', '', 'パック', 'fish', 3],
+  ['ちくわ', '', '袋', 'fish', 3],
+  ['たまご', 'egg', 'パック', 'chilled'],
+  ['とうふ', '', '丁', 'chilled', 2],
+  ['なっとう', 'bean', 'パック', 'chilled', 2],
+  ['あぶらあげ', '', '袋', 'chilled', 3],
+  ['厚あげ', '', 'パック', 'chilled', 3],
+  ['こんにゃく', '', '個', 'chilled', 3],
+  ['ヨーグルト', '', '個', 'chilled', 2],
+  ['チーズ', '', '個', 'chilled', 3],
+  ['バター', '', '個', 'chilled', 3],
+  ['マーガリン', '', '個', 'chilled', 3],
+  ['つけもの', '', 'パック', 'chilled', 3],
+  ['うめぼし', '', 'パック', 'chilled', 3],
+  ['しょうゆ', '', '本', 'season', 2],
+  ['みそ', '', '個', 'season', 2],
+  ['さとう', '', '袋', 'season', 3],
+  ['塩', '', '袋', 'season', 3],
+  ['お酢', '', '本', 'season', 3],
+  ['みりん', '', '本', 'season', 3],
+  ['サラダ油', '', '本', 'season', 3],
+  ['マヨネーズ', '', '本', 'season', 3],
+  ['ケチャップ', '', '本', 'season', 3],
+  ['ソース', '', '本', 'season', 3],
+  ['めんつゆ', '', '本', 'season', 3],
+  ['だし', '', '袋', 'season', 3],
+  ['こしょう', '', '本', 'season', 3],
+  ['小麦粉', '', '袋', 'season', 3],
+  ['おせんべい', 'cookie', '袋', 'snack'],
+  ['クッキー', '', '箱', 'snack', 3],
+  ['チョコレート', '', '箱', 'snack', 3],
+  ['ポテトチップス', '', '袋', 'snack', 3],
+  ['あめ', 'candy', '袋', 'snack', 3],
+  ['ようかん', '', '本', 'snack', 3],
+  ['だいふく', '', '個', 'snack', 3],
+  ['まんじゅう', '', '個', 'snack', 3],
+  ['プリン', '', '個', 'snack', 3],
+  ['ゼリー', '', '個', 'snack', 3],
+  ['アイス', 'ice-cream-cone', '個', 'snack', 3],
+  ['お弁当', 'utensils', '個', 'deli', 3],
+  ['おにぎり', '', '個', 'deli', 3],
+  ['おすし', '', 'パック', 'deli', 3],
+  ['からあげ', '', 'パック', 'deli', 3],
+  ['コロッケ', '', '個', 'deli', 3],
+  ['天ぷら', '', 'パック', 'deli', 3],
+  ['ぎょうざ', '', 'パック', 'deli', 3],
+  ['冷凍うどん', '', '袋', 'deli', 3],
+  ['ツナ缶', 'can', '個', 'dry', 3],
+  ['さば缶', '', '個', 'dry', 3],
+  ['レトルトカレー', '', '箱', 'dry', 3],
+  ['インスタントみそしる', '', '袋', 'dry', 3],
+  ['のり', '', '袋', 'dry', 3],
+  ['わかめ', '', '袋', 'dry', 3],
+  ['かつおぶし', '', '袋', 'dry', 3],
+  ['ごま', '', '袋', 'dry', 3],
   ['牛乳 1L', 'milk', '本', 'drink'],
   ['牛乳 500ml', 'milk', '本', 'drink'],
   ['お茶', 'coffee', '本', 'drink'],
+  ['むぎちゃ', '', '袋', 'drink', 3],
+  ['こうちゃ', '', '箱', 'drink', 3],
+  ['コーヒー', '', '本', 'drink', 3],
   ['お水', 'droplet', '本', 'drink'],
+  ['たんさんすい', 'glass-water', '本', 'drink', 3],
   ['ジュース', 'cup-soda', '本', 'drink', 2],
+  ['やさいジュース', '', '本', 'drink', 3],
+  ['とうにゅう', '', '本', 'drink', 3],
   ['ビール', 'beer', '本', 'drink', 2],
   ['トイレットペーパー', 'toilet', 'パック', 'daily'],
   ['ティッシュ', 'box', '箱', 'daily'],
@@ -281,6 +396,7 @@ function fixItem(x) {
     // read only to split what 1.9 and before kept (splitSizes); empty from then on, and kept for a window still on 1.9
     sizes: Array.isArray(x.sizes) ? [...new Set(x.sizes.map(s => String(s).trim().slice(0, 12)).filter(Boolean))].slice(0, 8) : [],
     note: String(x.note || '').slice(0, 60),
+    gset: Math.max(1, Math.min(GSET, +x.gset || 1)),
     photo: !!x.photo,
     count: Math.max(0, +x.count || 0),
     lastAt: Math.max(0, +x.lastAt || 0),
@@ -314,8 +430,10 @@ function fixHist(h) {
 }
 function cleanItems(arr, made) {
   const seen = new Set();
-  return splitSizes(arr.filter(okItem).slice(0, MAX_ITEMS).map(fixItem), made).slice(0, MAX_ITEMS)
+  const list = splitSizes(arr.filter(okItem).slice(0, MAX_ITEMS).map(fixItem), made).slice(0, MAX_ITEMS)
     .map(it => { if (seen.has(it.id)) it.id = uid(); seen.add(it.id); return it; });
+  regroup(list);
+  return list;
 }
 // made gets each new item's id and the old one's, for its photo; a single size moves into くわしく, where it showed already
 function splitSizes(list, made = new Map()) {
@@ -336,14 +454,28 @@ function statsFor(list, made, h = hist) {
   const st = statsOf(h);
   for (const it of list) if (made.has(it.id)) Object.assign(it, st.get(it.id) || { count: 0, lastAt: 0 });
 }
-const freshItems = (from = 0) => DEFAULT_ITEMS.filter(d => (d[4] || 1) > from).map(([name, icon, unit, group]) => fixItem({ name, icon, unit, group }));
+const freshItems = (from = 0) => DEFAULT_ITEMS.filter(d => (d[4] || 1) > from).map(([name, icon, unit, group]) => fixItem({ name, icon, unit, group, gset: GSET }));
 // a name as the family may have typed it: りんご and リンゴ, or ハム and ﾊﾑ, are one item
 const nameKey = s => String(s).normalize('NFKC').replace(/\s/g, '').replace(/[\u30a1-\u30f6]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+// 1.15: an item under たべもの from before goes to the genre of the starting item of its name (食パン and お米, kept
+// whole from before their sizes, too); one with another name stays, as ほかの たべもの. Each item is sorted once
+// (gset), so one the family puts back under ほかの たべもの later stays there. Returns how many were sorted now.
+const DEFAULT_GROUP = new Map([...DEFAULT_ITEMS.map(d => [nameKey(d[0]), d[3]]), [nameKey('食パン'), 'staple'], [nameKey('お米'), 'staple']]);
+function regroup(list) {
+  let n = 0;
+  for (const it of list) {
+    if (it.gset >= GSET) continue;
+    if (it.group === 'food') it.group = DEFAULT_GROUP.get(nameKey(it.name)) || 'food';
+    it.gset = GSET;
+    n++;
+  }
+  return n;
+}
 
 // a recording never sent is kept a week (how long sent lists stay is the family's choice, settings.keep)
 const VOICE_DAYS = 7;
 // the most a file (or a damaged one) can bring in, so the list always fits in this phone's room for it
-const MAX_ITEMS = 200, MAX_LINES = 100, MAX_EXTRAS = 30;
+const MAX_ITEMS = 500, MAX_LINES = 100, MAX_EXTRAS = 30;
 // to: the family member's name as LINE shows it; theme: light unless the family picks dark or 自動
 // lock: backups get a password; keep: how long sent lists stay (one: only the newest)
 // copyDays: how long the automatic copies stay
@@ -355,12 +487,16 @@ const broken = new Set();
 // items split by size as they were read (new id → old id): saved, each with its own copy of the photo, only once the
 // copy taken on an update is made (finishSplit)
 const splitMade = new Map();
+// items moved out of たべもの as they were read: saved once the copy taken on an update is made
+let regrouped = 0;
 const loadItems = () => {
   const v = load('items', null);
   if (!Array.isArray(v)) { if (RAW.items != null) broken.add('items'); return null; }
   const ok = v.filter(okItem);
   if (ok.length < v.length) broken.add('items');
-  return splitSizes(ok.map(fixItem), splitMade);
+  const list = splitSizes(ok.map(fixItem), splitMade);
+  regrouped += regroup(list);
+  return list;
 };
 const loadHist = () => {
   const v = load('history', []);
@@ -881,7 +1017,8 @@ new ResizeObserver(() => { if (bar.offsetHeight) document.documentElement.style.
 
 /* ---------- ジャンル: a drawer from the top left; each genre takes the list to its place ---------- */
 // a drawing for each genre, from the item pictures
-const NAV_PICS = { food: 'apple', drink: 'coffee', daily: 'spray-can', other: 'package' };
+const NAV_PICS = { staple: 'wheat', veg: 'carrot', fruit: 'apple', meat: 'beef', fish: 'fish', chilled: 'egg', season: 'cooking-pot', snack: 'cookie',
+  deli: 'egg-fried', dry: 'can', food: 'utensils', drink: 'coffee', daily: 'spray-can', other: 'package' };
 const appbar = $('#appbar');
 // the top bar stays at the top, and takes the bottom bar's colour once the list goes under it
 const liftBar = () => appbar.classList.toggle('lifted', window.scrollY > 2);
@@ -901,6 +1038,9 @@ function renderNav() {
 $('#navBtn').addEventListener('click', () => {
   renderNav();
   openSheet('sh-nav');
+  // with many genres the list scrolls: the one marked as where the parent is comes into view
+  const cur = $('#navList [aria-current]');
+  if (cur) cur.scrollIntoView({ block: 'nearest' });
   $('#navBtn').setAttribute('aria-expanded', 'true');
 });
 $('#sh-nav').addEventListener('closed', () => $('#navBtn').setAttribute('aria-expanded', 'false'));
@@ -1446,7 +1586,7 @@ function sline(it) {
   return a.join('／');
 }
 function renderSettings() {
-  $('#sItems').innerHTML = GROUPS.map(g => {
+  $('#sItems').innerHTML = GROUPS.filter(g => g.key !== 'food' || inGroup('food').length).map(g => {
     const list = inGroup(g.key);
     const rows = list.map((it, i) => `<li class="srow" data-id="${esc(it.id)}"><button type="button" class="sedit sl">${picHTML(it, 'sm')}`
       + `<span class="stx"><b>${esc(it.name)}</b><small>${esc(sline(it))}</small></span></button><span class="mv">`
@@ -1703,7 +1843,7 @@ function openEdit(it, name = '') {
   copyOf = null;
   dropPreview();
   draft = it ? { ...it }
-    : { id: uid(), name, icon: '', unit: '個', group: 'food', note: '', photo: false, count: 0, lastAt: 0 };
+    : { id: uid(), name, icon: '', unit: '個', group: 'food', note: '', photo: false, count: 0, lastAt: 0, gset: GSET };
   // newPhoto: a photo picked in this sheet, saved only with 保存する; preview: the picture the sheet shows
   draft.newPhoto = null;
   draft.preview = photoOf(it);
@@ -2108,6 +2248,7 @@ async function undoImport(why) {
   if (!s) { toast('戻せる 状態が 見つかりませんでした。'); return; }
   try { await idbReplace('photos', s.photos || []); } catch (e) { toast('戻せませんでした。スマホの 空きを たしかめて ください。'); return; }
   items = splitSizes((s.items || []).filter(okItem).map(fixItem), splitMade);
+  regroup(items);
   hist = (s.hist || []).filter(okHist).map(fixHist);
   statsFor(items, splitMade);
   settings = Object.assign(defaultSettings(), s.settings || {});
@@ -2241,7 +2382,7 @@ $('#copyList').addEventListener('click', async e => {
     if (!c) return;
     let its = [];
     const made = new Map();
-    try { its = splitSizes((JSON.parse(c.ls.items) || []).filter(okItem).map(fixItem), made); } catch (e2) {}
+    try { its = splitSizes((JSON.parse(c.ls.items) || []).filter(okItem).map(fixItem), made); regroup(its); } catch (e2) {}
     try { statsFor(its, made, (JSON.parse(c.ls.history) || []).filter(okHist).map(fixHist)); } catch (e2) {}
     const ph = new Map(c.photos || []);
     openPeek('控えの 中身', `${md(c.at)} ${hm(c.at)}の 控えです。品物を 1つずつ 戻せます（いまの ものは「けした 品物」に 入ります）。`, its.map(it => ({ item: it, photo: it.photo ? ph.get(it.id) || ph.get(made.get(it.id)) || null : null })));
@@ -2286,6 +2427,7 @@ $('#trashList').addEventListener('click', async e => {
   const t = await idbGet('snaps', b.dataset.t).catch(() => null);
   if (!t) return;
   const its = splitSizes([fixItem(t.item)]);
+  regroup(its);
   for (const it of its) {
     if (byId(it.id)) it.id = uid();
     it.photo = false;
@@ -2523,6 +2665,8 @@ if (pending) setTimeout(askSent, 700);
   }
   // 1.10: items with sizes, split as they were read, are saved only now, with their photos copied
   await finishSplit();
+  // 1.15: what was moved out of たべもの is saved, also only after that copy
+  if (regrouped && !broken.size) { save('items', items); regrouped = 0; }
   // 1.14: the starting items grew; a list from before gets the new ones, also only after that copy
   await addNewItems();
   await loadPhotos();
