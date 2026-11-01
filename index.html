@@ -6,6 +6,10 @@
 <title>かいものメモ</title>
 <meta name="description" content="ほしいものを押すだけで、買い物のお願いをLINEで送れるメモ">
 <meta name="theme-color" content="#ecefe6" id="themeColor">
+<!-- nothing on this page may talk to another server: what the parent keeps here leaves the phone only through LINE,
+     when 「LINEで 送る」 is pressed (a navigation or the share menu, neither of which this policy blocks) -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' data: blob:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'">
+<meta name="referrer" content="no-referrer">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="かいもの">
@@ -300,6 +304,11 @@ html[data-size="l"] #bar .wrap,html[data-size="xl"] #bar .wrap{flex-direction:co
 html.lock #toast{top:calc(.75rem + env(safe-area-inset-top));bottom:auto}
 html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom))}
 #toast .tmsg{flex:1}
+/* a message that would wrap beside its button gets the whole line, and the button goes under it */
+#toast.two{flex-wrap:wrap;row-gap:0}
+#toast.two .tmsg{flex-basis:calc(100% - 3.5rem)}
+#toast.two .tclose{order:1}
+#toast.two .tact{order:2;margin-left:auto}
 #toast .tact{flex:none;min-height:3rem;padding:0 .8rem;border:0;border-radius:999px;background:transparent;color:var(--md-inverse-primary);font:var(--t-label-l)}
 #toast .tclose{color:var(--md-inverse-on-surface)}
 
@@ -352,9 +361,33 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
   background:var(--md-secondary-container);color:var(--md-on-secondary-container);font:var(--t-label-l)}
 .tag button{display:inline-flex;align-items:center;justify-content:center;width:2.4rem;height:2.4rem;padding:0;border:0;border-radius:50%;background:none;color:inherit}
 .tag .ic{width:1.2rem;height:1.2rem}
+
+/* a save that failed stays in view until it goes through */
+.savebar{position:fixed;left:0;right:0;top:0;z-index:95;padding:calc(.75rem + env(safe-area-inset-top)) 0 .75rem;
+  background:var(--md-error-container);color:var(--md-on-error-container);box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.savebar p{margin:0 .25rem .6rem;font:var(--t-body-m);font-size:.95rem}
+/* backups and data: a card that asks for a backup while one is due, quiet once it is done */
+.card{margin:.6rem 0 0;padding:1rem;border-radius:var(--sh-l);background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
+.card.ok{background:var(--item);color:var(--md-on-surface);box-shadow:inset 0 0 0 1px var(--md-outline-variant)}
+.card p{margin:0 0 .75rem;font:var(--t-body-m);font-size:.95rem}
+.card.ok p{margin-bottom:.5rem}
+.facts{margin:.25rem 0 .75rem;padding-left:1.3rem;font:var(--t-body-m);color:var(--md-on-surface-variant)}
+.facts li{margin:.35rem 0}
+.datarow{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:.75rem 0}
+.datarow p{flex:1 1 12rem;margin:0 .25rem;font:var(--t-body-m);color:var(--md-on-surface-variant)}
+.sh.danger-h{color:var(--md-error)}
+.btn.outlined.danger-o{color:var(--md-error);box-shadow:inset 0 0 0 1px var(--md-error)}
+.btn.hold.danger-o::after{background:var(--md-error)}
 </style>
 </head>
 <body>
+
+<div id="saveBar" class="savebar" role="alert" hidden>
+  <div class="wrap">
+    <p><b>保存できていません。</b>スマホの 空きが 足りないかもしれません。いらない 写真や アプリを けしてから「もう一度 保存」を 押して ください。</p>
+    <div class="btnrow"><button type="button" id="saveRetry" class="btn filled sl">もう一度 保存</button><button type="button" id="saveOut" class="btn outlined sl"><span data-ic="download"></span>書き出して 残す</button></div>
+  </div>
+</div>
 
 <main id="home">
   <header class="appbar wrap"><h1>かいものメモ</h1><p class="sub" id="today"></p></header>
@@ -377,6 +410,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
   <header class="topbar"><div class="wrap"><button type="button" id="closeSettings" class="icon-btn sl" aria-label="もどる"><span data-ic="arrow_back"></span></button><h1 id="setTitle">家族の設定</h1></div></header>
   <div class="wrap">
     <p class="note">ここは ご家族（準備をする人）用の 画面です。</p>
+    <div class="card" id="backupCard"><p id="backupState"></p><button type="button" id="backupNow" class="btn filled sl"><span data-ic="upload"></span>いま バックアップする</button></div>
 
     <h2 class="sh">品物</h2>
     <div class="btnrow"><button type="button" id="addItem" class="btn filled sl"><span data-ic="add"></span>品物を ふやす</button><button type="button" id="photoAll" class="btn tonal sl"><span data-ic="photo_camera"></span>写真で そろえる</button><button type="button" id="sortFreq" class="btn outlined sl"><span data-ic="sort"></span>よく頼む順に ならべる</button></div>
@@ -415,13 +449,32 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <p class="note" id="installNote"></p>
     <button type="button" id="installBtn" class="btn tonal sl" hidden><span data-ic="add_to_home_screen"></span>ホーム画面に アイコンを 作る</button>
 
-    <h2 class="sh">バックアップ</h2>
-    <p class="note">品物・写真・送った記録を ファイルに 残せます。スマホを 替えるときにも 使えます。</p>
-    <div class="btnrow"><button type="button" id="exportBtn" class="btn outlined sl"><span data-ic="download"></span>ファイルに 書き出す</button><button type="button" id="importBtn" class="btn outlined sl"><span data-ic="upload"></span>ファイルから 読みこむ</button></div>
-    <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <h2 class="sh" id="backupSec">バックアップ</h2>
+    <p class="note">品物と 写真と 設定を、ファイルに して 残します。スマホが こわれたり、機種を かえたり したときに 読みこめば 戻せます。この スマホの 中だけだと、スマホと いっしょに 消えて しまうので、ドライブや LINE Keep など スマホの 外に 置いて ください。</p>
+    <div class="chips" id="backupHistBox"></div>
+    <div class="btnrow" style="margin-top:.75rem"><button type="button" id="backupShare" class="btn filled sl"><span data-ic="upload"></span>共有して 保存（ドライブ・LINE Keep など）</button><button type="button" id="exportBtn" class="btn outlined sl"><span data-ic="download"></span>この スマホに 書き出す</button></div>
+    <div class="btnrow" style="margin-top:.6rem"><button type="button" id="importBtn" class="btn outlined sl"><span data-ic="upload"></span>ファイルから 読みこむ</button><button type="button" id="undoImport" class="btn text sl" hidden><span data-ic="history"></span><span class="lbl">読みこむ前に もどす</span></button></div>
+    <input type="file" id="importFile" accept=".json,.txt,application/json,text/plain" hidden>
+    <p class="note" id="persistNote" style="margin-top:1rem"></p>
+    <button type="button" id="persistBtn" class="btn tonal sl" hidden>消えにくく する</button>
     <p class="note" id="usage"></p>
 
-    <p class="ver">かいものメモ 1.3</p>
+    <h2 class="sh">データの 扱い</h2>
+    <ul class="facts">
+      <li>品物・写真・録音・送った記録・設定は、この スマホの 中だけに 保存します。作った人にも、ほかの だれにも 送られません。</li>
+      <li>外に 出るのは、「LINEで 送る」を 押して LINE で 送信した ときの、リストの 文と 声の ファイルだけです。</li>
+      <li>送った記録は 3か月、送らなかった 録音は 7日で、自動で けします。</li>
+      <li>写真は 保存する ときに 描き直すので、撮った 場所などの 情報は 残りません。</li>
+      <li>バックアップの ファイルには、品物と 写真と 設定（えらんだ ときは 送った記録も）が 入ります。置いた 場所で 大切に 保管して ください。</li>
+    </ul>
+    <div class="datarow"><p id="histState"></p><button type="button" id="clearHist" class="btn outlined sl"><span data-ic="delete"></span>送った記録を けす</button></div>
+    <div class="datarow"><p id="voiceState"></p><button type="button" id="clearVoices" class="btn outlined sl"><span data-ic="delete"></span>録音を ぜんぶ けす</button></div>
+
+    <h2 class="sh danger-h">この スマホの データを けす</h2>
+    <p class="note">スマホを 人に ゆずる ときなどに。品物・写真・送った記録・録音・設定を ぜんぶ けして、はじめの 状態に 戻します。先に バックアップを しておけば、あとで 読みこんで 戻せます。</p>
+    <button type="button" id="wipeAll" class="btn danger sl"><span data-ic="delete"></span>データを ぜんぶ けす</button>
+
+    <p class="ver">かいものメモ 1.4</p>
   </div>
 </section>
 
@@ -684,19 +737,23 @@ document.addEventListener('click', e => {
 }, true);
 
 /* ---------- storage (this phone only) ---------- */
-let warnedAt = 0;
+// small things (the list, the cart, settings) live in localStorage; photos, recordings and the copy kept before
+// a file is read in live in IndexedDB, which has far more room, so photos can never crowd out the list
+const unsaved = new Set();
 function load(name, fallback) {
   try { const s = localStorage.getItem(KEY + name); return s == null ? fallback : JSON.parse(s); }
   catch (e) { return fallback; }
 }
+// a failed save stays on screen (the bar at the top) until a later save of the same thing goes through
 function save(name, value) {
-  try { localStorage.setItem(KEY + name, JSON.stringify(value)); return true; }
-  catch (e) {
-    if (Date.now() - warnedAt > 5000) { warnedAt = Date.now(); toast('保存できませんでした。スマホの 空きが 少ないかもしれません。'); }
-    return false;
-  }
+  try { localStorage.setItem(KEY + name, JSON.stringify(value)); if (unsaved.delete(name)) paintSaveBar(); return true; }
+  catch (e) { unsaved.add(name); paintSaveBar(); return false; }
 }
-function drop(name) { try { localStorage.removeItem(KEY + name); } catch (e) {} }
+function drop(name) { try { localStorage.removeItem(KEY + name); unsaved.delete(name); } catch (e) {} }
+function paintSaveBar() {
+  const bar = document.getElementById('saveBar');
+  if (bar) bar.hidden = !unsaved.size;
+}
 
 function okItem(x) { return x && typeof x === 'object' && String(x.name || '').trim() !== ''; }
 function fixItem(x) {
@@ -717,9 +774,9 @@ function fixCart(c) {
   c = c && typeof c === 'object' ? c : {};
   const lines = {};
   if (c.lines && typeof c.lines === 'object') for (const [k, v] of Object.entries(c.lines)) if (+v > 0) lines[k] = +v;
-  // an extra is typed words, or a recording kept in IndexedDB under its id
+  // an extra is typed words, or a recording kept in IndexedDB under its id (at: when it was recorded)
   const extras = Array.isArray(c.extras) ? c.extras.filter(x => x && (x.voice || String(x.text || '').trim()))
-    .map(x => x.voice ? { id: String(x.id || uid()), voice: true, sec: Math.max(0, +x.sec || 0) } : { id: String(x.id || uid()), text: String(x.text).slice(0, 200) }) : [];
+    .map(x => x.voice ? { id: String(x.id || uid()), voice: true, sec: Math.max(0, +x.sec || 0), at: +x.at || Date.now() } : { id: String(x.id || uid()), text: String(x.text).slice(0, 200) }) : [];
   return { lines, extras, when: WHEN.includes(c.when) ? c.when : '' };
 }
 function okHist(h) { return h && typeof h === 'object' && +h.at > 0 && Array.isArray(h.lines); }
@@ -733,38 +790,144 @@ function fixHist(h) {
 }
 const freshItems = () => DEFAULT_ITEMS.map(([name, emoji, unit, group, sizes]) => fixItem({ name, emoji, unit, group, sizes }));
 
-let items = load('items', null);
-if (!Array.isArray(items)) { items = freshItems(); save('items', items); }
-items = items.filter(okItem).map(fixItem);
-let cart = fixCart(load('cart', null));
-let hist = load('history', []);
-hist = Array.isArray(hist) ? hist.filter(okHist).map(fixHist) : [];
+// how long things are kept: a sent list three months, a recording never sent a week
+const HIST_DAYS = 90, VOICE_DAYS = 7;
 // to: the family member's name as LINE shows it; theme: light unless the family picks dark or 自動
-let settings = Object.assign({ size: 'm', send: 'line', theme: 'light', to: '' }, load('settings', {}));
+const defaultSettings = () => ({ size: 'm', send: 'line', theme: 'light', to: '' });
+const loadItems = () => { const v = load('items', null); return Array.isArray(v) ? v.filter(okItem).map(fixItem) : null; };
+const loadHist = () => { const v = load('history', []); return Array.isArray(v) ? v.filter(okHist).map(fixHist) : []; };
+let items = loadItems();
+if (!items) { items = freshItems(); save('items', items); }
+let cart = fixCart(load('cart', null));
+let hist = loadHist();
+let settings = Object.assign(defaultSettings(), load('settings', {}));
 let pending = load('pending', null);
 if (pending && !(Date.now() - (+pending.at || 0) < 3 * DAY)) { pending = null; drop('pending'); }
+// at: when the family last saved a backup; changes: edits to items, photos or the name since then
+let backupInfo = Object.assign({ at: 0, changes: 0 }, load('backup', {}));
 const saveCart = () => save('cart', cart);
+function trimHist() {
+  const cut = Date.now() - HIST_DAYS * DAY, n = hist.length;
+  hist = hist.filter(h => h.at >= cut).slice(0, 60);
+  if (hist.length !== n) save('history', hist);
+}
+trimHist();
+function noteChange() { backupInfo.changes++; save('backup', backupInfo); if (!$('#settings').hidden) paintBackupState(); }
 
-// photos sit under their own keys, so one big photo can never spoil the item list
-const photoCache = new Map();
-function photoOf(it) {
-  if (!it || !it.photo) return '';
-  if (!photoCache.has(it.id)) {
-    let p = '';
-    try { p = localStorage.getItem(KEY + 'photo:' + it.id) || ''; } catch (e) {}
-    photoCache.set(it.id, p);
-  }
-  return photoCache.get(it.id);
+/* ---------- IndexedDB: photos, recordings, and the copy kept before reading a file in ---------- */
+// the name is from 1.3, when it held recordings only; version 2 added photos and snaps
+const DB_NAME = 'kaimono-voice', DB_VER = 2;
+let dbp = null;
+function db() {
+  dbp = dbp || new Promise((res, rej) => {
+    const q = indexedDB.open(DB_NAME, DB_VER);
+    q.onupgradeneeded = () => { for (const s of ['clips', 'photos', 'snaps']) if (!q.result.objectStoreNames.contains(s)) q.result.createObjectStore(s); };
+    // another window of the app gives way when this one needs a newer version (or wants to delete everything)
+    q.onsuccess = () => { const d = q.result; d.onversionchange = () => { d.close(); dbp = null; }; res(d); };
+    q.onerror = () => { dbp = null; rej(q.error); };
+    q.onblocked = () => toast('かいものメモが ほかにも ひらいて います。そちらを とじて ください。');
+  });
+  return dbp;
 }
-function setPhoto(id, data) {
-  try {
-    if (data) localStorage.setItem(KEY + 'photo:' + id, data);
-    else localStorage.removeItem(KEY + 'photo:' + id);
-    photoCache.set(id, data || '');
-    return true;
-  } catch (e) { return false; }
+const idbReq = req => new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+const store = async (name, mode = 'readonly') => (await db()).transaction(name, mode).objectStore(name);
+const idbGet = async (s, k) => idbReq((await store(s)).get(k));
+const idbPut = async (s, k, v) => idbReq((await store(s, 'readwrite')).put(v, k));
+const idbDel = async (s, k) => idbReq((await store(s, 'readwrite')).delete(k));
+const idbKeys = async s => idbReq((await store(s)).getAllKeys());
+async function idbAll(s) {
+  const st = await store(s);
+  const [keys, vals] = await Promise.all([idbReq(st.getAllKeys()), idbReq(st.getAll())]);
+  return keys.map((k, i) => [k, vals[i]]);
 }
+async function idbReplace(s, entries) {
+  const d = await db();
+  await new Promise((res, rej) => {
+    const tx = d.transaction(s, 'readwrite'), st = tx.objectStore(s);
+    st.clear();
+    for (const [k, v] of entries) st.put(v, k);
+    tx.oncomplete = res;
+    tx.onerror = () => rej(tx.error);
+    tx.onabort = () => rej(tx.error || new Error('abort'));
+  });
+}
+const dataBlob = async url => (await fetch(url)).blob();
+const blobData = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
 const okPhoto = p => typeof p === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(p);
+
+// photos: JPEG blobs in IndexedDB, shown through object URLs read once into memory
+const photoURLs = new Map();
+let photosIn = false;
+const photoOf = it => (it && it.photo && photoURLs.get(it.id)) || '';
+async function loadPhotos() {
+  try {
+    const all = await idbAll('photos');
+    for (const u of photoURLs.values()) URL.revokeObjectURL(u);
+    photoURLs.clear();
+    for (const [k, b] of all) if (b instanceof Blob) photoURLs.set(k, URL.createObjectURL(b));
+  } catch (e) {}
+  photosIn = true;
+}
+async function putPhoto(id, blob) {
+  await idbPut('photos', id, blob);
+  if (photoURLs.has(id)) URL.revokeObjectURL(photoURLs.get(id));
+  photoURLs.set(id, URL.createObjectURL(blob));
+  announce('photos');
+}
+async function delPhoto(id) {
+  try { await idbDel('photos', id); } catch (e) {}
+  if (photoURLs.has(id)) URL.revokeObjectURL(photoURLs.get(id));
+  photoURLs.delete(id);
+  announce('photos');
+}
+async function photoBlob(id) { try { return await idbGet('photos', id); } catch (e) { return null; } }
+// photos saved by 1.3 and before sit in localStorage as data URLs; they move to IndexedDB once, one by one
+async function movePhotos() {
+  const keys = [];
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(KEY + 'photo:')) keys.push(k); } } catch (e) { return; }
+  for (const k of keys) {
+    const data = localStorage.getItem(k);
+    try {
+      if (okPhoto(data)) await idbPut('photos', k.slice(KEY.length + 6), await dataBlob(data));
+      localStorage.removeItem(k);
+    } catch (e) { return; }
+  }
+}
+
+/* ---------- other windows ---------- */
+// the home-screen app and a Chrome tab share this storage: when another window saves, this one reads it back
+// and redraws, instead of writing its old copy over the new one
+const chan = 'BroadcastChannel' in window ? new BroadcastChannel('kaimono') : null;
+function announce(what) { try { if (chan) chan.postMessage(what); } catch (e) {} }
+window.addEventListener('storage', e => {
+  if (e.key === null) { location.reload(); return; }
+  if (!e.key.startsWith(KEY)) return;
+  const name = e.key.slice(KEY.length);
+  if (name === 'cart') cart = fixCart(load('cart', null));
+  else if (name === 'items') items = loadItems() || items;
+  else if (name === 'history') hist = loadHist();
+  else if (name === 'settings') { settings = Object.assign(defaultSettings(), load('settings', {})); applySize(); applyTheme(); }
+  else if (name === 'pending') pending = load('pending', null);
+  else if (name === 'backup') backupInfo = Object.assign({ at: 0, changes: 0 }, load('backup', {}));
+  else return;
+  // what this window could not save is now what the other window saved
+  if (unsaved.delete(name)) paintSaveBar();
+  redraw();
+});
+if (chan) chan.onmessage = async e => {
+  if (e.data === 'wiped') { location.reload(); return; }
+  if (e.data === 'photos') { await loadPhotos(); redraw(); }
+};
+function redraw() {
+  if (!$('#settings').hidden) renderSettings(); else renderHome();
+  if (isOpen('sh-confirm')) renderConfirm();
+  if (isOpen('sh-size') && sizeItem) {
+    // the item may have been deleted (or lost its sizes) in the other window
+    const it = byId(sizeItem.id);
+    if (it && sized(it)) { sizeItem = it; renderSize(); }
+    else if (layers[layers.length - 1].name === 'sh-size') closeSheet();
+  }
+}
 
 /* ---------- items and the cart ---------- */
 const byId = id => items.find(it => it.id === id);
@@ -791,6 +954,8 @@ const qtyHTML = (it, q) => `<b>${q}</b><small>${esc(it.unit)}</small>`;
 function picHTML(it, cls = '', photo) {
   const p = photo === undefined ? photoOf(it) : photo;
   if (p) return `<span class="pic ${cls}"><img src="${esc(p)}" alt=""></span>`;
+  // until the photos are read in at start, a photo's place stays empty rather than flashing the emoji
+  if (photo === undefined && it.photo && !photosIn) return `<span class="pic ${cls}" aria-hidden="true"></span>`;
   if (it.emoji) return `<span class="pic emo ${cls}" aria-hidden="true">${esc(it.emoji)}</span>`;
   return `<span class="pic ini ${cls}" aria-hidden="true">${esc([...(it.name || '？')][0])}</span>`;
 }
@@ -828,7 +993,13 @@ function toast(msg, actLabel, act) {
   }
   $('.tclose', t).onclick = hideToast;
   // hidden and shown again, so the rise-in plays for each new message
+  t.classList.remove('two');
   t.hidden = true; void t.offsetWidth; t.hidden = false;
+  if (actLabel) {
+    const r = document.createRange();
+    r.selectNodeContents($('.tmsg', t));
+    if (new Set([...r.getClientRects()].map(x => Math.round(x.top))).size > 1) t.classList.add('two');
+  }
   clearTimeout(toastTimer);
   // older readers need time: ten seconds, fifteen when there is something to undo, or until × is pressed
   toastTimer = setTimeout(hideToast, actLabel ? 15000 : 10000);
@@ -891,20 +1062,20 @@ function ask(title, text, okLabel, noLabel = 'やめる', { danger = false, gate
     $('#askText').textContent = text;
     const ok = $('#askOk'), no = $('#askNo'), sh = $('#sh-ask');
     ok.textContent = okLabel; no.textContent = noLabel;
-    ok.className = 'btn big sl ' + (gate ? 'outlined' : danger ? 'danger' : 'filled');
+    ok.className = 'btn big sl ' + (gate ? (danger ? 'outlined danger-o' : 'outlined') : danger ? 'danger' : 'filled');
     no.className = 'btn big sl ' + (gate ? 'filled' : 'outlined');
     sh.classList.toggle('gate', gate);
     // one answer only: a second one would close whatever lies under the question
     const answer = v => async () => { if (answered) return; answered = true; await closeSheet(); res(v); };
     ok.onpointerdown = ok.onpointerup = ok.onpointercancel = ok.onpointerleave = null;
-    if (gate) holdToConfirm(ok, 1500, answer(true)); else ok.onclick = answer(true);
+    if (gate) holdToConfirm(ok, 1500, answer(true), danger ? 'けすときは' : 'ひらくときは'); else ok.onclick = answer(true);
     no.onclick = answer(false);
     sh.addEventListener('closed', () => { if (!answered) res(false); }, { once: true });
     openSheet('sh-ask');
   });
 }
 // a parent who presses the coloured button out of habit stays where they were: this one opens only after a hold
-function holdToConfirm(btn, ms, done) {
+function holdToConfirm(btn, ms, done, when) {
   let timer = 0, fired = false;
   btn.classList.add('hold');
   btn.style.setProperty('--hold', ms + 'ms');
@@ -924,7 +1095,7 @@ function holdToConfirm(btn, ms, done) {
     if (fired) return;
     // Enter or the space bar has no hold to give
     if (e.detail === 0) { done(); return; }
-    toast('ひらくときは、ボタンを 押したまま 2びょう まって ください。');
+    toast(`${when}、ボタンを 押したまま 2びょう まって ください。`);
   };
 }
 
@@ -1089,27 +1260,26 @@ const REC_ERRORS = {
 };
 
 // recordings wait in IndexedDB until they are sent, so closing the app does not lose them
-let voiceDB = null;
-function clipStore(mode) {
-  voiceDB = voiceDB || new Promise((res, rej) => {
-    const q = indexedDB.open('kaimono-voice', 1);
-    q.onupgradeneeded = () => q.result.createObjectStore('clips');
-    q.onsuccess = () => res(q.result);
-    q.onerror = () => rej(q.error);
-  });
-  return voiceDB.then(db => db.transaction('clips', mode).objectStore('clips'));
-}
-const idbDo = req => new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
-const clipPut = async (id, blob) => idbDo((await clipStore('readwrite')).put(blob, id));
-async function clipGet(id) { try { return await idbDo((await clipStore('readonly')).get(id)); } catch (e) { return null; } }
-async function clipDel(id) { try { await idbDo((await clipStore('readwrite')).delete(id)); } catch (e) {} }
+const clipPut = (id, blob) => idbPut('clips', id, blob);
+async function clipGet(id) { try { return await idbGet('clips', id); } catch (e) { return null; } }
+async function clipDel(id) { try { await idbDel('clips', id); } catch (e) {} }
 // recordings that no list refers to any more (sent, or taken out and not brought back) are thrown away
 async function pruneClips() {
   try {
     const keep = new Set([...cart.extras, ...(pending ? fixCart(pending.cart).extras : [])].filter(x => x.voice).map(x => x.id));
-    const keys = await idbDo((await clipStore('readonly')).getAllKeys());
-    for (const k of keys) if (!keep.has(k)) await clipDel(k);
+    for (const k of await idbKeys('clips')) if (!keep.has(k)) await clipDel(k);
   } catch (e) {}
+}
+// a recording never sent is not kept for ever: after VOICE_DAYS it leaves the list and the phone
+async function dropOldVoices() {
+  const cut = Date.now() - VOICE_DAYS * DAY;
+  const old = cart.extras.filter(x => x.voice && x.at < cut);
+  if (!old.length) return;
+  cart.extras = cart.extras.filter(x => !old.includes(x));
+  saveCart();
+  toast(`${VOICE_DAYS}日 送らなかった ${VOICE_LABEL}を けしました。`);
+  await pruneClips();
+  redraw();
 }
 
 // the browser decodes the recording, mixes it down to one 16 kHz channel (plenty for a voice) and it is written as WAV
@@ -1285,7 +1455,7 @@ $('#voiceAdd').addEventListener('click', async () => {
     const id = uid();
     try { await clipPut(id, voiceTake.blob); }
     catch (e) { voiceSay('声を 保存できませんでした。スマホの 空きが 足りないかもしれません。'); return; }
-    cart.extras.push({ id, voice: true, sec: Math.round(voiceTake.sec * 10) / 10 });
+    cart.extras.push({ id, voice: true, sec: Math.round(voiceTake.sec * 10) / 10, at: Date.now() });
     added.push(VOICE_LABEL);
   }
   if (t) { cart.extras.push({ id: uid(), text: t.slice(0, 200) }); added.push(`「${t}」`); }
@@ -1405,6 +1575,7 @@ $('#lineSend').addEventListener('click', e => {
 });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') { if (pending) wentAway = true; return; }
+  dropOldVoices();
   if (pending && wentAway) { wentAway = false; setTimeout(askSent, 300); }
   else if (new Date().toDateString() !== shownDay && $('#settings').hidden && !sheetsOpen()) renderHome();
 });
@@ -1431,7 +1602,7 @@ function markSent() {
   const before = { cart: clone(cart), hist: hist.slice(), stats: items.map(it => [it.id, it.count, it.lastAt]) };
   // a recording is not kept in the history: まえと おなじ must never send an old voice again
   hist.unshift({ at: now, lines, extras: c.extras.filter(x => !x.voice).map(x => x.text), when: c.when });
-  hist = hist.slice(0, 60);
+  trimHist();
   save('history', hist);
   const ids = new Set(lines.map(l => l.id));
   items.forEach(it => { if (ids.has(it.id)) { it.count++; it.lastAt = now; } });
@@ -1518,6 +1689,7 @@ function openSettings() {
     $('#home').hidden = bar.hidden = false;
     renderHome();
     window.scrollTo(0, homeScroll);
+    if (backupInfo.changes >= 3) toast('品物や 写真を かえたので、家族の設定の「バックアップ」で 残して おくと 安心です。');
   });
 }
 $('#closeSettings').addEventListener('click', () => popLayer());
@@ -1554,13 +1726,60 @@ function renderSettings() {
     : installEvt ? '下の ボタンを 押すと、ホーム画面に アイコンが できます。'
     : isIOS() ? 'Safari の 共有ボタン（□に↑）→「ホーム画面に追加」を 押してください。'
     : 'Chrome の 右上「︙」→「ホーム画面に追加」（または「アプリを インストール」）を 押してください。';
+  paintBackupState();
+  paintBackupHist();
+  $('#histState').textContent = (hist.length ? `送った 記録：${hist.length}回分（${md(hist[hist.length - 1].at)}から）。` : '送った 記録は ありません。')
+    + `${HIST_DAYS / 30}か月より 前の ものは 自動で けします。`;
+  $('#clearHist').hidden = !hist.length && !items.some(it => it.count || it.lastAt);
   renderUsage();
+  paintPersist();
+  paintUndoImport();
 }
-function renderUsage() {
-  let n = 0;
-  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith(KEY)) n += k.length + (localStorage.getItem(k) || '').length; } } catch (e) {}
-  // roughly 2 bytes a character against the usual 5 MB
-  $('#usage').textContent = `この スマホで 使っている 量：${Math.max(1, Math.round(n * 2 / 1024))}KB（めやす 5,000KB）`;
+function paintBackupState() {
+  const b = backupInfo, ok = b.at && !b.changes;
+  $('#backupCard').classList.toggle('ok', !!ok);
+  $('#backupState').innerHTML = !b.at ? '<b>まだ バックアップして いません。</b>品物や 写真を そろえたら、スマホの 外に バックアップを して おくと 安心です。'
+    : ok ? `<b>バックアップ ずみ</b>（${md(b.at)}）。品物や 写真を かえたら、また おすすめします。`
+    : `<b>バックアップを おすすめします。</b>前回（${md(b.at)}）の あと、品物や 写真を ${b.changes}回 かえました。`;
+}
+// how much the app keeps (IndexedDB included), and the recordings still waiting to be sent
+async function renderUsage() {
+  let clips = [];
+  try { clips = await idbAll('clips'); } catch (e) {}
+  const kb = Math.max(1, Math.round(clips.reduce((s, [, b]) => s + ((b && b.size) || 0), 0) / 1024));
+  // IndexedDB and the offline copy, plus this app's localStorage (about 2 bytes a character)
+  let used = '';
+  try {
+    let b = (await navigator.storage.estimate()).usage || 0;
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith(KEY)) b += (k.length + (localStorage.getItem(k) || '').length) * 2; }
+    used = b < 1048576 ? `約 ${Math.max(1, Math.round(b / 1024))} KB` : `約 ${(b / 1048576).toFixed(1)} MB`;
+  } catch (e) {}
+  $('#usage').textContent = `この スマホで 使っている 量：${used || 'わかりません'}（写真 ${photoURLs.size}まい・録音 ${clips.length}件）`;
+  $('#voiceState').textContent = (clips.length ? `いま 残っている 録音：${clips.length}件（約 ${kb}KB）。` : 'いま 残っている 録音は ありません。')
+    + `送らなかった 録音は ${VOICE_DAYS}日で 自動で けします。`;
+  $('#clearVoices').hidden = !clips.length;
+}
+// whether the browser has promised not to clear this storage when the phone runs short of space
+async function paintPersist() {
+  const note = $('#persistNote'), btn = $('#persistBtn');
+  if (!navigator.storage || !navigator.storage.persisted) { note.hidden = btn.hidden = true; return; }
+  const on = await navigator.storage.persisted().catch(() => false);
+  note.hidden = false;
+  note.textContent = on ? '消えにくく する 設定：有効です（スマホの 空きが 少なく なっても、この データは 消されません）。'
+    : '消えにくく する 設定：まだ 有効では ありません。ホーム画面に アイコンを 作ってから「消えにくく する」を 押すと、有効に なりやすく なります。';
+  btn.hidden = on;
+}
+$('#persistBtn').addEventListener('click', async () => {
+  const on = await navigator.storage.persist().catch(() => false);
+  paintPersist();
+  toast(on ? '消えにくく しました。' : 'いまは 有効に できませんでした。ホーム画面に アイコンを 作ってから、もう一度 ためして ください。');
+});
+async function paintUndoImport() {
+  let s = null;
+  try { s = await idbGet('snaps', 'beforeImport'); } catch (e) {}
+  const b = $('#undoImport');
+  b.hidden = !s;
+  if (s) { const d = new Date(s.at); $('.lbl', b).textContent = `読みこむ前に もどす（${md(s.at)} ${d.getHours()}時${String(d.getMinutes()).padStart(2, '0')}分）`; }
 }
 function setSeg(sel, v) { $$(sel + ' button').forEach(b => { const on = b.dataset.v === v; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }); }
 $('#sizeSeg').addEventListener('click', e => {
@@ -1598,6 +1817,7 @@ $('#themeSeg').addEventListener('click', e => {
   save('settings', settings); applyTheme(); setSeg('#themeSeg', settings.theme);
 });
 $('#toName').addEventListener('input', e => { settings.to = e.target.value.trim().slice(0, 20); save('settings', settings); });
+$('#toName').addEventListener('change', noteChange);
 const TEST_TEXT = 'かいものメモの ためしです。\nこれが 届いたら、送り方は だいじょうぶです。';
 $('#testSend').addEventListener('click', e => {
   if (settings.send === 'share' && navigator.share) { e.preventDefault(); navigator.share({ text: TEST_TEXT }).catch(() => {}); }
@@ -1656,6 +1876,7 @@ $('#sItems').addEventListener('click', e => {
   const a = items.indexOf(it), c = items.indexOf(list[j]);
   [items[a], items[c]] = [items[c], items[a]];
   save('items', items);
+  noteChange();
   renderSettings();
   const nb = $(`#sItems [data-id="${CSS.escape(it.id)}"] .${up ? 'up' : 'down'}`);
   if (nb && !nb.disabled) nb.focus();
@@ -1670,6 +1891,7 @@ $('#sortFreq').addEventListener('click', () => {
   }
   save('items', items);
   renderSettings();
+  noteChange();
   toast('よく 頼む順に ならべました。', 'もとに もどす', () => { items = before; save('items', items); renderSettings(); });
 });
 
@@ -1697,9 +1919,14 @@ let editing = null, draft = null;
 $('#addItem').addEventListener('click', () => openEdit(null));
 function openEdit(it, name = '') {
   editing = it;
-  draft = it ? { ...it, sizes: it.sizes.slice(), photoData: photoOf(it) }
-    : { id: uid(), name, emoji: '', unit: '個', group: 'food', sizes: [], note: '', photo: false, count: 0, lastAt: 0, photoData: '' };
-  draft.photo = !!draft.photoData;
+  dropPreview();
+  draft = it ? { ...it, sizes: it.sizes.slice() }
+    : { id: uid(), name, emoji: '', unit: '個', group: 'food', sizes: [], note: '', photo: false, count: 0, lastAt: 0 };
+  // newPhoto: a photo picked in this sheet, saved only with 保存する; preview: the picture the sheet shows
+  draft.newPhoto = null;
+  draft.preview = photoOf(it);
+  draft.ownURL = false;
+  draft.photo = !!draft.preview;
   $('#editTitle').textContent = it ? '品物を なおす' : '品物を ふやす';
   $('#fName').value = draft.name;
   $('#fNote').value = draft.note;
@@ -1713,7 +1940,7 @@ function openEdit(it, name = '') {
   grid.scrollTop = on ? on.getBoundingClientRect().top - grid.getBoundingClientRect().top + grid.scrollTop - 8 : 0;
 }
 function paintEdit() {
-  $('#fPicBox').innerHTML = picHTML({ ...draft, name: draft.name || '？' }, '', draft.photo ? draft.photoData : '');
+  $('#fPicBox').innerHTML = picHTML({ ...draft, name: draft.name || '？' }, '', draft.photo ? draft.preview : '');
   $('#fNoPhoto').hidden = $('#fPhotoNote').hidden = !draft.photo;
   $('#fEmojis .ini').textContent = [...(draft.name || '？')][0];
   $$('#fEmojis button').forEach(b => { const on = b.dataset.e === draft.emoji; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
@@ -1750,15 +1977,23 @@ $('#fSizeIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isC
 $('#fSizes').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) { draft.sizes.splice(+b.dataset.i, 1); paintSizes(); } });
 $('#fGroup').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (b) { draft.group = b.dataset.g; paintGroup(); } });
 $('#fPhoto').addEventListener('click', () => $('#fPhotoFile').click());
-$('#fNoPhoto').addEventListener('click', () => { draft.photo = false; draft.photoData = ''; paintEdit(); });
+// a preview made for a photo picked in the sheet is let go when the sheet closes or another photo is picked
+function dropPreview() { if (draft && draft.ownURL) { URL.revokeObjectURL(draft.preview); draft.ownURL = false; } }
+$('#sh-edit').addEventListener('closed', dropPreview);
+$('#fNoPhoto').addEventListener('click', () => { dropPreview(); draft.photo = false; draft.newPhoto = null; draft.preview = ''; paintEdit(); });
 $('#fPhotoFile').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0];
   e.target.value = '';
   if (!f) return;
-  try { draft.photoData = await shrink(f); draft.photo = true; paintEdit(); }
-  catch (err) { toast('写真を 読みこめませんでした。'); }
+  try {
+    const b = await shrink(f);
+    dropPreview();
+    Object.assign(draft, { newPhoto: b, preview: URL.createObjectURL(b), ownURL: true, photo: true });
+    paintEdit();
+  } catch (err) { toast('写真を 読みこめませんでした。'); }
 });
-// a square of 240px is enough for a 70px picture on a sharp screen, and keeps each photo near 15KB
+// a square of 240px is enough for an 85px picture on a sharp screen, and keeps each photo near 12KB.
+// Drawing it again also leaves behind what the camera wrote into the file, such as where it was taken.
 function shrink(file) {
   return new Promise((res, rej) => {
     const url = URL.createObjectURL(file), img = new Image();
@@ -1770,7 +2005,7 @@ function shrink(file) {
         const x = c.getContext('2d');
         x.fillStyle = '#fff'; x.fillRect(0, 0, S, S);
         x.drawImage(img, (w - m) / 2, (h - m) / 2, m, m, 0, 0, S, S);
-        res(c.toDataURL('image/jpeg', 0.8));
+        c.toBlob(b => b ? res(b) : rej(new Error('blob')), 'image/jpeg', 0.8);
       } catch (e) { rej(e); }
       URL.revokeObjectURL(url);
     };
@@ -1784,13 +2019,11 @@ $('#fSave').addEventListener('click', async () => {
   if ($('#fSizeIn').value.trim()) addSize();
   draft.name = name;
   draft.note = $('#fNote').value.trim();
-  const oldPhoto = editing ? photoOf(editing) : '';
-  if (draft.photo && draft.photoData !== oldPhoto && !setPhoto(draft.id, draft.photoData)) {
-    toast('写真を 保存できませんでした。スマホの 空きが 足りないかもしれません。');
-    return;
-  }
-  if (!draft.photo && oldPhoto) setPhoto(draft.id, '');
-  const { photoData, ...rest } = draft;
+  try {
+    if (draft.photo && draft.newPhoto) await putPhoto(draft.id, draft.newPhoto);
+    if (!draft.photo && editing && editing.photo) await delPhoto(draft.id);
+  } catch (e) { toast('写真を 保存できませんでした。スマホの 空きが 足りないかもしれません。'); return; }
+  const { newPhoto, preview, ownURL, ...rest } = draft;
   const item = fixItem(rest);
   const at = editing ? items.indexOf(editing) : -1;
   if (at >= 0) items[at] = item; else items.push(item);
@@ -1800,6 +2033,7 @@ $('#fSave').addEventListener('click', async () => {
     if (id === item.id && (sized(item) ? !item.sizes.includes(size) : size !== '')) delete cart.lines[k];
   }
   save('items', items); saveCart();
+  noteChange();
   const isNew = !editing;
   await closeSheet();
   renderSettings();
@@ -1809,16 +2043,17 @@ $('#fDelete').addEventListener('click', async () => {
   const it = editing;
   if (!it || !(await ask(`「${it.name}」を けしますか？`, '親の 画面から この ボタンが なくなります。', 'けす', 'やめる', { danger: true }))) return;
   await closeSheet();
-  const idx = items.indexOf(it), photo = photoOf(it);
+  const idx = items.indexOf(it), photo = it.photo ? await photoBlob(it.id) : null;
   const keys = Object.entries(cart.lines).filter(([k]) => splitKey(k)[0] === it.id);
   items.splice(idx, 1);
-  setPhoto(it.id, '');
+  delPhoto(it.id);
   keys.forEach(([k]) => { delete cart.lines[k]; });
   save('items', items); saveCart();
+  noteChange();
   renderSettings();
   toast(`「${it.name}」を けしました。`, 'もとに もどす', () => {
     items.splice(Math.min(idx, items.length), 0, it);
-    if (photo) setPhoto(it.id, photo);
+    if (photo) putPhoto(it.id, photo).then(renderSettings, () => {});
     keys.forEach(([k, v]) => { cart.lines[k] = v; });
     save('items', items); saveCart();
     renderSettings();
@@ -1852,11 +2087,12 @@ $('#photoFile').addEventListener('change', async e => {
   e.target.value = '';
   const it = byId(photoQueue[photoAt]);
   if (!f || !it) return;
-  let data;
-  try { data = await shrink(f); } catch (err) { toast('写真を 読みこめませんでした。'); return; }
-  if (!setPhoto(it.id, data)) { toast('写真を 保存できませんでした。スマホの 空きが 足りないかもしれません。'); return; }
+  let blob;
+  try { blob = await shrink(f); } catch (err) { toast('写真を 読みこめませんでした。'); return; }
+  try { await putPhoto(it.id, blob); } catch (err) { toast('写真を 保存できませんでした。スマホの 空きが 足りないかもしれません。'); return; }
   it.photo = true;
   save('items', items);
+  noteChange();
   renderPhotoStep();
   toast(`「${it.name}」の 写真を 保存しました。`);
 });
@@ -1881,60 +2117,183 @@ $('#installBtn').addEventListener('click', async () => {
   if (r && r.outcome === 'accepted') toast('ホーム画面に アイコンを 作りました。');
 });
 
-$('#exportBtn').addEventListener('click', () => {
+// the backup: items, photos and settings; the sent lists only when asked for, since they tell a lot about a household
+let backupHist = false;
+async function backupText(withHist) {
   const photos = {};
-  items.forEach(it => { const p = photoOf(it); if (p) photos[it.id] = p; });
-  const data = { app: 'kaimono', version: 1, exportedAt: new Date().toISOString(), items, photos, history: hist, settings };
-  const d = new Date(), pad = n => String(n).padStart(2, '0');
+  for (const it of items) if (it.photo) { const b = await photoBlob(it.id); if (b) photos[it.id] = await blobData(b); }
+  const data = { app: 'kaimono', version: 1, exportedAt: new Date().toISOString(), items, photos, settings };
+  if (withHist) data.history = hist;
+  return JSON.stringify(data);
+}
+const ymd = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`; };
+function backedUp() { backupInfo = { at: Date.now(), changes: 0 }; save('backup', backupInfo); if (!$('#settings').hidden) renderSettings(); }
+function downloadText(text) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
-  a.download = `kaimono-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
+  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  a.download = `kaimono-backup-${ymd()}.json`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-  toast('ファイルに 書き出しました。');
+  backedUp();
+  toast('スマホの「ダウンロード」に 書き出しました。できれば ドライブなど スマホの 外にも 置いて ください。');
+}
+// off the phone (Google Drive, LINE Keep…) through the share menu, where a broken phone can't take it with it;
+// the share menu takes .txt files but not .json, and reading in takes either
+async function shareBackup() {
+  const text = await backupText(backupHist);
+  const file = new File([text], `kaimono-backup-${ymd()}.txt`, { type: 'text/plain' });
+  if (!navigator.canShare || !navigator.canShare({ files: [file] })) { downloadText(text); return; }
+  try {
+    await navigator.share({ files: [file], title: 'かいものメモの バックアップ' });
+    backedUp();
+    toast('バックアップを 渡しました。保存先に 届いたか たしかめて ください。');
+  } catch (err) { if (!err || err.name !== 'AbortError') toast('渡せませんでした。「この スマホに 書き出す」を 使って ください。'); }
+}
+$('#backupShare').addEventListener('click', shareBackup);
+$('#backupNow').addEventListener('click', shareBackup);
+$('#exportBtn').addEventListener('click', async () => downloadText(await backupText(backupHist)));
+$('#backupHistBox').addEventListener('click', e => { if (e.target.closest('[data-h]')) { backupHist = !backupHist; paintBackupHist(); } });
+function paintBackupHist() { $('#backupHistBox').innerHTML = chipHTML(backupHist, 'data-h="1"', '送った記録も 入れる'); }
+
+// what there was just before a file was read in, kept a week, so a wrong file can be taken back
+async function snapshot() {
+  const photos = [];
+  for (const it of items) if (it.photo) { const b = await photoBlob(it.id); if (b) photos.push([it.id, b]); }
+  await idbPut('snaps', 'beforeImport', { at: Date.now(), items: clone(items), hist: clone(hist), settings: clone(settings), photos });
+}
+async function undoImport() {
+  let s = null;
+  try { s = await idbGet('snaps', 'beforeImport'); } catch (e) {}
+  if (!s) { toast('戻せる 状態が 見つかりませんでした。'); return; }
+  try { await idbReplace('photos', s.photos || []); } catch (e) { toast('戻せませんでした。スマホの 空きを たしかめて ください。'); return; }
+  await loadPhotos();
+  announce('photos');
+  items = (s.items || []).filter(okItem).map(fixItem);
+  hist = (s.hist || []).filter(okHist).map(fixHist);
+  settings = Object.assign(defaultSettings(), s.settings || {});
+  save('items', items); save('history', hist); save('settings', settings);
+  applySize(); applyTheme();
+  try { await idbDel('snaps', 'beforeImport'); } catch (e) {}
+  renderSettings();
+  toast('読みこむ前の 状態に 戻しました。');
+}
+async function pruneSnap() {
+  try { const s = await idbGet('snaps', 'beforeImport'); if (s && Date.now() - s.at > 7 * DAY) await idbDel('snaps', 'beforeImport'); } catch (e) {}
+}
+$('#undoImport').addEventListener('click', async () => {
+  if (await ask('読みこむ前に もどしますか？', '品物・写真・設定と 送った記録を、ファイルを 読みこむ 前の 状態に 戻します。', 'もどす')) undoImport();
 });
 $('#importBtn').addEventListener('click', () => $('#importFile').click());
 $('#importFile').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0];
   e.target.value = '';
   if (!f) return;
+  if (f.size > 30 * 1024 * 1024) { toast('ファイルが 大きすぎます。かいものメモの バックアップか たしかめて ください。'); return; }
   let data;
   try { data = JSON.parse(await f.text()); } catch (err) { toast('ファイルを 読めませんでした。'); return; }
   if (!data || data.app !== 'kaimono' || !Array.isArray(data.items)) { toast('かいものメモの ファイルでは ないようです。'); return; }
   if ((+data.version || 1) > 1) { toast('新しい 版の ファイルです。アプリを 新しくしてから 読みこんでください。'); return; }
   const list = data.items.filter(okItem).map(fixItem);
-  if (!(await ask('ファイルから 読みこみますか？', `品物 ${list.length}こ を 読みこみます。いまの 品物と 送った記録は、ファイルの 中身に 入れかわります。`, '読みこむ'))) return;
-  items.forEach(it => setPhoto(it.id, ''));
+  const withHist = Array.isArray(data.history);
+  if (!(await ask('ファイルから 読みこみますか？', `品物 ${list.length}こ を 読みこみます。いまの 品物と 写真と 設定${withHist ? 'と 送った記録' : ''}は、ファイルの 中身に 入れかわります。1週間は「読みこむ前に もどす」で 戻せます。`, '読みこむ'))) return;
+  // first the copy to go back to, then all the photos in one go (all or nothing), and only then the list
+  try { await snapshot(); } catch (err) { toast('いまの 状態を 取っておけないため、読みこみを やめました。スマホの 空きを たしかめて ください。'); return; }
   const photos = data.photos && typeof data.photos === 'object' ? data.photos : {};
+  const entries = [];
   let lost = 0;
-  list.forEach(it => {
-    if (!it.photo) return;
-    if (!okPhoto(photos[it.id]) || !setPhoto(it.id, photos[it.id])) { it.photo = false; lost++; }
-  });
+  for (const it of list) {
+    if (!it.photo) continue;
+    if (okPhoto(photos[it.id])) { try { entries.push([it.id, await dataBlob(photos[it.id])]); continue; } catch (err) {} }
+    it.photo = false; lost++;
+  }
+  try { await idbReplace('photos', entries); } catch (err) { toast('写真を 入れられなかったため、読みこみを やめました。いまの 品物は そのままです。'); return; }
+  await loadPhotos();
+  announce('photos');
   items = list;
-  hist = Array.isArray(data.history) ? data.history.filter(okHist).map(fixHist).slice(0, 60) : [];
+  if (withHist) { hist = data.history.filter(okHist).map(fixHist); trimHist(); }
   const s = data.settings || {};
   if (['m', 'l', 'xl'].includes(s.size)) settings.size = s.size;
   if (['line', 'share'].includes(s.send)) settings.send = s.send;
   if (['light', 'dark', 'auto'].includes(s.theme)) settings.theme = s.theme;
   if (typeof s.to === 'string') settings.to = s.to.trim().slice(0, 20);
   save('items', items); save('history', hist); save('settings', settings);
+  // what is on the phone now is what the file holds, so it counts as backed up
+  backedUp();
   applySize(); applyTheme();
   renderSettings();
-  toast(lost ? `読みこみました（写真 ${lost}まいは 入りませんでした）。` : '読みこみました。');
+  toast(lost ? `読みこみました（写真 ${lost}まいは 入りませんでした）。` : '読みこみました。', 'もとに もどす', undoImport);
 });
+
+/* ---------- 送った記録・録音・ぜんぶ けす ---------- */
+$('#clearHist').addEventListener('click', async () => {
+  if (!(await ask('送った記録を けしますか？', '送った リストと、品物ごとの「前回」の 日と 回数を けします。「まえと おなじ」も 使えなく なります。', 'けす', 'やめる', { danger: true }))) return;
+  const before = { hist: hist.slice(), stats: items.map(it => [it.id, it.count, it.lastAt]) };
+  hist = [];
+  items.forEach(it => { it.count = 0; it.lastAt = 0; });
+  save('history', hist); save('items', items);
+  renderSettings();
+  toast('送った記録を けしました。', 'もとに もどす', () => {
+    hist = before.hist;
+    before.stats.forEach(([id, count, lastAt]) => { const it = byId(id); if (it) { it.count = count; it.lastAt = lastAt; } });
+    save('history', hist); save('items', items);
+    renderSettings();
+  });
+});
+$('#clearVoices').addEventListener('click', async () => {
+  if (!(await ask('録音を ぜんぶ けしますか？', 'まだ 送って いない 声の メッセージも けします。けした 録音は 戻せません。', 'けす', 'やめる', { danger: true }))) return;
+  stopVoice();
+  cart.extras = cart.extras.filter(x => !x.voice);
+  saveCart();
+  try { await idbReplace('clips', []); } catch (e) {}
+  renderSettings();
+  toast('録音を ぜんぶ けしました。');
+});
+// for handing the phone on: every key of this app, and the IndexedDB database with photos, recordings and the
+// copy before an import; other windows reload, so none of them writes its old copy back
+$('#wipeAll').addEventListener('click', async () => {
+  if (!(await ask('データを ぜんぶ けしますか？', '品物・写真・送った記録・録音・設定を けして、はじめの 状態に 戻します。けした ものは 戻せません。けすときは「けす」を 押したまま 2びょう まって ください。', 'けす（押したまま）', 'やめる', { gate: true, danger: true }))) return;
+  stopVoice();
+  try { for (const k of Object.keys(localStorage)) if (k.startsWith(KEY)) localStorage.removeItem(k); } catch (e) {}
+  try { if (dbp) (await dbp).close(); } catch (e) {}
+  dbp = null;
+  await new Promise(res => { const q = indexedDB.deleteDatabase(DB_NAME); q.onsuccess = q.onerror = q.onblocked = () => res(); });
+  announce('wiped');
+  location.replace(location.pathname);
+});
+
+/* ---------- a save that failed ---------- */
+const canStore = () => { try { localStorage.setItem(KEY + 'probe', '1'); localStorage.removeItem(KEY + 'probe'); return true; } catch (e) { return false; } };
+const current = { items: () => items, cart: () => cart, history: () => hist, settings: () => settings, backup: () => backupInfo };
+$('#saveRetry').addEventListener('click', () => {
+  for (const n of [...unsaved]) {
+    if (n === 'probe') { if (canStore()) unsaved.delete(n); }
+    else if (n === 'pending') { if (pending) save('pending', pending); else drop('pending'); }
+    else if (current[n]) save(n, current[n]());
+  }
+  paintSaveBar();
+  toast(unsaved.size ? 'まだ 保存できません。スマホの 空きを ふやして、もう一度 ためして ください。' : '保存できました。');
+});
+// with everything, the sent lists included, so nothing in memory is lost while the phone can't save
+$('#saveOut').addEventListener('click', async () => downloadText(await backupText(true)));
 
 /* ---------- start ---------- */
 applySize();
 applyTheme();
+if (!canStore()) { unsaved.add('probe'); paintSaveBar(); }
 renderHome();
 if (pending) setTimeout(askSent, 700);
-// a recording the phone has lost (its storage cleared) leaves the list, rather than being sent empty
 (async () => {
+  // photos kept by 1.3 and before move out of localStorage first, then all of them are read in once
+  await movePhotos();
+  await loadPhotos();
+  renderHome();
+  // a recording the phone has lost (its storage cleared) leaves the list, rather than being sent empty
   const lost = [];
   for (const x of cart.extras) if (x.voice && !(await clipGet(x.id))) lost.push(x.id);
   if (lost.length) { cart.extras = cart.extras.filter(x => !lost.includes(x.id)); saveCart(); renderHome(); }
+  await dropOldVoices();
   pruneClips();
+  pruneSnap();
 })();
 if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {});
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
