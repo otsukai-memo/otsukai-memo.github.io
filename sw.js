@@ -1,11 +1,11 @@
-// Offline copy of the app. The page is asked for fresh every time (a 304 when unchanged),
-// so a new version shows on the next open; icons come from the cache. Bump CACHE when icons change.
+// Offline copy of the app. The page and its script (app.js) are asked for fresh every time (a 304 when unchanged),
+// so a new version shows on the next open and the two always match; icons come from the cache. Bump CACHE when icons change.
 // The app has an address of its own (otsukai-memo.github.io); it first lived at tsumikasane.github.io/kaimono/,
 // where つみかさね shared the cache storage, so only caches named kaimono-* are ever touched here.
 const PREFIX = 'kaimono-';
-const CACHE = PREFIX + 'v3'; // v3: the Lucide icons (a new app icon, under new file names)
-const INDEX = './index.html';
-const ASSETS = ['./', INDEX, './manifest.webmanifest', './icons/basket-192.png', './icons/basket-512.png', './icons/basket-maskable-512.png', './icons/basket-apple-touch.png'];
+const CACHE = PREFIX + 'v4'; // v4: the script moved out of the page into app.js
+const INDEX = './index.html', SCRIPT = './app.js';
+const ASSETS = ['./', INDEX, SCRIPT, './manifest.webmanifest', './icons/basket-192.png', './icons/basket-512.png', './icons/basket-maskable-512.png', './icons/basket-apple-touch.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -19,8 +19,11 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
-  if (req.mode === 'navigate') {
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== location.origin) return;
+  // the page and app.js (whatever its ?v=) come from the network first, and from the copy when offline
+  const fresh = req.mode === 'navigate' ? INDEX : url.pathname.endsWith('/app.js') ? SCRIPT : '';
+  if (fresh) {
     e.respondWith((async () => {
       try {
         let res = await fetch(req.url, { cache: 'no-cache' });
@@ -28,12 +31,12 @@ self.addEventListener('fetch', e => {
         if (res.redirected) res = await fetch(req);
         if (res.ok) {
           const copy = res.clone();
-          caches.open(CACHE).then(c => c.put(INDEX, copy));
+          caches.open(CACHE).then(c => c.put(fresh, copy));
         }
         return res;
       } catch (err) {
         const c = await caches.open(CACHE);
-        return (await c.match(INDEX)) || (await c.match('./')) || Response.error();
+        return (await c.match(fresh)) || (fresh === INDEX && await c.match('./')) || Response.error();
       }
     })());
     return;
