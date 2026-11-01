@@ -3,9 +3,9 @@
 // The app has an address of its own (otsukai-memo.github.io); it first lived at tsumikasane.github.io/kaimono/,
 // where つみかさね shared the cache storage, so only caches named kaimono-* are ever touched here.
 const PREFIX = 'kaimono-';
-const CACHE = PREFIX + 'v2'; // v2: the Material 3 design (new manifest colours)
+const CACHE = PREFIX + 'v3'; // v3: the Lucide icons (a new app icon, under new file names)
 const INDEX = './index.html';
-const ASSETS = ['./', INDEX, './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png'];
+const ASSETS = ['./', INDEX, './manifest.webmanifest', './icons/basket-192.png', './icons/basket-512.png', './icons/basket-maskable-512.png', './icons/basket-apple-touch.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));

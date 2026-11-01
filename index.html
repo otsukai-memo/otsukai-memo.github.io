@@ -14,15 +14,17 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="かいもの">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon-192.png" type="image/png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/basket-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/basket-apple-touch.png">
 <style>
 /* かいものメモ follows Material Design 3 (m3.material.io), the design language of the parent's Android phone, with its
    2025 Expressive parts: a segmented list whose picked row rounds out, round buttons that square off while pressed,
    a docked toolbar in place of the bottom app bar, a connected button group in place of segmented buttons.
    It is made for a parent in their 80s who finds typing hard, so M3's sizes are scaled up: a 20px root (Body Large
    16sp at 125%; 23 and 26 from 家族の設定), targets of 52px or more, no swipes, a long press that counts as a press,
-   and rows that never move by themselves, because the parent finds things by where they were last time. */
+   and rows that never move by themselves, because the parent finds things by where they were last time.
+   The icons and the item pictures are Lucide's (lucide.dev), which the family chose: one drawing on every phone,
+   where emoji looked different from phone to phone. */
 :root{
   /* M3 colour roles: the Tonal Spot scheme of seed #3E8E41, from Google's material-color-utilities 0.3.0 */
   --md-primary:#3b693a;--md-on-primary:#ffffff;--md-primary-container:#bcf0b4;--md-on-primary-container:#235024;
@@ -85,7 +87,8 @@ a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 /* rules like `.row { display: grid }` would otherwise beat the hidden attribute */
 [hidden]{display:none!important}
 .wrap{max-width:640px;margin:0 auto;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
-.ic{display:block;flex:none;width:1.5rem;height:1.5rem;fill:currentColor}
+.ic{display:block;flex:none;width:1.5rem;height:1.5rem}
+.ic.fill{fill:currentColor}
 .note{margin:.35rem .25rem .7rem;font:var(--t-body-m);color:var(--md-on-surface-variant)}
 
 /* M3 state layer and ripple: pressing tints the control and a circle grows from the finger */
@@ -151,15 +154,37 @@ a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .hit{position:absolute;inset:0;z-index:1;margin:0;padding:0;border:0;border-radius:inherit;background:transparent}
 .picbox{grid-area:pic;position:relative;width:4.25rem;height:4.25rem}
 .pic{display:flex;align-items:center;justify-content:center;flex:none;width:4.25rem;height:4.25rem;border-radius:var(--sh-m);overflow:hidden;background:var(--picbg)}
-.pic.emo{font-size:2.8rem;line-height:1}
+/* a drawing in its colour (tone 40) on that colour's tint (tone 95); tone 80 on tone 20 when dark: 5:1 or more */
+.pic.lu{background:var(--hb);color:var(--hf)}
+.h-red{--hf:#B3261E;--hb:#FDE7E4}
+.h-orange{--hf:#A3480F;--hb:#FDEADB}
+.h-amber{--hf:#855C00;--hb:#FCF0D2}
+.h-green{--hf:#2D6A2F;--hb:#E2F0DC}
+.h-teal{--hf:#006A66;--hb:#D9F1EE}
+.h-blue{--hf:#2059A6;--hb:#E1ECFA}
+.h-purple{--hf:#6B42A8;--hb:#EEE6F9}
+.h-pink{--hf:#A2336B;--hb:#FBE4EE}
+.h-brown{--hf:#7A4B26;--hb:#F4E7DB}
+.h-gray{--hf:#4F5B57;--hb:#E7EBE8}
+html[data-theme="dark"] .h-red{--hf:#FFB4AB;--hb:#4C1D19}
+html[data-theme="dark"] .h-orange{--hf:#FFB787;--hb:#4A2610}
+html[data-theme="dark"] .h-amber{--hf:#F2C35A;--hb:#3E2E04}
+html[data-theme="dark"] .h-green{--hf:#A3D59A;--hb:#1D381C}
+html[data-theme="dark"] .h-teal{--hf:#7FD6D0;--hb:#0D3734}
+html[data-theme="dark"] .h-blue{--hf:#A9C7FF;--hb:#172F50}
+html[data-theme="dark"] .h-purple{--hf:#D2BCFF;--hb:#33214F}
+html[data-theme="dark"] .h-pink{--hf:#FFB1D0;--hb:#4A1B32}
+html[data-theme="dark"] .h-brown{--hf:#E6C1A2;--hb:#3D2A1B}
+html[data-theme="dark"] .h-gray{--hf:#C1C9C5;--hb:#2D3431}
+.pic.lu svg{width:3rem;height:3rem}
 .pic.ini{background:var(--md-secondary-container);color:var(--md-on-secondary-container);font:500 1.7rem/1 var(--font)}
 .pic.memo{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
 .pic.memo .ic{width:2.1rem;height:2.1rem}
 .pic img{width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none}
-.selmark{position:absolute;top:-.5rem;right:-.5rem;display:none;width:2rem;height:2rem;border-radius:50%;
-  background:var(--md-on-primary);color:var(--md-primary);box-shadow:0 0 0 3px var(--md-primary-container)}
-.selmark .ic{width:100%;height:100%}
-.row.sel .selmark{display:block}
+.selmark{position:absolute;top:-.5rem;right:-.5rem;display:none;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:50%;
+  background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 0 0 3px var(--md-primary-container)}
+.selmark .ic{width:1.3rem;height:1.3rem;stroke-width:3}
+.row.sel .selmark{display:flex}
 .txt{grid-area:txt;min-width:0}
 /* item names have no spaces, so they break between characters, but never before ー or a small kana */
 .nm,.cn,.stx b{word-break:normal;line-break:strict}
@@ -243,14 +268,15 @@ html[data-size="l"] #bar .wrap,html[data-size="xl"] #bar .wrap{flex-direction:co
 #sh-ask.gate .acts{flex-direction:column-reverse}
 /* 写真で そろえる */
 .photostep{display:flex;flex-direction:column;align-items:center;gap:.6rem;margin:.25rem 0}
-.photostep .pic.big{width:10rem;height:10rem;border-radius:var(--sh-xl);font-size:6rem}
+.photostep .pic.big{width:10rem;height:10rem;border-radius:var(--sh-xl)}
+.photostep .pic.big.lu svg{width:6.5rem;height:6.5rem}
 .photostep .pic.big.ini{font-size:4rem}
 .photostep .nm{font:var(--t-headline-s);text-align:center}
 .h3{margin:1.25rem .25rem .6rem;font:var(--t-title-m)}
 .h3 small{font:var(--t-body-m);color:var(--md-on-surface-variant)}
 .clist li{display:flex;align-items:center;gap:.9rem;min-height:4rem;padding:.6rem 1rem}
 .pic.sm{width:2.5rem;height:2.5rem;border-radius:var(--sh-s)}
-.pic.sm.emo{font-size:1.65rem}
+.pic.sm.lu svg{width:1.6rem;height:1.6rem}
 .pic.sm.ini{font-size:1.05rem}
 .pic.sm .ic{width:1.35rem;height:1.35rem}
 .cn{flex:1;min-width:0;font:var(--t-title-m)}
@@ -346,11 +372,12 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 .fl-t{display:block;margin:0 .25rem .55rem;font:var(--t-title-m);color:var(--md-on-surface-variant)}
 .fl > small,.fl-help{display:block;margin:.4rem .25rem 0;font:var(--t-body-m);color:var(--md-on-surface-variant)}
 .picrow{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
-.emojis{display:grid;grid-template-columns:repeat(auto-fill,minmax(2.75rem,1fr));gap:.25rem;max-height:11.5rem;overflow-y:auto;margin-top:.7rem;padding:.4rem;
+.pics{display:grid;grid-template-columns:repeat(auto-fill,minmax(3rem,1fr));gap:.3rem;max-height:12.5rem;overflow-y:auto;margin-top:.7rem;padding:.4rem;
   border-radius:var(--sh-m);background:var(--item)}
-.emojis button{height:2.75rem;padding:0;border:0;border-radius:var(--sh-s);background:none;font-size:1.55rem;line-height:1}
-.emojis button.on{background:var(--md-primary-container);box-shadow:inset 0 0 0 2px var(--md-primary)}
-.emojis .ini{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:var(--sh-s);
+.pics button{display:flex;align-items:center;justify-content:center;height:3rem;padding:0;border:0;border-radius:var(--sh-s);background:var(--hb,none);color:var(--hf,inherit)}
+.pics button svg{width:1.75rem;height:1.75rem}
+.pics button.on{box-shadow:inset 0 0 0 3px var(--md-primary)}
+.pics .ini{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:var(--sh-s);
   background:var(--md-secondary-container);color:var(--md-on-secondary-container);font:600 1rem/1 var(--font)}
 .addrow{display:flex;align-items:flex-start;gap:.5rem;margin-top:.7rem}
 .addrow .tf{flex:1;margin:0}
@@ -407,14 +434,14 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 </nav>
 
 <section id="settings" hidden aria-labelledby="setTitle">
-  <header class="topbar"><div class="wrap"><button type="button" id="closeSettings" class="icon-btn sl" aria-label="もどる"><span data-ic="arrow_back"></span></button><h1 id="setTitle">家族の設定</h1></div></header>
+  <header class="topbar"><div class="wrap"><button type="button" id="closeSettings" class="icon-btn sl" aria-label="もどる"><span data-ic="arrow-left"></span></button><h1 id="setTitle">家族の設定</h1></div></header>
   <div class="wrap">
     <p class="note">ここは ご家族（準備をする人）用の 画面です。</p>
     <div class="card" id="backupCard"><p id="backupState"></p><button type="button" id="backupNow" class="btn filled sl"><span data-ic="upload"></span>いま バックアップする</button></div>
 
     <h2 class="sh">品物</h2>
-    <div class="btnrow"><button type="button" id="addItem" class="btn filled sl"><span data-ic="add"></span>品物を ふやす</button><button type="button" id="photoAll" class="btn tonal sl"><span data-ic="photo_camera"></span>写真で そろえる</button><button type="button" id="sortFreq" class="btn outlined sl"><span data-ic="sort"></span>よく頼む順に ならべる</button></div>
-    <p class="note">絵文字は スマホに よって 絵が かわります。いつも 買う 品物の 写真を とっておくと、いちばん 分かりやすく なります（「写真で そろえる」で 続けて とれます）。ボタンの 場所は 勝手には 変わりません。↑↓ で ならべかえられます。</p>
+    <div class="btnrow"><button type="button" id="addItem" class="btn filled sl"><span data-ic="plus"></span>品物を ふやす</button><button type="button" id="photoAll" class="btn tonal sl"><span data-ic="camera"></span>写真で そろえる</button><button type="button" id="sortFreq" class="btn outlined sl"><span data-ic="arrow-down-wide-narrow"></span>よく頼む順に ならべる</button></div>
+    <p class="note">絵は どの スマホでも 同じに 出ます。いつも 買う 品物の 写真を とっておくと、いちばん 分かりやすく なります（「写真で そろえる」で 続けて とれます）。ボタンの 場所は 勝手には 変わりません。↑↓ で ならべかえられます。</p>
     <div id="sItems"></div>
 
     <h2 class="sh">文字で たのまれたもの</h2>
@@ -447,7 +474,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 
     <h2 class="sh">ホーム画面に アイコンを 置く</h2>
     <p class="note" id="installNote"></p>
-    <button type="button" id="installBtn" class="btn tonal sl" hidden><span data-ic="add_to_home_screen"></span>ホーム画面に アイコンを 作る</button>
+    <button type="button" id="installBtn" class="btn tonal sl" hidden><span data-ic="smartphone"></span>ホーム画面に アイコンを 作る</button>
 
     <h2 class="sh" id="backupSec">バックアップ</h2>
     <p class="note">品物と 写真と 設定を、ファイルに して 残します。スマホが こわれたり、機種を かえたり したときに 読みこめば 戻せます。この スマホの 中だけだと、スマホと いっしょに 消えて しまうので、ドライブや LINE Keep など スマホの 外に 置いて ください。</p>
@@ -467,14 +494,14 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
       <li>写真は 保存する ときに 描き直すので、撮った 場所などの 情報は 残りません。</li>
       <li>バックアップの ファイルには、品物と 写真と 設定（えらんだ ときは 送った記録も）が 入ります。置いた 場所で 大切に 保管して ください。</li>
     </ul>
-    <div class="datarow"><p id="histState"></p><button type="button" id="clearHist" class="btn outlined sl"><span data-ic="delete"></span>送った記録を けす</button></div>
-    <div class="datarow"><p id="voiceState"></p><button type="button" id="clearVoices" class="btn outlined sl"><span data-ic="delete"></span>録音を ぜんぶ けす</button></div>
+    <div class="datarow"><p id="histState"></p><button type="button" id="clearHist" class="btn outlined sl"><span data-ic="trash-2"></span>送った記録を けす</button></div>
+    <div class="datarow"><p id="voiceState"></p><button type="button" id="clearVoices" class="btn outlined sl"><span data-ic="trash-2"></span>録音を ぜんぶ けす</button></div>
 
     <h2 class="sh danger-h">この スマホの データを けす</h2>
     <p class="note">スマホを 人に ゆずる ときなどに。品物・写真・送った記録・録音・設定を ぜんぶ けして、はじめの 状態に 戻します。先に バックアップを しておけば、あとで 読みこんで 戻せます。</p>
-    <button type="button" id="wipeAll" class="btn danger sl"><span data-ic="delete"></span>データを ぜんぶ けす</button>
+    <button type="button" id="wipeAll" class="btn danger sl"><span data-ic="trash-2"></span>データを ぜんぶ けす</button>
 
-    <p class="ver">かいものメモ 1.4</p>
+    <p class="ver">かいものメモ 1.5</p>
   </div>
 </section>
 
@@ -486,7 +513,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
       <ul class="clist" id="clist"></ul>
       <h3 class="h3">いつまでに？ <small>（えらばなくても だいじょうぶ）</small></h3>
       <div class="chips" id="whenChips"></div>
-      <div class="acts"><button type="button" id="clearAll" class="btn text danger-t sl"><span data-ic="delete"></span>えらんだものを ぜんぶ けす</button></div>
+      <div class="acts"><button type="button" id="clearAll" class="btn text danger-t sl"><span data-ic="trash-2"></span>えらんだものを ぜんぶ けす</button></div>
     </div></div>
     <div class="sheet-foot"><div class="wrap">
       <p class="steps-t" id="stepsT"></p>
@@ -521,11 +548,11 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <div class="level" id="recLevel" hidden><span></span></div>
     <div class="vdone" id="recDone" hidden>
       <button type="button" id="recPlay" class="btn tonal big sl"></button>
-      <button type="button" id="recAgain" class="btn outlined sl"><span data-ic="restart_alt"></span>とりなおす</button>
+      <button type="button" id="recAgain" class="btn outlined sl"><span data-ic="rotate-ccw"></span>とりなおす</button>
     </div>
     <div id="typeBox" hidden><label class="tf" style="margin:1rem 0 0"><textarea id="voiceText" rows="3" placeholder=" "></textarea><span>ほしいもの（文字で）</span></label></div>
     <div class="acts">
-      <button type="button" id="voiceAdd" class="btn filled big sl"><span data-ic="add"></span>リストに 入れる</button>
+      <button type="button" id="voiceAdd" class="btn filled big sl"><span data-ic="plus"></span>リストに 入れる</button>
       <button type="button" class="btn outlined big sl" data-close>やめる</button>
       <button type="button" id="typeToggle" class="btn text quiet sl"><span data-ic="keyboard"></span>文字で 入れるときは こちら</button>
     </div>
@@ -576,10 +603,10 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <h2 id="editTitle"></h2>
     <label class="tf"><input id="fName" type="text" maxlength="30" autocomplete="off" placeholder=" "><span>なまえ</span></label>
     <div class="fl"><span class="fl-t">絵・写真</span>
-      <div class="picrow"><span id="fPicBox"></span><button type="button" id="fPhoto" class="btn tonal sl"><span data-ic="photo_camera"></span>写真を とる・えらぶ</button><button type="button" id="fNoPhoto" class="btn text sl" hidden><span data-ic="hide_image"></span>写真を やめる</button></div>
+      <div class="picrow"><span id="fPicBox"></span><button type="button" id="fPhoto" class="btn tonal sl"><span data-ic="camera"></span>写真を とる・えらぶ</button><button type="button" id="fNoPhoto" class="btn text sl" hidden><span data-ic="image-off"></span>写真を やめる</button></div>
       <input id="fPhotoFile" type="file" accept="image/*" hidden>
       <small id="fPhotoNote" hidden>写真が あるときは、写真が 出ます。</small>
-      <div class="emojis" id="fEmojis" role="group" aria-label="絵"></div>
+      <div class="pics" id="fPics" role="group" aria-label="絵"></div>
     </div>
     <div class="fl"><span class="fl-t">数え方</span>
       <div class="chips" id="fUnits"></div>
@@ -593,7 +620,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
       <small class="fl-help">2つ 以上 入れると、押したときに「どれに しますか？」と 聞きます。</small>
     </div>
     <div class="fl"><span class="fl-t">グループ</span><div class="chips" id="fGroup"></div></div>
-    <div class="acts"><button type="button" id="fDelete" class="btn text danger-t sl"><span data-ic="delete"></span>この品物を けす</button></div>
+    <div class="acts"><button type="button" id="fDelete" class="btn text danger-t sl"><span data-ic="trash-2"></span>この品物を けす</button></div>
     </div></div>
     <div class="sheet-foot"><div class="wrap">
       <div class="acts">
@@ -612,8 +639,8 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <div class="photostep" id="photoStep"></div>
     <input id="photoFile" type="file" accept="image/*" capture="environment" hidden>
     <div class="acts">
-      <button type="button" id="photoTake" class="btn filled big sl"><span data-ic="photo_camera"></span><span class="lbl">写真を とる</span></button>
-      <button type="button" id="photoNext" class="btn outlined big sl"><span data-ic="arrow_forward"></span>つぎの 品物へ</button>
+      <button type="button" id="photoTake" class="btn filled big sl"><span data-ic="camera"></span><span class="lbl">写真を とる</span></button>
+      <button type="button" id="photoNext" class="btn outlined big sl"><span data-ic="arrow-right"></span>つぎの 品物へ</button>
       <button type="button" class="btn text sl" data-close>おわる</button>
     </div>
   </div></div>
@@ -626,36 +653,37 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 'use strict';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
-// Material Symbols Rounded (weight 400), from google/material-design-icons, Apache License 2.0
+// Lucide (lucide.dev, lucide-static 1.66.0), ISC License; a few come from Feather, MIT License: see LICENSE-lucide.txt.
+// Drawn with lines like the item pictures; play and stop are filled in, as people expect of them
 const ICONS = {
-  add: 'M440-440H240q-17 0-28.5-11.5T200-480q0-17 11.5-28.5T240-520h200v-200q0-17 11.5-28.5T480-760q17 0 28.5 11.5T520-720v200h200q17 0 28.5 11.5T760-480q0 17-11.5 28.5T720-440H520v200q0 17-11.5 28.5T480-200q-17 0-28.5-11.5T440-240v-200Z',
-  remove: 'M240-440q-17 0-28.5-11.5T200-480q0-17 11.5-28.5T240-520h480q17 0 28.5 11.5T760-480q0 17-11.5 28.5T720-440H240Z',
-  mic: 'M480-400q-50 0-85-35t-35-85v-240q0-50 35-85t85-35q50 0 85 35t35 85v240q0 50-35 85t-85 35Zm-40 240v-83q-92-13-157.5-78T203-479q-2-17 9-29t28-12q17 0 28.5 11.5T284-480q14 70 69.5 115T480-320q72 0 127-45.5T676-480q4-17 15.5-28.5T720-520q17 0 28 12t9 29q-14 91-79 157t-158 79v83q0 17-11.5 28.5T480-120q-17 0-28.5-11.5T440-160Z',
-  stop: 'M240-320v-320q0-33 23.5-56.5T320-720h320q33 0 56.5 23.5T720-640v320q0 33-23.5 56.5T640-240H320q-33 0-56.5-23.5T240-320Z',
-  send: 'M176-183q-20 8-38-3.5T120-220v-180l320-80-320-80v-180q0-22 18-33.5t38-3.5l616 260q25 11 25 37t-25 37L176-183Z',
-  history: 'M480-120q-126 0-223-76.5T131-392q-4-15 6-27.5t27-14.5q16-2 29 6t18 24q24 90 99 147t170 57q117 0 198.5-81.5T760-480q0-117-81.5-198.5T480-760q-69 0-129 32t-101 88h70q17 0 28.5 11.5T360-600q0 17-11.5 28.5T320-560H160q-17 0-28.5-11.5T120-600v-160q0-17 11.5-28.5T160-800q17 0 28.5 11.5T200-760v54q51-64 124.5-99T480-840q75 0 140.5 28.5t114 77q48.5 48.5 77 114T840-480q0 75-28.5 140.5t-77 114q-48.5 48.5-114 77T480-120Zm40-376 100 100q11 11 11 28t-11 28q-11 11-28 11t-28-11L452-452q-6-6-9-13.5t-3-15.5v-159q0-17 11.5-28.5T480-680q17 0 28.5 11.5T520-640v144Z',
-  settings: 'M433-80q-27 0-46.5-18T363-142l-9-66q-13-5-24.5-12T307-235l-62 26q-25 11-50 2t-39-32l-47-82q-14-23-8-49t27-43l53-40q-1-7-1-13.5v-27q0-6.5 1-13.5l-53-40q-21-17-27-43t8-49l47-82q14-23 39-32t50 2l62 26q11-8 23-15t24-12l9-66q4-26 23.5-44t46.5-18h94q27 0 46.5 18t23.5 44l9 66q13 5 24.5 12t22.5 15l62-26q25-11 50-2t39 32l47 82q14 23 8 49t-27 43l-53 40q1 7 1 13.5v27q0 6.5-2 13.5l53 40q21 17 27 43t-8 49l-48 82q-14 23-39 32t-50-2l-60-26q-11 8-23 15t-24 12l-9 66q-4 26-23.5 44T527-80h-94Zm49-260q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Z',
-  arrow_back: 'm313-440 196 196q12 12 11.5 28T508-188q-12 11-28 11.5T452-188L188-452q-6-6-8.5-13t-2.5-15q0-8 2.5-15t8.5-13l264-264q11-11 27.5-11t28.5 11q12 12 12 28.5T508-715L313-520h447q17 0 28.5 11.5T800-480q0 17-11.5 28.5T760-440H313Z',
-  check: 'm382-354 339-339q12-12 28-12t28 12q12 12 12 28.5T777-636L410-268q-12 12-28 12t-28-12L182-440q-12-12-11.5-28.5T183-497q12-12 28.5-12t28.5 12l142 143Z',
-  close: 'M480-424 284-228q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536-480l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480-424Z',
-  photo_camera: 'M480-260q75 0 127.5-52.5T660-440q0-75-52.5-127.5T480-620q-75 0-127.5 52.5T300-440q0 75 52.5 127.5T480-260Zm0-80q-42 0-71-29t-29-71q0-42 29-71t71-29q42 0 71 29t29 71q0 42-29 71t-71 29ZM160-120q-33 0-56.5-23.5T80-200v-480q0-33 23.5-56.5T160-760h126l50-54q11-12 26.5-19t32.5-7h170q17 0 32.5 7t26.5 19l50 54h126q33 0 56.5 23.5T880-680v480q0 33-23.5 56.5T800-120H160Z',
-  hide_image: 'M840-760v440q0 20-12.5 30T800-280q-15 0-27.5-10.5T760-321v-439H320q-20 0-30-12.5T280-800q0-15 10-27.5t30-12.5h440q33 0 56.5 23.5T840-760ZM200-120q-33 0-56.5-23.5T120-200v-528l-36-36q-11-11-11-28t11-28q11-11 28-11t28 11l680 680q11 11 11 28t-11 28q-11 11-28 11t-28-11l-36-36H200Zm367-160H280q-12 0-18-11t2-21l80-107q6-8 16-8t16 8l74 99 33-44-283-283v447h447l-80-80Zm-30-257ZM424-424Z',
-  arrow_upward: 'M440-647 244-451q-12 12-28 11.5T188-452q-11-12-11.5-28t11.5-28l264-264q6-6 13-8.5t15-2.5q8 0 15 2.5t13 8.5l264 264q11 11 11 27.5T772-452q-12 12-28.5 12T715-452L520-647v447q0 17-11.5 28.5T480-160q-17 0-28.5-11.5T440-200v-447Z',
-  arrow_downward: 'M440-313v-447q0-17 11.5-28.5T480-800q17 0 28.5 11.5T520-760v447l196-196q12-12 28-11.5t28 12.5q11 12 11.5 28T772-452L508-188q-6 6-13 8.5t-15 2.5q-8 0-15-2.5t-13-8.5L188-452q-11-11-11-27.5t11-28.5q12-12 28.5-12t28.5 12l195 195Z',
-  delete: 'M280-120q-33 0-56.5-23.5T200-200v-520q-17 0-28.5-11.5T160-760q0-17 11.5-28.5T200-800h160q0-17 11.5-28.5T400-840h160q17 0 28.5 11.5T600-800h160q17 0 28.5 11.5T800-760q0 17-11.5 28.5T760-720v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM400-280q17 0 28.5-11.5T440-320v-280q0-17-11.5-28.5T400-640q-17 0-28.5 11.5T360-600v280q0 17 11.5 28.5T400-280Zm160 0q17 0 28.5-11.5T600-320v-280q0-17-11.5-28.5T560-640q-17 0-28.5 11.5T520-600v280q0 17 11.5 28.5T560-280ZM280-720v520-520Z',
-  edit_note: 'M200-400q-17 0-28.5-11.5T160-440q0-17 11.5-28.5T200-480h200q17 0 28.5 11.5T440-440q0 17-11.5 28.5T400-400H200Zm0-160q-17 0-28.5-11.5T160-600q0-17 11.5-28.5T200-640h360q17 0 28.5 11.5T600-600q0 17-11.5 28.5T560-560H200Zm0-160q-17 0-28.5-11.5T160-760q0-17 11.5-28.5T200-800h360q17 0 28.5 11.5T600-760q0 17-11.5 28.5T560-720H200Zm320 520v-66q0-8 3-15.5t9-13.5l209-208q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q8 9 12.5 20t4.5 22q0 11-4 22.5T863-380L655-172q-6 6-13.5 9t-15.5 3h-66q-17 0-28.5-11.5T520-200Zm300-223-37-37 37 37ZM580-220h38l121-122-18-19-19-18-122 121v38Zm141-141-19-18 37 37-18-19Z',
-  download: 'M480-337q-8 0-15-2.5t-13-8.5L308-492q-12-12-11.5-28t11.5-28q12-12 28.5-12.5T365-549l75 75v-286q0-17 11.5-28.5T480-800q17 0 28.5 11.5T520-760v286l75-75q12-12 28.5-11.5T652-548q11 12 11.5 28T652-492L508-348q-6 6-13 8.5t-15 2.5ZM240-160q-33 0-56.5-23.5T160-240v-80q0-17 11.5-28.5T200-360q17 0 28.5 11.5T240-320v80h480v-80q0-17 11.5-28.5T760-360q17 0 28.5 11.5T800-320v80q0 33-23.5 56.5T720-160H240Z',
-  upload: 'M240-160q-33 0-56.5-23.5T160-240v-80q0-17 11.5-28.5T200-360q17 0 28.5 11.5T240-320v80h480v-80q0-17 11.5-28.5T760-360q17 0 28.5 11.5T800-320v80q0 33-23.5 56.5T720-160H240Zm200-486-75 75q-12 12-28.5 11.5T308-572q-11-12-11.5-28t11.5-28l144-144q6-6 13-8.5t15-2.5q8 0 15 2.5t13 8.5l144 144q12 12 11.5 28T652-572q-12 12-28.5 12.5T595-571l-75-75v286q0 17-11.5 28.5T480-320q-17 0-28.5-11.5T440-360v-286Z',
-  add_to_home_screen: 'M320-40q-33 0-56.5-23.5T240-120v-120q0-17 11.5-28.5T280-280q17 0 28.5 11.5T320-240h400v-480H320q0 17-11.5 28.5T280-680q-17 0-28.5-11.5T240-720v-120q0-33 23.5-56.5T320-920h400q33 0 56.5 23.5T800-840v720q0 33-23.5 56.5T720-40H320Zm0-120v40h400v-40H320Zm80-344L204-308q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196H240q-17 0-28.5-11.5T200-600q0-17 11.5-28.5T240-640h200q17 0 28.5 11.5T480-600v200q0 17-11.5 28.5T440-360q-17 0-28.5-11.5T400-400v-104Zm-80-296h400v-40H320v40Zm0 0v-40 40Zm0 640v40-40Z',
-  sort: 'M160-240q-17 0-28.5-11.5T120-280q0-17 11.5-28.5T160-320h160q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240H160Zm0-200q-17 0-28.5-11.5T120-480q0-17 11.5-28.5T160-520h400q17 0 28.5 11.5T600-480q0 17-11.5 28.5T560-440H160Zm0-200q-17 0-28.5-11.5T120-680q0-17 11.5-28.5T160-720h640q17 0 28.5 11.5T840-680q0 17-11.5 28.5T800-640H160Z',
-  check_circle: 'm424-408-86-86q-11-11-28-11t-28 11q-11 11-11 28t11 28l114 114q12 12 28 12t28-12l226-226q11-11 11-28t-11-28q-11-11-28-11t-28 11L424-408Zm56 328q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z',
-  edit: 'M200-200h57l391-391-57-57-391 391v57Zm-40 80q-17 0-28.5-11.5T120-160v-97q0-16 6-30.5t17-25.5l505-504q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L313-143q-11 11-25.5 17t-30.5 6h-97Zm600-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z',
-  restart_alt: 'M393-132q-103-29-168-113.5T160-440q0-57 19-108.5t54-94.5q11-12 27-12.5t29 12.5q11 11 11.5 27T290-586q-24 31-37 68t-13 78q0 81 47.5 144.5T410-209q13 4 21.5 15t8.5 24q0 20-14 31.5t-33 6.5Zm174 0q-19 5-33-7t-14-32q0-12 8.5-23t21.5-15q75-24 122.5-87T720-440q0-100-70-170t-170-70h-3l16 16q11 11 11 28t-11 28q-11 11-28 11t-28-11l-84-84q-6-6-8.5-13t-2.5-15q0-8 2.5-15t8.5-13l84-84q11-11 28-11t28 11q11 11 11 28t-11 28l-16 16h3q134 0 227 93t93 227q0 109-65 194T567-132Z',
-  arrow_forward: 'M647-440H200q-17 0-28.5-11.5T160-480q0-17 11.5-28.5T200-520h447L451-716q-12-12-11.5-28t12.5-28q12-11 28-11.5t28 11.5l264 264q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L508-188q-11 11-27.5 11T452-188q-12-12-12-28.5t12-28.5l195-195Z',
-  play_arrow: 'M320-273v-414q0-17 12-28.5t28-11.5q5 0 10.5 1.5T381-721l326 207q9 6 13.5 15t4.5 19q0 10-4.5 19T707-446L381-239q-5 3-10.5 4.5T360-233q-16 0-28-11.5T320-273Z',
-  keyboard: 'M160-200q-33 0-56.5-23.5T80-280v-400q0-33 23.5-56.5T160-760h640q33 0 56.5 23.5T880-680v400q0 33-23.5 56.5T800-200H160Zm0-80h640v-400H160v400Zm200-40h240q17 0 28.5-11.5T640-360q0-17-11.5-28.5T600-400H360q-17 0-28.5 11.5T320-360q0 17 11.5 28.5T360-320Zm-200 40v-400 400Zm80-280q17 0 28.5-11.5T280-600q0-17-11.5-28.5T240-640q-17 0-28.5 11.5T200-600q0 17 11.5 28.5T240-560Zm120 0q17 0 28.5-11.5T400-600q0-17-11.5-28.5T360-640q-17 0-28.5 11.5T320-600q0 17 11.5 28.5T360-560Zm120 0q17 0 28.5-11.5T520-600q0-17-11.5-28.5T480-640q-17 0-28.5 11.5T440-600q0 17 11.5 28.5T480-560Zm120 0q17 0 28.5-11.5T640-600q0-17-11.5-28.5T600-640q-17 0-28.5 11.5T560-600q0 17 11.5 28.5T600-560Zm120 0q17 0 28.5-11.5T760-600q0-17-11.5-28.5T720-640q-17 0-28.5 11.5T680-600q0 17 11.5 28.5T720-560ZM240-440q17 0 28.5-11.5T280-480q0-17-11.5-28.5T240-520q-17 0-28.5 11.5T200-480q0 17 11.5 28.5T240-440Zm120 0q17 0 28.5-11.5T400-480q0-17-11.5-28.5T360-520q-17 0-28.5 11.5T320-480q0 17 11.5 28.5T360-440Zm120 0q17 0 28.5-11.5T520-480q0-17-11.5-28.5T480-520q-17 0-28.5 11.5T440-480q0 17 11.5 28.5T480-440Zm120 0q17 0 28.5-11.5T640-480q0-17-11.5-28.5T600-520q-17 0-28.5 11.5T560-480q0 17 11.5 28.5T600-440Zm120 0q17 0 28.5-11.5T760-480q0-17-11.5-28.5T720-520q-17 0-28.5 11.5T680-480q0 17 11.5 28.5T720-440Z',
+  'arrow-down': '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+  'arrow-down-wide-narrow': '<path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M11 4h10"/><path d="M11 8h7"/><path d="M11 12h4"/>',
+  'arrow-left': '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  'arrow-up': '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+  'camera': '<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>',
+  'check': '<path d="M20 6 9 17l-5-5"/>',
+  'download': '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+  'history': '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+  'image-off': '<line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="13.5" x2="6" y1="13.5" y2="21"/><line x1="18" x2="21" y1="12" y2="15"/><path d="M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59"/><path d="M21 15V5a2 2 0 0 0-2-2H9"/>',
+  'keyboard': '<path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/>',
+  'mic': '<path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/>',
+  'minus': '<path d="M5 12h14"/>',
+  'notebook-pen': '<path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/>',
+  'play': '<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/>',
+  'plus': '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  'rotate-ccw': '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+  'send': '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
+  'settings': '<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/>',
+  'smartphone': '<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',
+  'square': '<rect width="18" height="18" x="3" y="3" rx="2"/>',
+  'trash-2': '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  'upload': '<path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
+  'x': '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
 };
-const ic = (name, cls = '') => `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 -960 960 960" aria-hidden="true" focusable="false"><path d="${ICONS[name]}"/></svg>`;
+const FILLED = new Set(['play', 'square']);
+const svgOf = (inner, cls = '') => `<svg${cls ? ` class="${cls}"` : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${inner}</svg>`;
+const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' fill' : '') + (cls ? ' ' + cls : ''));
 // static markup names its icons with data-ic; they are drawn once here
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
@@ -672,29 +700,105 @@ const GROUPS = [
 const UNITS = ['個', '本', 'パック', '袋', '箱', 'たば', 'ふさ', 'g'];
 const WHEN = ['きょう中に', 'あしたまでに', 'こんど来るとき', 'いそがない'];
 // Emoji 13 or older, so they show on older Android phones too
-const EMOJIS = '🍞 🥚 🍚 🍙 🌾 🍌 🍎 🍊 🍇 🍓 🍑 🍉 🍅 🥒 🥕 🧅 🥔 🥬 🥦 🌽 🍄 🍠 🐟 🦐 🥩 🍗 🥓 🧀 🧈 🍜 🍱 🥟 🍘 🍪 🍡 🍰 🍦 🍫 🍬 🥫 🧂 🍯 🥛 🍵 ☕ 🧃 🍺 🍶 💧 🧊 🧻 🤧 🧺 🧽 🧴 🧼 🪥 🗑️ 🧹 🔋 💡 😷 🩹 💊 👕 🧦 💐 🌸 📰 ✉️ 🐶 🐱 🎁 📦'.split(' ');
+// the pictures an item can have: Lucide name, what it shows (read out, and shown on a long look), colour, drawing
+const PICS = [
+  ['sandwich', 'パン', 'brown', '<path d="m2.37 11.223 8.372-6.777a2 2 0 0 1 2.516 0l8.371 6.777"/><path d="M21 15a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-5.25"/><path d="M3 15a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h9"/><path d="m6.67 15 6.13 4.6a2 2 0 0 0 2.8-.4l3.15-4.2"/><rect width="20" height="4" x="2" y="11" rx="1"/>'],
+  ['croissant', 'クロワッサン', 'amber', '<path d="M10.2 18H4.774a1.5 1.5 0 0 1-1.352-.97 11 11 0 0 1 .132-6.487"/><path d="M18 10.2V4.774a1.5 1.5 0 0 0-.97-1.352 11 11 0 0 0-6.486.132"/><path d="M18 5a4 3 0 0 1 4 3 2 2 0 0 1-2 2 10 10 0 0 0-5.139 1.42"/><path d="M5 18a3 4 0 0 0 3 4 2 2 0 0 0 2-2 10 10 0 0 1 1.42-5.14"/><path d="M8.709 2.554a10 10 0 0 0-6.155 6.155 1.5 1.5 0 0 0 .676 1.626l9.807 5.42a2 2 0 0 0 2.718-2.718l-5.42-9.807a1.5 1.5 0 0 0-1.626-.676"/>'],
+  ['egg', 'たまご', 'orange', '<path d="M12 2C8 2 4 8 4 14a8 8 0 0 0 16 0c0-6-4-12-8-12"/>'],
+  ['egg-fried', 'めだまやき', 'amber', '<circle cx="11.5" cy="12.5" r="3.5"/><path d="M3 8c0-3.5 2.5-6 6.5-6 5 0 4.83 3 7.5 5s5 2 5 6c0 4.5-2.5 6.5-7 6.5-2.5 0-2.5 2.5-6 2.5s-7-2-7-5.5c0-3 1.5-3 1.5-5C3.5 10 3 9 3 8Z"/>'],
+  ['wheat', 'お米', 'green', '<path d="M2 22 16 8"/><path d="M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z"/><path d="M7.47 8.53 9 7l1.53 1.53a3.5 3.5 0 0 1 0 4.94L9 15l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z"/><path d="M11.47 4.53 13 3l1.53 1.53a3.5 3.5 0 0 1 0 4.94L13 11l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z"/><path d="M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z"/><path d="M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z"/><path d="M15.47 13.47 17 15l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z"/><path d="M19.47 9.47 21 11l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L13 11l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z"/>'],
+  ['banana', 'バナナ', 'amber', '<path d="M4 13c3.5-2 8-2 10 2a5.5 5.5 0 0 1 8 5"/><path d="M5.15 17.89c5.52-1.52 8.65-6.89 7-12C11.55 4 11.5 2 13 2c3.22 0 5 5.5 5 8 0 6.5-4.2 12-10.49 12C5.11 22 2 22 2 20c0-1.5 1.14-1.55 3.15-2.11Z"/>'],
+  ['apple', 'りんご', 'red', '<path d="M12 6.528V3a1 1 0 0 1 1-1h0"/><path d="M18.237 21A15 15 0 0 0 22 11a6 6 0 0 0-10-4.472A6 6 0 0 0 2 11a15.1 15.1 0 0 0 3.763 10 3 3 0 0 0 3.648.648 5.5 5.5 0 0 1 5.178 0A3 3 0 0 0 18.237 21"/>'],
+  ['citrus', 'みかん', 'orange', '<path d="M21.66 17.67a1.08 1.08 0 0 1-.04 1.6A12 12 0 0 1 4.73 2.38a1.1 1.1 0 0 1 1.61-.04z"/><path d="M19.65 15.66A8 8 0 0 1 8.35 4.34"/><path d="m14 10-5.5 5.5"/><path d="M14 17.85V10H6.15"/>'],
+  ['grape', 'ぶどう', 'purple', '<path d="M22 5V2l-5.89 5.89"/><circle cx="16.6" cy="15.89" r="3"/><circle cx="8.11" cy="7.4" r="3"/><circle cx="12.35" cy="11.65" r="3"/><circle cx="13.91" cy="5.85" r="3"/><circle cx="18.15" cy="10.09" r="3"/><circle cx="6.56" cy="13.2" r="3"/><circle cx="10.8" cy="17.44" r="3"/><circle cx="5" cy="19" r="3"/>'],
+  ['cherry', 'さくらんぼ', 'red', '<path d="M2 17a5 5 0 0 0 10 0c0-2.76-2.5-5-5-3-2.5-2-5 .24-5 3Z"/><path d="M12 17a5 5 0 0 0 10 0c0-2.76-2.5-5-5-3-2.5-2-5 .24-5 3Z"/><path d="M7 14c3.22-2.91 4.29-8.75 5-12 1.66 2.38 4.94 9 5 12"/><path d="M22 9c-4.29 0-7.14-2.33-10-7 5.71 0 10 4.67 10 7Z"/>'],
+  ['carrot', 'にんじん', 'orange', '<path d="M15 16a1 1 0 0 0-7-7q-4 4-5.987 12.385a.5.5 0 0 0 .602.602Q11 20 15 16l-3-3"/><path d="M15 9q4 4 7 0-3-4-7 0 4-4 0-7-4 3 0 7"/><path d="m8 15-2.58-2.58"/>'],
+  ['leafy-green', 'はっぱの やさい', 'green', '<path d="M2 22c1.25-.987 2.27-1.975 3.9-2.2a5.56 5.56 0 0 1 3.8 1.5 4 4 0 0 0 6.187-2.353 3.5 3.5 0 0 0 3.69-5.116A3.5 3.5 0 0 0 20.95 8 3.5 3.5 0 1 0 16 3.05a3.5 3.5 0 0 0-5.831 1.373 3.5 3.5 0 0 0-5.116 3.69 4 4 0 0 0-2.348 6.155C3.499 15.42 4.409 16.712 4.2 18.1 3.926 19.743 3.014 20.732 2 22"/><path d="M2 22 17 7"/>'],
+  ['salad', 'サラダ', 'green', '<path d="M19.496 12a2.5 2.5 0 00.399-2.214A2 2 0 0020.32 6.5 2 2 0 0019 3a2 2 0 00-1.5.68 2 2 0 00-3.287.424 2.5 2.5 0 00-3.189 2.06A3 3 0 0012 12l4-4"/><path d="M4 12a1 1 0 00-.99 1.133A9 9 0 0012 21a9 9 0 008.99-7.867A1 1 0 0020 12z"/><path d="M7 21h10"/><path d="M9.85 6.907A3.5 3.5 0 005.05 12"/>'],
+  ['bean', 'まめ', 'brown', '<path d="M10.165 6.598C9.954 7.478 9.64 8.36 9 9c-.64.64-1.521.954-2.402 1.165A6 6 0 0 0 8 22c7.732 0 14-6.268 14-14a6 6 0 0 0-11.835-1.402Z"/><path d="M5.341 10.62a4 4 0 1 0 5.279-5.28"/>'],
+  ['nut', 'ナッツ', 'brown', '<path d="M16.847 5.847 20 9a7.23 7.23 0 011.551 7.516C21.241 17.352 21 17.932 21 19v1a1 1 0 01-1 1h-1c-1.069 0-1.648.242-2.485.552A7.2 7.2 0 019.002 20l-3.155-3.153"/><path d="M18.21 5.43c-1.71.69-5.07 1.07-6.71 1.07.46 1.38.91 2.74.61 4.88a.88.88 0 01-.73.74c-1.78.28-3.54-.17-4.88-.62 0 1.64-.38 5-1.07 6.71-.21.52-.82.55-1.17.12A10 10 0 0118.33 4.26c.43.35.4.97-.12 1.17"/><path d="M4.93 4.93 3 3a.7.7 0 010-1"/>'],
+  ['fish', 'さかな', 'blue', '<path d="M6.5 12c.94-3.46 4.94-6 8.5-6 3.56 0 6.06 2.54 7 6-.94 3.47-3.44 6-7 6s-7.56-2.53-8.5-6Z"/><path d="M18 12v.5"/><path d="M16 17.93a9.77 9.77 0 0 1 0-11.86"/><path d="M7 10.67C7 8 5.58 5.97 2.73 5.5c-1 1.5-1 5 .23 6.5-1.24 1.5-1.24 5-.23 6.5C5.58 18.03 7 16 7 13.33"/><path d="M10.46 7.26C10.2 5.88 9.17 4.24 8 3h5.8a2 2 0 0 1 1.98 1.67l.23 1.4"/><path d="m16.01 17.93-.23 1.4A2 2 0 0 1 13.8 21H9.5a5.96 5.96 0 0 0 1.49-3.98"/>'],
+  ['shrimp', 'えび', 'orange', '<path d="M10 2a3.28 3.28 0 003.227 1.798l6.17-.561A1 1 0 1119.614 8H8.5a6.44 6.44 0 00-5.63 9.75A6.5 6.5 0 008.5 21c1.38 0 2-.5 2.5-1"/><path d="M10 8a8.5 8.5 0 000 8"/><path d="M11 22c-.5-.5-1.12-1-2.5-1a1 1 0 010-5H12a7 7 0 007-7V8"/><path d="M13 12h.01"/><path d="M8 16c-2 0-4.5-4-4-6"/>'],
+  ['beef', 'お肉', 'red', '<path d="M16.4 13.7A6.5 6.5 0 1 0 6.28 6.6c-1.1 3.13-.78 3.9-3.18 6.08A3 3 0 0 0 5 18c4 0 8.4-1.8 11.4-4.3"/><path d="m18.5 6 1.754 3.5a6.48 6.48 0 0 1-1.854 8.2C15.4 20.2 11 22 7 22a3 3 0 0 1-2.68-1.66L2.4 16.5"/><circle cx="12.5" cy="8.5" r="2.5"/>'],
+  ['drumstick', 'とり肉', 'brown', '<path d="M15.4 15.63a7.875 6 135 1 1 6.23-6.23 4.5 3.43 135 0 0-6.23 6.23"/><path d="m8.29 12.71-2.6 2.6a2.5 2.5 0 1 0-1.65 4.65A2.5 2.5 0 1 0 8.7 18.3l2.59-2.59"/>'],
+  ['ham', 'ハム', 'pink', '<path d="M13.144 21.144A7.274 10.445 45 1 0 2.856 10.856"/><path d="M13.144 21.144A7.274 4.365 45 0 0 2.856 10.856a7.274 4.365 45 0 0 10.288 10.288"/><path d="M16.565 10.435 18.6 8.4a2.501 2.501 0 1 0 1.65-4.65 2.5 2.5 0 1 0-4.66 1.66l-2.024 2.025"/><path d="m8.5 16.5-1-1"/>'],
+  ['soup', 'スープ・めん', 'orange', '<path d="M11.248 3c.273.1.808.53.747 1.36-.05.83-.938 1.2-.989 2.02-.06.78.333 1.24.727 1.62"/><path d="M16.252 3c.268.1.794.53.745 1.36-.06.83-.923 1.2-.993 2.02-.05.78.338 1.24.725 1.62"/><path d="M19.5 12 22 6"/><path d="M4 12a1 1 0 00-.99 1.133A9 9 0 0012 21a9 9 0 008.99-7.867A1 1 0 0020 12z"/><path d="M6.252 3c.268.1.794.53.745 1.36-.06.83-.923 1.2-.993 2.02-.05.78.338 1.24.735 1.62"/><path d="M7 21h10"/>'],
+  ['utensils', 'おかず', 'gray', '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>'],
+  ['cooking-pot', 'なべ', 'gray', '<path d="M2 12h20"/><path d="M20 12v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="m4 8 16-4"/><path d="m8.86 6.78-.45-1.81a2 2 0 0 1 1.45-2.43l1.94-.48a2 2 0 0 1 2.43 1.46l.45 1.8"/>'],
+  ['pizza', 'ピザ', 'orange', '<path d="m12 14-1 1"/><path d="m13.75 18.25-1.25 1.42"/><path d="M17.775 5.654a15.68 15.68 0 0 0-12.121 12.12"/><path d="M18.8 9.3a1 1 0 0 0 2.1 7.7"/><path d="M21.964 20.732a1 1 0 0 1-1.232 1.232l-18-5a1 1 0 0 1-.695-1.232A19.68 19.68 0 0 1 15.732 2.037a1 1 0 0 1 1.232.695z"/>'],
+  ['cookie', 'おせんべい', 'brown', '<path d="M11 17h.01"/><path d="M11.496 2c.324-.016.558.292.529.615a4 4 0 004.235 4.368.713.713 0 01.758.757 4 4 0 004.366 4.237c.323-.03.63.204.614.527a10 10 0 01-2.915 6.566A1 1 0 114.93 4.918 10 10 0 0111.496 2"/><path d="M12 12h.01"/><path d="M16 16h.01"/><path d="M16 3h.01"/><path d="M21 4h.01"/><path d="M21 8h.01"/><path d="M7 14h.01"/><path d="M9 8h.01"/>'],
+  ['cake-slice', 'ケーキ', 'pink', '<path d="M16 13H3"/><path d="M16 17H3"/><path d="m7.2 7.9-3.388 2.5A2 2 0 0 0 3 12.01V20a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-8.654c0-2-2.44-6.026-6.44-8.026a1 1 0 0 0-1.082.057L10.4 5.6"/><circle cx="9" cy="7" r="2"/>'],
+  ['donut', 'ドーナツ', 'pink', '<path d="M20.5 10a2.5 2.5 0 0 1-2.4-3H18a2.95 2.95 0 0 1-2.6-4.4 10 10 0 1 0 6.3 7.1c-.3.2-.8.3-1.2.3"/><circle cx="12" cy="12" r="3"/>'],
+  ['ice-cream-cone', 'アイス', 'pink', '<path d="m7 11 4.08 10.35a1 1 0 0 0 1.84 0L17 11"/><path d="M17 7A5 5 0 0 0 7 7"/><path d="M17 7a2 2 0 0 1 0 4H7a2 2 0 0 1 0-4"/>'],
+  ['candy', 'あめ', 'pink', '<path d="M10 7v10.9"/><path d="M14 6.1V17"/><path d="M16 7V3a1 1 0 0 1 1.707-.707 2.5 2.5 0 0 0 2.152.717 1 1 0 0 1 1.131 1.131 2.5 2.5 0 0 0 .717 2.152A1 1 0 0 1 21 8h-4"/><path d="M16.536 7.465a5 5 0 0 0-7.072 0l-2 2a5 5 0 0 0 0 7.07 5 5 0 0 0 7.072 0l2-2a5 5 0 0 0 0-7.07"/><path d="M8 17v4a1 1 0 0 1-1.707.707 2.5 2.5 0 0 0-2.152-.717 1 1 0 0 1-1.131-1.131 2.5 2.5 0 0 0-.717-2.152A1 1 0 0 1 3 16h4"/>'],
+  ['popcorn', 'おかし', 'amber', '<path d="M18 8a2 2 0 0 0 0-4 2 2 0 0 0-4 0 2 2 0 0 0-4 0 2 2 0 0 0-4 0 2 2 0 0 0 0 4"/><path d="M10 22 9 8"/><path d="m14 22 1-14"/><path d="M20 8c.5 0 .9.4.8 1l-2.6 12c-.1.5-.7 1-1.2 1H7c-.6 0-1.1-.4-1.2-1L3.2 9c-.1-.6.3-1 .8-1Z"/>'],
+  ['can', 'かんづめ', 'gray', '<path d="M21 10.5a9 2.5 0 01-18 0v8a9 2.5 0 0018 0z"/><path d="M21 10.5A9 2.5 25.32 004.59 3.47 9 2.5 25.32 0021 10.5"/><path d="M3 10.5a9 2.5 0 016.527-2.405"/><path d="M9 16.858a31 31 0 006 0"/>'],
+  ['milk', '牛乳', 'blue', '<path d="M8 2h8"/><path d="M9 2v2.789a4 4 0 0 1-.672 2.219l-.656.984A4 4 0 0 0 7 10.212V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.789a4 4 0 0 0-.672-2.219l-.656-.984A4 4 0 0 1 15 4.788V2"/><path d="M7 15a6.472 6.472 0 0 1 5 0 6.47 6.47 0 0 0 5 0"/>'],
+  ['coffee', 'お茶', 'green', '<path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/><path d="M6 2v2"/>'],
+  ['cup-soda', 'ジュース', 'red', '<path d="m6 8 1.75 12.28a2 2 0 0 0 2 1.72h4.54a2 2 0 0 0 2-1.72L18 8"/><path d="M5 8h14"/><path d="M7 15a6.47 6.47 0 0 1 5 0 6.47 6.47 0 0 0 5 0"/><path d="m12 8 1-6h2"/>'],
+  ['beer', 'ビール', 'amber', '<path d="M17 11h1a3 3 0 0 1 0 6h-1"/><path d="M9 12v6"/><path d="M13 12v6"/><path d="M14 7.5c-1 0-1.44.5-3 .5s-2-.5-3-.5-1.72.5-2.5.5a2.5 2.5 0 0 1 0-5c.78 0 1.57.5 2.5.5S9.44 2 11 2s2 1.5 3 1.5 1.72-.5 2.5-.5a2.5 2.5 0 0 1 0 5c-.78 0-1.5-.5-2.5-.5Z"/><path d="M5 8v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/>'],
+  ['wine', 'ワイン', 'purple', '<path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/>'],
+  ['bottle-wine', 'お酒', 'purple', '<path d="M10 3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a6 6 0 0 0 1.2 3.6l.6.8A6 6 0 0 1 17 13v8a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-8a6 6 0 0 1 1.2-3.6l.6-.8A6 6 0 0 0 10 5z"/><path d="M17 13h-4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h4"/>'],
+  ['glass-water', 'コップの 水', 'blue', '<path d="M5.116 4.104A1 1 0 0 1 6.11 3h11.78a1 1 0 0 1 .994 1.105L17.19 20.21A2 2 0 0 1 15.2 22H8.8a2 2 0 0 1-2-1.79z"/><path d="M6 12a5 5 0 0 1 6 0 5 5 0 0 0 6 0"/>'],
+  ['droplet', '水', 'teal', '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>'],
+  ['snowflake', 'こおり', 'teal', '<path d="m10 20-1.25-2.5L6 18"/><path d="M10 4 8.75 6.5 6 6"/><path d="m14 20 1.25-2.5L18 18"/><path d="m14 4 1.25 2.5L18 6"/><path d="m17 21-3-6h-4"/><path d="m17 3-3 6 1.5 3"/><path d="M2 12h6.5L10 9"/><path d="m20 10-1.5 2 1.5 2"/><path d="M22 12h-6.5L14 15"/><path d="m4 10 1.5 2L4 14"/><path d="m7 21 3-6-1.5-3"/><path d="m7 3 3 6h4"/>'],
+  ['toilet', 'トイレ', 'teal', '<path d="M7 12h13a1 1 0 0 1 1 1 5 5 0 0 1-5 5h-.598a.5.5 0 0 0-.424.765l1.544 2.47a.5.5 0 0 1-.424.765H5.402a.5.5 0 0 1-.424-.765L7 18"/><path d="M8 18a5 5 0 0 1-5-5V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8"/>'],
+  ['box', 'はこ', 'pink', '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>'],
+  ['washing-machine', 'せんたく', 'blue', '<path d="M3 6h3"/><path d="M17 6h.01"/><rect width="18" height="20" x="3" y="2" rx="2"/><circle cx="12" cy="13" r="5"/><path d="M12 18a2.5 2.5 0 0 0 0-5 2.5 2.5 0 0 1 0-5"/>'],
+  ['soap-dispenser-droplet', 'せんざい', 'green', '<path d="M10.5 2v4"/><path d="M14 2H7a2 2 0 0 0-2 2"/><path d="M19.29 14.76A6.67 6.67 0 0 1 17 11a6.6 6.6 0 0 1-2.29 3.76c-1.15.92-1.71 2.04-1.71 3.19 0 2.22 1.8 4.05 4 4.05s4-1.83 4-4.05c0-1.16-.57-2.26-1.71-3.19"/><path d="M9.607 21H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h7V7a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3"/>'],
+  ['shower-head', 'シャンプー', 'purple', '<path d="m4 4 2.5 2.5"/><path d="M13.5 6.5a4.95 4.95 0 0 0-7 7"/><path d="M15 5 5 15"/><path d="M14 17v.01"/><path d="M10 16v.01"/><path d="M13 13v.01"/><path d="M16 10v.01"/><path d="M11 20v.01"/><path d="M17 14v.01"/><path d="M20 11v.01"/>'],
+  ['bath', 'おふろ', 'blue', '<path d="M10 4 8 6"/><path d="M17 19v2"/><path d="M2 12h20"/><path d="M7 19v2"/><path d="M9 5 7.621 3.621A2.121 2.121 0 0 0 4 5v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/>'],
+  ['spray-can', 'スプレー', 'teal', '<path d="M3 3h.01"/><path d="M7 5h.01"/><path d="M11 7h.01"/><path d="M3 7h.01"/><path d="M7 9h.01"/><path d="M3 11h.01"/><rect width="4" height="4" x="15" y="5"/><path d="m19 9 2 2v10c0 .6-.4 1-1 1h-6c-.6 0-1-.4-1-1V11l2-2"/><path d="m13 14 8-2"/><path d="m13 19 8-2"/>'],
+  ['toothbrush', 'はブラシ', 'teal', '<path d="M15 11c-2 2-4 2-6 4l-7 7"/><path d="m22 4-7.414 7.414-2-2A2 2 0 0114 6c0-.512.196-1.024.586-1.414A2 2 0 0116 4a2 2 0 013.262-1.552l2.152 2.138"/>'],
+  ['trash-2', 'ごみ袋', 'gray', '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'],
+  ['broom', 'そうじ', 'brown', '<path d="M13.5 10.5 22 2"/><path d="M14.734 13.841a2 2 0 00-.314-2.42L12.58 9.58a2 2 0 00-2.421-.314l-7.657 4.461A1 1 0 002.3 15.3l6.403 6.403a1 1 0 001.571-.204z"/><path d="m5 18 2-2"/><path d="m7.699 10.7 5.602 5.601"/>'],
+  ['battery-full', '電池', 'green', '<path d="M10 10v4"/><path d="M14 10v4"/><path d="M22 14v-4"/><path d="M6 10v4"/><rect x="2" y="6" width="16" height="12" rx="2"/>'],
+  ['lightbulb', '電球', 'amber', '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>'],
+  ['bandage', 'ばんそうこう', 'orange', '<path d="M10 10.01h.01"/><path d="M10 14.01h.01"/><path d="M14 10.01h.01"/><path d="M14 14.01h.01"/><path d="M18 6v12"/><path d="M6 6v12"/><rect x="2" y="6" width="20" height="12" rx="2"/>'],
+  ['pill', 'くすり', 'red', '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>'],
+  ['shirt', 'ふく', 'blue', '<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>'],
+  ['flower', 'お花', 'pink', '<circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/>'],
+  ['flower-2', 'さくら', 'pink', '<path d="M12 5a3 3 0 1 1 3 3m-3-3a3 3 0 1 0-3 3m3-3v1M9 8a3 3 0 1 0 3 3M9 8h1m5 0a3 3 0 1 1-3 3m3-3h-1m-2 3v-1"/><circle cx="12" cy="8" r="2"/><path d="M12 10v12"/><path d="M12 22c4.2 0 7-1.667 7-5-4.2 0-7 1.667-7 5Z"/><path d="M12 22c-4.2 0-7-1.667-7-5 4.2 0 7 1.667 7 5Z"/>'],
+  ['sprout', 'なえ', 'green', '<path d="M14 9.536V7a4 4 0 0 1 4-4h1.5a.5.5 0 0 1 .5.5V5a4 4 0 0 1-4 4 4 4 0 0 0-4 4c0 2 1 3 1 5a5 5 0 0 1-1 3"/><path d="M4 9a5 5 0 0 1 8 4 5 5 0 0 1-8-4"/><path d="M5 21h14"/>'],
+  ['newspaper', '新聞', 'gray', '<path d="M15 18h-5"/><path d="M18 14h-8"/><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0v-9a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="10" y="6" rx="1"/>'],
+  ['mail', 'はがき', 'blue', '<path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/>'],
+  ['dog', 'いぬ', 'brown', '<path d="M11.25 16.25h1.5L12 17z"/><path d="M16 14v.5"/><path d="M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444a11.702 11.702 0 0 0-.493-3.309"/><path d="M8 14v.5"/><path d="M8.5 8.5c-.384 1.05-1.083 2.028-2.344 2.5-1.931.722-3.576-.297-3.656-1-.113-.994 1.177-6.53 4-7 1.923-.321 3.651.845 3.651 2.235A7.497 7.497 0 0 1 14 5.277c0-1.39 1.844-2.598 3.767-2.277 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.45-2.239-2.5"/>'],
+  ['cat', 'ねこ', 'orange', '<path d="M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21s-9-3-9-7.56c0-1.25.5-2.4 1-3.44 0 0-1.89-6.42-.5-7 1.39-.58 4.72.23 6.5 2.23A9.04 9.04 0 0 1 12 5Z"/><path d="M8 14v.5"/><path d="M16 14v.5"/><path d="M11.25 16.25h1.5L12 17l-.75-.75Z"/>'],
+  ['paw-print', 'ペット', 'brown', '<circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>'],
+  ['gift', 'プレゼント', 'red', '<path d="M12 7v14"/><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"/><rect x="3" y="7" width="18" height="4" rx="1"/>'],
+  ['package', 'にもつ', 'brown', '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><polyline points="3.29 7 12 12 20.71 7"/><path d="m7.5 4.27 9 5.15"/>'],
+  ['shopping-bag', 'ふくろ', 'green', '<path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.103 6.034h17.794"/><path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/>'],
+];
+const PIC = Object.fromEntries(PICS.map(p => [p[0], p]));
+// 1.4 and before gave items an emoji, which varied from phone to phone; each becomes its nearest drawing once,
+// and an emoji with none (a tomato, an onion…) gives way to the name's first letter
+const FROM_EMOJI = { '🍞': 'sandwich', '🥚': 'egg', '🌾': 'wheat', '🍚': 'wheat', '🍌': 'banana', '🍎': 'apple', '🍊': 'citrus', '🍇': 'grape', '🥕': 'carrot', '🥬': 'leafy-green', '🥦': 'leafy-green', '🐟': 'fish', '🦐': 'shrimp', '🥩': 'beef', '🍗': 'drumstick', '🥓': 'ham', '🍜': 'soup', '🍱': 'utensils', '🥟': 'utensils', '🍘': 'cookie', '🍪': 'cookie', '🍰': 'cake-slice', '🍦': 'ice-cream-cone', '🍫': 'candy', '🍬': 'candy', '🥫': 'can', '🥛': 'milk', '🍵': 'coffee', '☕': 'coffee', '🧃': 'cup-soda', '🍺': 'beer', '🍶': 'bottle-wine', '💧': 'droplet', '🧊': 'snowflake', '🧻': 'toilet', '🤧': 'box', '🧺': 'washing-machine', '🧽': 'soap-dispenser-droplet', '🧼': 'soap-dispenser-droplet', '🧴': 'shower-head', '🪥': 'toothbrush', '🗑️': 'trash-2', '🧹': 'broom', '🔋': 'battery-full', '💡': 'lightbulb', '🩹': 'bandage', '💊': 'pill', '👕': 'shirt', '💐': 'flower', '🌸': 'flower-2', '📰': 'newspaper', '✉️': 'mail', '🐶': 'dog', '🐱': 'cat', '🎁': 'gift', '📦': 'package' };
+// items keep an emoji beside their drawing, so a window still running 1.4 (left open on the phone) shows it,
+// and what that window saves comes back as the same drawing
+const TO_EMOJI = {};
+for (const [e, n] of Object.entries(FROM_EMOJI)) TO_EMOJI[n] = TO_EMOJI[n] || e;
 // name, picture, unit, group, sizes (two or more: the parent is asked which one)
 const DEFAULT_ITEMS = [
-  ['食パン', '🍞', '袋', 'food', ['6枚切り', '8枚切り']],
-  ['たまご', '🥚', 'パック', 'food'],
-  ['お米', '🌾', '袋', 'food', ['2kg', '5kg']],
-  ['バナナ', '🍌', 'ふさ', 'food'],
-  ['トマト', '🍅', '個', 'food'],
-  ['たまねぎ', '🧅', '個', 'food'],
-  ['おさかな', '🐟', 'パック', 'food'],
-  ['お肉', '🥩', 'g', 'food'],
-  ['おせんべい', '🍘', '袋', 'food'],
-  ['牛乳', '🥛', '本', 'drink', ['1L', '500ml']],
-  ['お茶', '🍵', '本', 'drink'],
-  ['お水', '💧', '本', 'drink'],
-  ['トイレットペーパー', '🧻', 'パック', 'daily'],
-  ['ティッシュ', '🤧', '箱', 'daily'],
-  ['せんたく洗剤', '🧺', '個', 'daily'],
-  ['台所洗剤', '🧽', '本', 'daily'],
-  ['シャンプー', '🧴', '本', 'daily'],
-  ['ごみ袋', '🗑️', '袋', 'daily'],
-  ['電池', '🔋', 'パック', 'other'],
-  ['お花', '💐', 'たば', 'other'],
+  ['食パン', 'sandwich', '袋', 'food', ['6枚切り', '8枚切り']],
+  ['たまご', 'egg', 'パック', 'food'],
+  ['お米', 'wheat', '袋', 'food', ['2kg', '5kg']],
+  ['バナナ', 'banana', 'ふさ', 'food'],
+  ['トマト', '', '個', 'food'],
+  ['たまねぎ', '', '個', 'food'],
+  ['おさかな', 'fish', 'パック', 'food'],
+  ['お肉', 'beef', 'g', 'food'],
+  ['おせんべい', 'cookie', '袋', 'food'],
+  ['牛乳', 'milk', '本', 'drink', ['1L', '500ml']],
+  ['お茶', 'coffee', '本', 'drink'],
+  ['お水', 'droplet', '本', 'drink'],
+  ['トイレットペーパー', 'toilet', 'パック', 'daily'],
+  ['ティッシュ', 'box', '箱', 'daily'],
+  ['せんたく洗剤', 'washing-machine', '個', 'daily'],
+  ['台所洗剤', 'soap-dispenser-droplet', '本', 'daily'],
+  ['シャンプー', 'shower-head', '本', 'daily'],
+  ['ごみ袋', 'trash-2', '袋', 'daily'],
+  ['電池', 'battery-full', 'パック', 'other'],
+  ['お花', 'flower', 'たば', 'other'],
 ];
 
 let seq = 0;
@@ -757,10 +861,12 @@ function paintSaveBar() {
 
 function okItem(x) { return x && typeof x === 'object' && String(x.name || '').trim() !== ''; }
 function fixItem(x) {
+  const icon = typeof x.icon === 'string' ? (PIC[x.icon] ? x.icon : '') : (FROM_EMOJI[x.emoji] || '');
   return {
     id: String(x.id || uid()),
     name: String(x.name).trim().slice(0, 40),
-    emoji: typeof x.emoji === 'string' ? x.emoji.slice(0, 8) : '',
+    icon,
+    emoji: TO_EMOJI[icon] || '',
     unit: String(x.unit || '個').slice(0, 8),
     group: GROUPS.some(g => g.key === x.group) ? x.group : 'other',
     sizes: Array.isArray(x.sizes) ? [...new Set(x.sizes.map(s => String(s).trim().slice(0, 12)).filter(Boolean))].slice(0, 8) : [],
@@ -788,7 +894,7 @@ function fixHist(h) {
     when: String(h.when || ''),
   };
 }
-const freshItems = () => DEFAULT_ITEMS.map(([name, emoji, unit, group, sizes]) => fixItem({ name, emoji, unit, group, sizes }));
+const freshItems = () => DEFAULT_ITEMS.map(([name, icon, unit, group, sizes]) => fixItem({ name, icon, unit, group, sizes }));
 
 // how long things are kept: a sent list three months, a recording never sent a week
 const HIST_DAYS = 90, VOICE_DAYS = 7;
@@ -954,12 +1060,13 @@ const qtyHTML = (it, q) => `<b>${q}</b><small>${esc(it.unit)}</small>`;
 function picHTML(it, cls = '', photo) {
   const p = photo === undefined ? photoOf(it) : photo;
   if (p) return `<span class="pic ${cls}"><img src="${esc(p)}" alt=""></span>`;
-  // until the photos are read in at start, a photo's place stays empty rather than flashing the emoji
+  // until the photos are read in at start, a photo's place stays empty rather than flashing the drawing
   if (photo === undefined && it.photo && !photosIn) return `<span class="pic ${cls}" aria-hidden="true"></span>`;
-  if (it.emoji) return `<span class="pic emo ${cls}" aria-hidden="true">${esc(it.emoji)}</span>`;
+  const d = PIC[it.icon];
+  if (d) return `<span class="pic lu h-${d[2]} ${cls}" aria-hidden="true">${svgOf(d[3])}</span>`;
   return `<span class="pic ini ${cls}" aria-hidden="true">${esc([...(it.name || '？')][0])}</span>`;
 }
-const notePic = (cls = '', icon = 'edit_note') => `<span class="pic memo ${cls}" aria-hidden="true">${ic(icon)}</span>`;
+const notePic = (cls = '', icon = 'notebook-pen') => `<span class="pic memo ${cls}" aria-hidden="true">${ic(icon)}</span>`;
 const VOICE_LABEL = '声の メッセージ';
 const secText = s => `${Math.max(1, Math.round(s))}びょう`;
 const hasVoice = (c = cart) => c.extras.some(x => x.voice);
@@ -984,7 +1091,7 @@ let toastTimer = 0;
 function toast(msg, actLabel, act) {
   const t = $('#toast');
   t.innerHTML = '<span class="tmsg"></span>' + (actLabel ? '<button type="button" class="tact sl"></button>' : '')
-    + `<button type="button" class="tclose icon-btn sl" aria-label="とじる">${ic('close')}</button>`;
+    + `<button type="button" class="tclose icon-btn sl" aria-label="とじる">${ic('x')}</button>`;
   $('.tmsg', t).textContent = msg;
   if (actLabel) {
     const b = $('.tact', t);
@@ -1134,10 +1241,10 @@ function rowEl(it, g) {
   if (g.showLast && it.lastAt) subs.push(`<span class="sub last">前回 ${ago(it.lastAt)}</span>`);
   const nm = esc(it.name);
   li.innerHTML = `<button type="button" class="hit sl" tabindex="-1" aria-hidden="true"></button>`
-    + `<span class="picbox">${picHTML(it)}<span class="selmark">${ic('check_circle')}</span></span>`
+    + `<span class="picbox">${picHTML(it)}<span class="selmark">${ic('check')}</span></span>`
     + `<span class="txt"><span class="nm">${nm}</span>${subs.join('')}</span>`
-    + `<span class="step"><span class="sum"></span><button type="button" class="minus icon-btn sl" aria-label="${nm}を へらす">${ic('remove')}</button>`
-    + `<span class="n"></span><button type="button" class="plus icon-btn sl" aria-label="${nm}を ふやす">${ic('add')}<span class="pl">入れる</span></button></span>`;
+    + `<span class="step"><span class="sum"></span><button type="button" class="minus icon-btn sl" aria-label="${nm}を へらす">${ic('minus')}</button>`
+    + `<span class="n"></span><button type="button" class="plus icon-btn sl" aria-label="${nm}を ふやす">${ic('plus')}<span class="pl">入れる</span></button></span>`;
   paintRow(li, it);
   return li;
 }
@@ -1185,10 +1292,10 @@ function renderExtras() {
   $('#extrasSec').hidden = !cart.extras.length;
   $('#extrasList').innerHTML = cart.extras.map(x => {
     const name = x.voice ? VOICE_LABEL : x.text;
-    return `<li class="row sel" data-x="${esc(x.id)}"><span class="picbox">${notePic('', x.voice ? 'mic' : 'edit_note')}</span>`
+    return `<li class="row sel" data-x="${esc(x.id)}"><span class="picbox">${notePic('', x.voice ? 'mic' : 'notebook-pen')}</span>`
       + `<span class="txt"><span class="nm">${esc(name)}</span>${x.voice ? `<span class="sub">${secText(x.sec)}</span>` : ''}</span><span class="step">`
-      + (x.voice ? `<button type="button" class="play icon-btn sl" aria-label="${VOICE_LABEL}を 聞く">${ic('play_arrow')}</button>` : '')
-      + `<button type="button" class="del btn outlined sl" aria-label="${esc(name)}を けす">${ic('delete')}けす</button></span></li>`;
+      + (x.voice ? `<button type="button" class="play icon-btn sl" aria-label="${VOICE_LABEL}を 聞く">${ic('play')}</button>` : '')
+      + `<button type="button" class="del btn outlined sl" aria-label="${esc(name)}を けす">${ic('trash-2')}けす</button></span></li>`;
   }).join('');
 }
 $('#extrasList').addEventListener('click', async e => {
@@ -1201,7 +1308,7 @@ $('#extrasList').addEventListener('click', async e => {
   if (b.classList.contains('play')) {
     if (playing && playing.btn === b) { stopPlay(); return; }
     const blob = await clipGet(id);
-    if (blob) playBlob(blob, b, ic('play_arrow'), ic('stop')); else toast('声が 見つかりませんでした。');
+    if (blob) playBlob(blob, b, ic('play'), ic('square')); else toast('声が 見つかりませんでした。');
     return;
   }
   stopPlay();
@@ -1219,7 +1326,7 @@ function renderBar() {
   $('#sendN').textContent = n;
   $('#how').innerHTML = n
     ? `えらび おわったら、下の <span class="g">${ic('send')}送る</span> を 押してください。`
-    : `ほしいものの <span class="k">${ic('add')}入れる</span> を 押してください。`;
+    : `ほしいものの <span class="k">${ic('plus')}入れる</span> を 押してください。`;
 }
 const bar = $('#bar');
 new ResizeObserver(() => { if (bar.offsetHeight) document.documentElement.style.setProperty('--barH', bar.offsetHeight + 'px'); }).observe(bar);
@@ -1234,8 +1341,8 @@ function renderSize() {
     const q = cart.lines[keyOf(it.id, s)] || 0;
     return `<li class="row np${q ? ' sel' : ''}" data-i="${i}"><button type="button" class="hit sl" tabindex="-1" aria-hidden="true"></button>`
       + `<span class="txt"><span class="nm">${esc(s)}</span></span><span class="step">`
-      + (q ? `<button type="button" class="minus icon-btn sl" aria-label="${esc(s)}を へらす">${ic('remove')}</button><span class="n">${qtyHTML(it, q)}</span>` : '')
-      + `<button type="button" class="plus icon-btn sl" aria-label="${esc(s)}を ふやす">${ic('add')}<span class="pl">入れる</span></button></span></li>`;
+      + (q ? `<button type="button" class="minus icon-btn sl" aria-label="${esc(s)}を へらす">${ic('minus')}</button><span class="n">${qtyHTML(it, q)}</span>` : '')
+      + `<button type="button" class="plus icon-btn sl" aria-label="${esc(s)}を ふやす">${ic('plus')}<span class="pl">入れる</span></button></span></li>`;
   }).join('');
 }
 $('#sizeRows').addEventListener('click', e => {
@@ -1381,8 +1488,8 @@ player.addEventListener('ended', stopPlay);
 // the sheet: press to record, press again to finish, listen back, then put it on the list
 const REC_IDLE = `${ic('mic')}<span>押して 録音する</span>`;
 const recBusy = s => `<span class="dot"></span><span>おわる（${secText(s)}）</span>`;
-const playIdle = sec => `${ic('play_arrow')}<span>聞いてみる（${secText(sec)}）</span>`;
-const PLAY_BUSY = `${ic('stop')}<span>とめる</span>`;
+const playIdle = sec => `${ic('play')}<span>聞いてみる（${secText(sec)}）</span>`;
+const PLAY_BUSY = `${ic('square')}<span>とめる</span>`;
 let voiceTake = null, voiceBusy = false;
 const voiceSay = m => { $('#voiceMsg').textContent = m; };
 function voiceState(state) {
@@ -1706,8 +1813,8 @@ function renderSettings() {
     const list = inGroup(g.key);
     const rows = list.map((it, i) => `<li class="srow" data-id="${esc(it.id)}"><button type="button" class="sedit sl">${picHTML(it, 'sm')}`
       + `<span class="stx"><b>${esc(it.name)}</b><small>${esc(sline(it))}</small></span></button><span class="mv">`
-      + `<button type="button" class="up icon-btn sl" aria-label="${esc(it.name)}を 上へ"${i === 0 ? ' disabled' : ''}>${ic('arrow_upward')}</button>`
-      + `<button type="button" class="down icon-btn sl" aria-label="${esc(it.name)}を 下へ"${i === list.length - 1 ? ' disabled' : ''}>${ic('arrow_downward')}</button></span></li>`).join('');
+      + `<button type="button" class="up icon-btn sl" aria-label="${esc(it.name)}を 上へ"${i === 0 ? ' disabled' : ''}>${ic('arrow-up')}</button>`
+      + `<button type="button" class="down icon-btn sl" aria-label="${esc(it.name)}を 下へ"${i === list.length - 1 ? ' disabled' : ''}>${ic('arrow-down')}</button></span></li>`).join('');
     return `<section class="sgrp"><h3>${g.label}<span>${list.length}こ</span></h3>${list.length ? `<ul class="slist">${rows}</ul>` : '<p class="note">まだ ありません。</p>'}</section>`;
   }).join('');
   renderRecent();
@@ -1921,7 +2028,7 @@ function openEdit(it, name = '') {
   editing = it;
   dropPreview();
   draft = it ? { ...it, sizes: it.sizes.slice() }
-    : { id: uid(), name, emoji: '', unit: '個', group: 'food', sizes: [], note: '', photo: false, count: 0, lastAt: 0 };
+    : { id: uid(), name, icon: '', unit: '個', group: 'food', sizes: [], note: '', photo: false, count: 0, lastAt: 0 };
   // newPhoto: a photo picked in this sheet, saved only with 保存する; preview: the picture the sheet shows
   draft.newPhoto = null;
   draft.preview = photoOf(it);
@@ -1932,18 +2039,18 @@ function openEdit(it, name = '') {
   $('#fNote').value = draft.note;
   $('#fSizeIn').value = '';
   $('#fDelete').hidden = !it;
-  $('#fEmojis').innerHTML = `<button type="button" class="sl" data-e="" aria-label="絵なし（名前の 1文字目）"><span class="ini"></span></button>`
-    + EMOJIS.map(e => `<button type="button" class="sl" data-e="${e}" aria-label="${e}">${e}</button>`).join('');
+  $('#fPics').innerHTML = `<button type="button" class="sl" data-p="" aria-label="絵なし（名前の 1文字目）" title="絵なし"><span class="ini"></span></button>`
+    + PICS.map(([n, label, hue, d]) => `<button type="button" class="sl h-${hue}" data-p="${n}" aria-label="${label}" title="${label}">${svgOf(d)}</button>`).join('');
   paintEdit(); paintUnits(); paintSizes(); paintGroup();
   openSheet('sh-edit');
-  const grid = $('#fEmojis'), on = $('.on', grid);
+  const grid = $('#fPics'), on = $('.on', grid);
   grid.scrollTop = on ? on.getBoundingClientRect().top - grid.getBoundingClientRect().top + grid.scrollTop - 8 : 0;
 }
 function paintEdit() {
   $('#fPicBox').innerHTML = picHTML({ ...draft, name: draft.name || '？' }, '', draft.photo ? draft.preview : '');
   $('#fNoPhoto').hidden = $('#fPhotoNote').hidden = !draft.photo;
-  $('#fEmojis .ini').textContent = [...(draft.name || '？')][0];
-  $$('#fEmojis button').forEach(b => { const on = b.dataset.e === draft.emoji; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  $('#fPics .ini').textContent = [...(draft.name || '？')][0];
+  $$('#fPics button').forEach(b => { const on = b.dataset.p === draft.icon; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
 }
 function paintUnits() {
   $('#fUnits').innerHTML = UNITS.map(u => chipHTML(draft.unit === u, `data-u="${esc(u)}"`, esc(u))).join('');
@@ -1951,13 +2058,13 @@ function paintUnits() {
   $('#fUnitNote').hidden = draft.unit !== 'g';
 }
 function paintSizes() {
-  $('#fSizes').innerHTML = draft.sizes.map((s, i) => `<span class="tag">${esc(s)}<button type="button" class="sl" data-i="${i}" aria-label="${esc(s)}を けす">${ic('close')}</button></span>`).join('');
+  $('#fSizes').innerHTML = draft.sizes.map((s, i) => `<span class="tag">${esc(s)}<button type="button" class="sl" data-i="${i}" aria-label="${esc(s)}を けす">${ic('x')}</button></span>`).join('');
 }
 function paintGroup() {
   $('#fGroup').innerHTML = GROUPS.map(g => chipHTML(draft.group === g.key, `data-g="${g.key}"`, g.label)).join('');
 }
 $('#fName').addEventListener('input', e => { draft.name = e.target.value.trim(); paintEdit(); });
-$('#fEmojis').addEventListener('click', e => { const b = e.target.closest('[data-e]'); if (b) { draft.emoji = b.dataset.e; paintEdit(); } });
+$('#fPics').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) { draft.icon = b.dataset.p; paintEdit(); } });
 $('#fUnits').addEventListener('click', e => { const b = e.target.closest('[data-u]'); if (b) { draft.unit = b.dataset.u; paintUnits(); } });
 $('#fUnitOther').addEventListener('input', e => {
   const v = e.target.value.trim();
@@ -2061,7 +2168,7 @@ $('#fDelete').addEventListener('click', async () => {
 });
 
 /* ---------- 写真で そろえる ---------- */
-// the family photographs the real things one after another: a photo is clearer than any emoji, and emoji differ by phone
+// the family photographs the real things one after another: a photo is clearer than any drawing
 let photoQueue = [], photoAt = 0;
 $('#photoAll').addEventListener('click', () => {
   const order = GROUPS.flatMap(g => inGroup(g.key));
