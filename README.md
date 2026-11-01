@@ -14,6 +14,15 @@ otsukai-memo の中のリポジトリで GitHub Pages を有効にすると、`o
 - organization の Settings → Member privileges → Pages creation は、Public・Private とも外しておく
   （メンバーが作れないようにする。オーナーは作れてしまうので、上の決まりを守る）
 
+## アプリを書きかえられる鍵を守る
+
+このリポジトリに push できる人は、親のスマホで動くプログラムを書きかえられる。
+悪い人の手に渡ると、親の写真・録音・送った記録を外に持ち出すこともできてしまう。
+
+- GitHub アカウント（tsumikasane）は 2 段階認証にする（Settings → Password and authentication。できればパスキーも）
+- organization の Settings → Authentication security → 「Require two-factor authentication for everyone」をオンにする
+- このパソコンに保存されている GitHub の鍵（Git Credential Manager）があるので、パソコンを人に貸すときは注意する
+
 ## ファイル
 
 - `index.html` … 画面

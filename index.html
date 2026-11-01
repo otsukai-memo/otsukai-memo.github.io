@@ -398,6 +398,9 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 .card.ok{background:var(--item);color:var(--md-on-surface);box-shadow:inset 0 0 0 1px var(--md-outline-variant)}
 .card p{margin:0 0 .75rem;font:var(--t-body-m);font-size:.95rem}
 .card.ok p{margin-bottom:.5rem}
+.card.warn{background:var(--md-error-container);color:var(--md-on-error-container)}
+.homenote{margin-top:1.25rem;color:var(--md-on-surface-variant)}
+.warnnote{color:var(--md-error)}
 .facts{margin:.25rem 0 .75rem;padding-left:1.3rem;font:var(--t-body-m);color:var(--md-on-surface-variant)}
 .facts li{margin:.35rem 0}
 .datarow{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:.75rem 0}
@@ -423,6 +426,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
   <section id="extrasSec" class="wrap" hidden><h2 class="gh">ほかに たのむもの</h2><ul id="extrasList" class="rows"></ul></section>
   <div id="groups" class="wrap"></div>
   <p id="emptyItems" class="wrap note empty" hidden>品物が ありません。下の「家族の設定」から ふやしてください。</p>
+  <p class="wrap note homenote" id="homeWelcome" hidden>ご家族の 方へ：はじめての 状態です。前の データを 戻すときは、下の「家族の設定」から どうぞ。</p>
   <footer class="foot wrap"><button type="button" id="openSettings" class="btn text quiet sl"><span data-ic="settings"></span>家族の設定</button></footer>
 </main>
 
@@ -437,13 +441,15 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
   <header class="topbar"><div class="wrap"><button type="button" id="closeSettings" class="icon-btn sl" aria-label="もどる"><span data-ic="arrow-left"></span></button><h1 id="setTitle">家族の設定</h1></div></header>
   <div class="wrap">
     <p class="note">ここは ご家族（準備をする人）用の 画面です。</p>
+    <div class="card" id="welcomeCard" hidden><p><b>はじめて ひらいた 状態です。</b>前に この アプリを 使って いて データが 消えて しまった ときは、ドライブなどの バックアップを 読みこめば 戻せます。</p><div class="btnrow"><button type="button" id="welcomeImport" class="btn filled sl"><span data-ic="upload"></span>ファイルから 読みこむ</button><button type="button" id="welcomeClose" class="btn text sl">とじる</button></div></div>
+    <div class="card warn" id="brokenCard" hidden><p id="brokenText"></p><div class="btnrow"><button type="button" id="brokenGo" class="btn filled sl">自動の 控えを 見る</button><button type="button" id="brokenClose" class="btn text sl">わかった</button></div></div>
     <div class="card" id="backupCard"><p id="backupState"></p><button type="button" id="backupNow" class="btn filled sl"><span data-ic="upload"></span>いま バックアップする</button></div>
 
     <h2 class="sh">品物</h2>
     <div class="btnrow"><button type="button" id="addItem" class="btn filled sl"><span data-ic="plus"></span>品物を ふやす</button><button type="button" id="photoAll" class="btn tonal sl"><span data-ic="camera"></span>写真で そろえる</button><button type="button" id="sortFreq" class="btn outlined sl"><span data-ic="arrow-down-wide-narrow"></span>よく頼む順に ならべる</button></div>
     <p class="note">絵は どの スマホでも 同じに 出ます。いつも 買う 品物の 写真を とっておくと、いちばん 分かりやすく なります（「写真で そろえる」で 続けて とれます）。ボタンの 場所は 勝手には 変わりません。↑↓ で ならべかえられます。</p>
     <div id="sItems"></div>
-    <section class="sgrp" id="trashBox" hidden><h3>けした 品物<span>30日 とっておきます</span></h3><ul class="slist" id="trashList"></ul></section>
+    <section class="sgrp" id="trashBox" hidden><h3>けした 品物<span>30日 とっておきます</span></h3><ul class="slist" id="trashList"></ul><button type="button" id="clearTrash" class="btn text sl"><span data-ic="trash-2"></span>ぜんぶ 完全に けす</button></section>
 
     <h2 class="sh">文字で たのまれたもの</h2>
     <p class="note">文字で 入れたもので よく出てくるものは「ボタンにする」と、次から 押すだけで たのめます。</p>
@@ -493,6 +499,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <h2 class="sh">自動の 控え</h2>
     <p class="note">アプリが 新しく なる ときと 週に 1回、この スマホの 中に 自動で 控えを 取ります（新しい 3つまで）。品物や 写真を まちがえて かえた ときに 戻せます。スマホが こわれると 控えも 消えるので、バックアップも して ください。</p>
     <ul class="slist" id="copyList"></ul>
+    <button type="button" id="clearCopies" class="btn text sl" hidden><span data-ic="trash-2"></span>控えを ぜんぶ けす</button>
 
     <h2 class="sh">データの 扱い</h2>
     <ul class="facts">
@@ -502,7 +509,11 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
       <li>写真は 保存する ときに 描き直すので、撮った 場所などの 情報は 残りません。</li>
       <li>バックアップの ファイルには、品物と 写真と 設定（えらんだ ときは 送った記録も）が 入ります。置いた 場所で 大切に 保管して ください。</li>
       <li>書き出した ファイルや ドライブの バックアップは、この アプリの「データを ぜんぶ けす」では 消えません。</li>
+      <li>この スマホの 中には、自動の 控え（3つまで・60日まで）、けした 品物（30日）、ファイルを 読みこむ 前の 状態（7日）も 残ります。「送った記録を けす」は 控えの 中の 記録も けします。「データを ぜんぶ けす」は これらも ぜんぶ けします。</li>
+      <li>パスワードを かけた バックアップは、パスワードを 知って いる 人しか 読めません。</li>
+      <li>古い 記録や 控えは、スマホの 時計で 日数を 数えて 片づけます。時計が 大きく ずれて いる ときは、片づけを 止めます。</li>
     </ul>
+    <p class="note warnnote" id="clockNote" hidden>スマホの 時計が ずれて いるようです。日付と 時刻を たしかめて ください。合うまで、古い 記録や 控えを 日付で けすのは 止めて います。</p>
     <div class="datarow"><p id="histState"></p><button type="button" id="clearHist" class="btn outlined sl"><span data-ic="trash-2"></span>送った記録を けす</button></div>
     <div class="datarow"><p id="voiceState"></p><button type="button" id="clearVoices" class="btn outlined sl"><span data-ic="trash-2"></span>録音を ぜんぶ けす</button></div>
 
@@ -510,7 +521,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <p class="note">スマホを 人に ゆずる ときなどに。品物・写真・送った記録・録音・設定を ぜんぶ けして、はじめの 状態に 戻します。先に バックアップを しておけば、あとで 読みこんで 戻せます。書き出した ファイルや ドライブの バックアップは 残ります。</p>
     <button type="button" id="wipeAll" class="btn danger sl"><span data-ic="trash-2"></span>データを ぜんぶ けす</button>
 
-    <p class="ver">かいものメモ 1.6</p>
+    <p class="ver">かいものメモ 1.7</p>
   </div>
 </section>
 
@@ -655,8 +666,23 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
   </div></div>
 </div>
 
+<div class="layer dialog" id="sh-pass" hidden role="dialog" aria-modal="true" aria-labelledby="passTitle">
+  <div class="scrim" data-close></div>
+  <div class="sheet"><div class="wrap">
+    <h2 id="passTitle"></h2>
+    <p class="note" id="passText"></p>
+    <label class="tf"><input id="passIn" type="password" autocomplete="new-password" maxlength="64" placeholder=" "><span>パスワード</span><small>6文字 いじょう</small></label>
+    <label class="tf" id="passAgainBox"><input id="passAgain" type="password" autocomplete="new-password" maxlength="64" placeholder=" "><span>もう一度</span><small>同じ パスワードを もう一度</small></label>
+    <p class="msg" id="passMsg" aria-live="polite"></p>
+    <div class="acts">
+      <button type="button" id="passOk" class="btn filled big sl">つぎへ</button>
+      <button type="button" id="passNo" class="btn outlined big sl" data-close>やめる</button>
+    </div>
+  </div></div>
+</div>
+
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="app.js?v=1.6"></script>
+<script src="app.js?v=1.7"></script>
 </body>
 </html>

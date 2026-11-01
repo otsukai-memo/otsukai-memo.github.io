@@ -42,7 +42,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.6';
+const APP_VER = '1.7';
 const DAY = 864e5;
 
 const GROUPS = [
@@ -261,15 +261,34 @@ const HIST_DAYS = 90, VOICE_DAYS = 7;
 // the most a file (or a damaged one) can bring in, so the list always fits in this phone's room for it
 const MAX_ITEMS = 200, MAX_LINES = 100, MAX_EXTRAS = 30;
 // to: the family member's name as LINE shows it; theme: light unless the family picks dark or 自動
-const defaultSettings = () => ({ size: 'm', send: 'line', theme: 'light', to: '' });
-const loadItems = () => { const v = load('items', null); return Array.isArray(v) ? v.filter(okItem).map(fixItem) : null; };
-const loadHist = () => { const v = load('history', []); return Array.isArray(v) ? v.filter(okHist).map(fixHist) : []; };
+// lock: backups get a password
+const defaultSettings = () => ({ size: 'm', send: 'line', theme: 'light', to: '', lock: false });
+// stored data that can't be read (all of it, or some entries) is noted here, kept aside at start, and never
+// written over in silence
+const broken = new Set();
+const loadItems = () => {
+  const v = load('items', null);
+  if (!Array.isArray(v)) { if (RAW.items != null) broken.add('items'); return null; }
+  const ok = v.filter(okItem);
+  if (ok.length < v.length) broken.add('items');
+  return ok.map(fixItem);
+};
+const loadHist = () => {
+  const v = load('history', []);
+  if (!Array.isArray(v)) { if (RAW.history != null) broken.add('history'); return []; }
+  const ok = v.filter(okHist);
+  if (ok.length < v.length) broken.add('history');
+  return ok.map(fixHist);
+};
 // what was stored when this version started, before anything here rewrote it: the copy taken on an update
 const RAW_KEYS = ['items', 'history', 'settings'];
 const rawNow = () => { const r = {}; for (const n of RAW_KEYS) { try { r[n] = localStorage.getItem(KEY + n); } catch (e) { r[n] = null; } } return r; };
 const RAW = rawNow(), lastVer = load('ver', null);
 let items = loadItems();
-if (!items) { items = freshItems(); save('items', items); }
+// with nothing readable stored, the starting items show, but are saved only once the stored list has been kept aside
+if (!items) { items = freshItems(); if (RAW.items == null) save('items', items); }
+// 9: a first start (or one after the phone lost everything): the family is shown how to bring a backup back
+if (RAW.items == null && lastVer == null) save('welcome', Date.now());
 let cart = fixCart(load('cart', null));
 let hist = loadHist();
 let settings = Object.assign(defaultSettings(), load('settings', {}));
@@ -279,12 +298,21 @@ if (pending && !(Date.now() - (+pending.at || 0) < 3 * DAY)) { pending = null; d
 // checked: when a file of that backup was read back; dl: when files were put in this phone's ダウンロード
 let backupInfo = Object.assign({ at: 0, changes: 0, dl: [] }, load('backup', {}));
 const saveCart = () => save('cart', cart);
+// the phone's clock decides what is old enough to go; when it looks wrong (two days or more from the server's time,
+// or, with no server to ask, more than 400 days past the latest time this app has seen), nothing goes by date
+let clockOK = true;
+async function checkClock() {
+  const now = Date.now(), seen = +load('clock', 0);
+  let server = 0;
+  try { server = Date.parse((await fetch('manifest.webmanifest', { method: 'HEAD', cache: 'no-store' })).headers.get('date') || '') || 0; } catch (e) {}
+  clockOK = server ? Math.abs(now - server) < 2 * DAY : !(seen && now - seen > 400 * DAY);
+  if (clockOK && now > seen) save('clock', now);
+}
 function trimHist() {
-  const cut = Date.now() - HIST_DAYS * DAY, n = hist.length;
-  hist = hist.filter(h => h.at >= cut).slice(0, 60);
+  const n = hist.length;
+  hist = (clockOK ? hist.filter(h => h.at >= Date.now() - HIST_DAYS * DAY) : hist).slice(0, 60);
   if (hist.length !== n) save('history', hist);
 }
-trimHist();
 function noteChange() { backupInfo.changes++; save('backup', backupInfo); if (!$('#settings').hidden) paintBackupState(); }
 
 /* ---------- IndexedDB: photos, recordings, and the copy kept before reading a file in ---------- */
@@ -580,6 +608,7 @@ const groupsEl = $('#groups');
 let shownDay = new Date().toDateString();
 function renderHome() {
   shownDay = new Date().toDateString();
+  $('#homeWelcome').hidden = !load('welcome', 0);
   $('#today').textContent = mdw(Date.now());
   const last = hist[0];
   $('#sameBtn').hidden = !last;
@@ -748,6 +777,7 @@ async function pruneClips() {
 }
 // a recording never sent is not kept for ever: after VOICE_DAYS it leaves the list and the phone
 async function dropOldVoices() {
+  if (!clockOK) return;
   const cut = Date.now() - VOICE_DAYS * DAY;
   const old = cart.extras.filter(x => x.voice && x.at < cut);
   if (!old.length) return;
@@ -1185,7 +1215,7 @@ const SET_IDLE = 3 * 60000, SET_IDLE_SHEET = 10 * 60000, SET_AWAY = 60000;
 let setTouch = 0, setTimer = 0, hiddenAt = 0, outsideAt = 0, quietClose = false;
 ['pointerdown', 'keydown', 'input', 'scroll', 'wheel'].forEach(t => document.addEventListener(t, () => { setTouch = Date.now(); }, { capture: true, passive: true }));
 document.addEventListener('click', e => {
-  if (e.target.closest && e.target.closest('input[type=file],#backupShare,#backupNow,#verifyBtn,#importBtn,#exportBtn,#saveOut,#testSend,#testVoiceSend,#installBtn,#photoTake,#fPhoto')) outsideAt = Date.now();
+  if (e.target.closest && e.target.closest('input[type=file],#backupShare,#backupNow,#verifyBtn,#importBtn,#welcomeImport,#exportBtn,#saveOut,#testSend,#testVoiceSend,#installBtn,#photoTake,#fPhoto')) outsideAt = Date.now();
 }, true);
 async function leaveSettings() {
   if (!isOpen('settings')) return;
@@ -1238,6 +1268,9 @@ function renderSettings() {
   paintDl();
   paintTrash();
   paintCopies();
+  paintBroken();
+  paintWelcome();
+  $('#clockNote').hidden = clockOK;
 }
 function paintBackupState() {
   const b = backupInfo, ok = b.at && !b.changes, checked = b.checked && b.checked >= b.at;
@@ -1636,12 +1669,13 @@ async function backupText(withHist, withCart) {
   if (withCart) data.cart = { lines: cart.lines, extras: cart.extras.filter(x => !x.voice), when: cart.when };
   return JSON.stringify(data);
 }
-const ymd = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`; };
-function backedUp(extra = {}) { backupInfo = { at: Date.now(), changes: 0, dl: backupInfo.dl || [], ...extra }; save('backup', backupInfo); if (!$('#settings').hidden) renderSettings(); }
+// file names carry the minute too, so several backups of one day are told apart
+const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`; };
+function backedUp(extra = {}) { backupInfo = { at: Date.now(), changes: 0, dl: backupInfo.dl || [], ...extra }; save('backup', backupInfo); drop('welcome'); if (!$('#settings').hidden) renderSettings(); }
 function downloadText(text) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-  a.download = `kaimono-backup-${ymd()}.json`;
+  a.download = `kaimono-backup-${stamp()}.json`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
   // remembered, so 家族の設定 and ぜんぶ けす can say how many files there are in ダウンロード
@@ -1656,9 +1690,12 @@ function paintDl() {
 // Keepメモ let files expire after a while (and LINE Keep closed in 2024), so they are not suggested;
 // the share menu takes .txt files but not .json, and reading in takes either
 async function shareBackup() {
-  const text = await backupText(backupHist);
-  const file = new File([text], `kaimono-backup-${ymd()}.txt`, { type: 'text/plain' });
+  const text = await backupOut(backupHist);
+  if (text == null) return;
+  const file = new File([text], `kaimono-backup-${stamp()}.txt`, { type: 'text/plain' });
   if (!navigator.canShare || !navigator.canShare({ files: [file] })) { downloadText(text); return; }
+  // the share menu lists people too: the file belongs in ドライブ, not in someone's LINE
+  if (!(await ask('ドライブに 保存します', `つぎの 画面で「ドライブ」を えらんで、「保存」を 押して ください。LINE などで 人に 送ると、写真${backupHist ? 'や 送った記録' : ''}が その 人に 届いて しまうので、人は えらばないで ください。`, 'つぎへ', 'やめる'))) return;
   try {
     await navigator.share({ files: [file], title: 'かいものメモの バックアップ' });
     backedUp();
@@ -1667,18 +1704,89 @@ async function shareBackup() {
 }
 $('#backupShare').addEventListener('click', shareBackup);
 $('#backupNow').addEventListener('click', shareBackup);
-$('#exportBtn').addEventListener('click', async () => downloadText(await backupText(backupHist)));
-$('#backupHistBox').addEventListener('click', e => { if (e.target.closest('[data-h]')) { backupHist = !backupHist; paintBackupHist(); } });
-function paintBackupHist() { $('#backupHistBox').innerHTML = chipHTML(backupHist, 'data-h="1"', '送った記録も 入れる'); }
+$('#exportBtn').addEventListener('click', async () => { const t = await backupOut(backupHist); if (t != null) downloadText(t); });
+$('#backupHistBox').addEventListener('click', async e => {
+  if (e.target.closest('[data-h]')) { backupHist = !backupHist; paintBackupHist(); return; }
+  if (!e.target.closest('[data-lock]')) return;
+  if (!settings.lock && !(await ask('パスワードを かけますか？', 'バックアップの ファイルに パスワードを かけて、知らない 人には 読めない ように します。パスワードを 忘れると、だれにも（作った 人にも）読めなく なります。紙に 書いて、人に 見られない ところに しまって ください。', 'かける', 'やめる'))) return;
+  settings.lock = !settings.lock;
+  save('settings', settings);
+  paintBackupHist();
+});
+function paintBackupHist() {
+  $('#backupHistBox').innerHTML = chipHTML(backupHist, 'data-h="1"', '送った記録も 入れる') + chipHTML(!!settings.lock, 'data-lock="1"', 'パスワードを かける');
+}
+
+/* ---------- a password on backups: AES-GCM with a key from PBKDF2 (SHA-256, 600,000 rounds), in the browser ---------- */
+const ITER = 600000;
+const b64 = buf => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function passKey(pass, salt, iter) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function lockText(text, pass) {
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await passKey(pass, salt, ITER), new TextEncoder().encode(text));
+  return JSON.stringify({ app: 'kaimono', version: 1, locked: { cipher: 'AES-GCM', kdf: 'PBKDF2-SHA256', iter: ITER, salt: b64(salt), iv: b64(iv) }, data: b64(ct) });
+}
+async function unlockText(locked, data, pass) {
+  const key = await passKey(pass, unb64(locked.salt), +locked.iter || ITER);
+  return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(locked.iv) }, key, unb64(data)));
+}
+// the password: twice when it is being set; null when the family gives up
+function askPass(title, text, twice) {
+  return new Promise(res => {
+    let done = false;
+    const a = $('#passIn'), b = $('#passAgain'), msg = $('#passMsg');
+    $('#passTitle').textContent = title;
+    $('#passText').textContent = text;
+    a.value = b.value = '';
+    msg.textContent = '';
+    $('#passAgainBox').hidden = !twice;
+    $('#passOk').onclick = async () => {
+      if (a.value.length < 6) { msg.textContent = '6文字 いじょうに して ください。'; return; }
+      if (twice && a.value !== b.value) { msg.textContent = '2つの パスワードが ちがいます。'; return; }
+      if (done) return;
+      done = true;
+      const v = a.value;
+      a.value = b.value = '';
+      await closeSheet();
+      res(v);
+    };
+    a.onkeydown = b.onkeydown = e => { if (e.key === 'Enter') $('#passOk').click(); };
+    $('#sh-pass').addEventListener('closed', () => { a.value = b.value = ''; if (!done) { done = true; res(null); } }, { once: true });
+    openSheet('sh-pass');
+    setTimeout(() => { try { a.focus(); } catch (e) {} }, 60);
+  });
+}
+// a backup's text, locked when the family chose a password (null: they gave up at the password)
+async function backupOut(withHist, withCart) {
+  const text = await backupText(withHist, withCart);
+  if (!settings.lock) return text;
+  const pass = await askPass('パスワードを きめて ください', '読みこむ ときに いります。忘れると だれにも 読めなく なるので、紙に 書いて しまって おいて ください。', true);
+  if (pass == null) return null;
+  return lockText(text, pass);
+}
 
 // a backup file, or why it can't be used
 async function readBackup(f) {
   if (f.size > 30 * 1024 * 1024) return { err: 'ファイルが 大きすぎます。かいものメモの バックアップか たしかめて ください。' };
-  let data;
+  let data, locked = false;
   try { data = JSON.parse(await f.text()); } catch (e) { return { err: 'ファイルを 読めませんでした。' }; }
+  // a file with a password is opened with it, asked again until it fits or the family gives up
+  if (data && data.app === 'kaimono' && data.locked && typeof data.data === 'string') {
+    locked = true;
+    for (let text = 'この バックアップには パスワードが かかって います。'; ;) {
+      const pass = await askPass('パスワードを 入れて ください', text, false);
+      if (pass == null) return { quiet: true };
+      try { data = JSON.parse(await unlockText(data.locked, data.data, pass)); break; }
+      catch (e) { text = 'パスワードが ちがう ようです。もう一度 入れて ください。'; }
+    }
+  }
   if (!data || data.app !== 'kaimono' || !Array.isArray(data.items)) return { err: 'かいものメモの ファイルでは ないようです。' };
   if ((+data.version || 1) > 1) return { err: '新しい 版の ファイルです。アプリを 新しくしてから 読みこんでください。' };
-  return { data };
+  return { data, locked };
 }
 // a photo in a file is used only when it really is a picture, and not an outsized one
 async function photoBlobOf(url) {
@@ -1692,7 +1800,8 @@ $('#verifyFile').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0];
   e.target.value = '';
   if (!f) return;
-  const { data, err } = await readBackup(f);
+  const { data, err, quiet, locked } = await readBackup(f);
+  if (quiet) return;
   if (err) { await ask('この ファイルは 使えません', err, 'とじる', '', { one: true }); return; }
   const list = cleanItems(data.items);
   const photos = data.photos && typeof data.photos === 'object' ? data.photos : {};
@@ -1704,7 +1813,7 @@ $('#verifyFile').addEventListener('change', async e => {
   // the newest backup made on this phone counts as checked when this file is that one, or newer
   if (at && backupInfo.at && at >= backupInfo.at - 10 * 60000) { backupInfo.checked = Date.now(); save('backup', backupInfo); paintBackupState(); }
   await ask('この バックアップは 読めます',
-    `${at ? `${md(at)} ${hm(at)}に 作った ` : ''}バックアップです。品物 ${list.length}こ・写真 ${good}まい${nHist >= 0 ? `・送った記録 ${nHist}回分` : ''}が 入って います。`
+    `${at ? `${md(at)} ${hm(at)}に 作った ` : ''}${locked ? 'パスワードつきの ' : ''}バックアップです。品物 ${list.length}こ・写真 ${good}まい${nHist >= 0 ? `・送った記録 ${nHist}回分` : ''}が 入って います。`
     + (bad ? `写真 ${bad}まいは こわれて いて 読めません。` : '')
     + (same ? 'いまの 品物と 同じ 中身です。' : 'いまの 品物とは ちがう ところが あります（前に 作った ファイルかも しれません）。')
     + 'いまの データは 何も 変えて いません。', 'とじる', '', { one: true });
@@ -1735,9 +1844,12 @@ async function undoImport(why) {
 }
 async function pruneSnap() {
   try {
-    const s = await idbGet('snaps', 'beforeImport');
-    if (s && Date.now() - s.at > 7 * DAY) await idbDel('snaps', 'beforeImport');
-    for (const t of await trashList()) if (Date.now() - t.at > TRASH_DAYS * DAY) await idbDel('snaps', t.key);
+    if (clockOK) {
+      const s = await idbGet('snaps', 'beforeImport');
+      if (s && Date.now() - s.at > 7 * DAY) await idbDel('snaps', 'beforeImport');
+      for (const t of await trashList()) if (Date.now() - t.at > TRASH_DAYS * DAY) await idbDel('snaps', t.key);
+      for (const b of await snapsOf('broken')) if (Date.now() - b.at > COPY_DAYS * DAY) await idbDel('snaps', b.key);
+    }
     await pruneCopies();
   } catch (e) {}
 }
@@ -1749,7 +1861,8 @@ $('#importFile').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0];
   e.target.value = '';
   if (!f) return;
-  const { data, err } = await readBackup(f);
+  const { data, err, quiet } = await readBackup(f);
+  if (quiet) return;
   if (err) { toast(err); return; }
   const list = cleanItems(data.items);
   const withHist = Array.isArray(data.history);
@@ -1807,7 +1920,7 @@ const snapsOf = async kind => (await idbAll('snaps')).filter(([k]) => String(k).
 const copiesList = () => snapsOf('auto');
 const trashList = () => snapsOf('trash');
 async function pruneCopies() {
-  for (const [i, c] of (await copiesList()).entries()) if (i >= COPY_KEEP || Date.now() - c.at > COPY_DAYS * DAY) await idbDel('snaps', c.key);
+  for (const [i, c] of (await copiesList()).entries()) if (i >= COPY_KEEP || (clockOK && Date.now() - c.at > COPY_DAYS * DAY)) await idbDel('snaps', c.key);
 }
 async function paintCopies() {
   let list = [];
@@ -1819,6 +1932,7 @@ async function paintCopies() {
     return `<li class="srow"><span class="stx"><b>${md(c.at)} ${hm(c.at)}</b><small>${what}・品物 ${n}こ・写真 ${(c.photos || []).length}まい</small></span>`
       + `<button type="button" class="btn tonal sl" data-k="${esc(c.key)}">もどす</button></li>`;
   }).join('') : '<li class="srow empty">まだ ありません。</li>';
+  $('#clearCopies').hidden = !list.length;
 }
 $('#copyList').addEventListener('click', async e => {
   const b = e.target.closest('[data-k]');
@@ -1870,6 +1984,33 @@ $('#trashList').addEventListener('click', async e => {
   toast(`「${it.name}」を 戻しました。`);
 });
 
+// what could not be read, kept aside at start (once for each different content)
+async function keepBroken() {
+  try {
+    const last = (await snapsOf('broken'))[0];
+    if (last && last.ls.items === RAW.items && last.ls.history === RAW.history) return;
+    await idbPut('snaps', 'broken:' + Date.now(), { at: Date.now(), what: [...broken], ls: RAW });
+  } catch (e) {}
+}
+async function paintBroken() {
+  let b = null;
+  try { b = (await snapsOf('broken')).find(x => !x.seen) || null; } catch (e) {}
+  $('#brokenCard').hidden = !b;
+  $('#brokenCard').dataset.k = b ? b.key : '';
+  if (!b) return;
+  const what = b.what.map(w => w === 'items' ? '品物' : '送った記録').join('と ');
+  $('#brokenText').innerHTML = `<b>${what}の データの 一部が 読めませんでした</b>（${md(b.at)}）。読めなかった 元の データは、この スマホの 中に とって あります。前の 状態に 戻すときは「自動の 控え」から えらんで ください。`;
+}
+$('#brokenGo').addEventListener('click', () => { const h = $('#copyList').previousElementSibling.previousElementSibling; h.scrollIntoView({ block: 'start' }); window.scrollBy(0, -90); });
+$('#brokenClose').addEventListener('click', async () => {
+  const k = $('#brokenCard').dataset.k;
+  try { const b = await idbGet('snaps', k); if (b) await idbPut('snaps', k, { ...b, seen: true }); } catch (e) {}
+  paintBroken();
+});
+function paintWelcome() { $('#welcomeCard').hidden = !load('welcome', 0); }
+$('#welcomeClose').addEventListener('click', () => { drop('welcome'); paintWelcome(); });
+$('#welcomeImport').addEventListener('click', () => $('#importFile').click());
+
 /* ---------- 送った記録・録音・ぜんぶ けす ---------- */
 $('#clearHist').addEventListener('click', async () => {
   if (!(await ask('送った記録を けしますか？', '送った リストと、品物ごとの「前回」の 日と 回数を けします。「まえと おなじ」も 使えなく なります。', 'けす', 'やめる', { danger: true }))) return;
@@ -1884,6 +2025,33 @@ $('#clearHist').addEventListener('click', async () => {
     save('history', hist); save('items', items);
     renderSettings();
   });
+  scrubHistory();
+});
+// the sent lists also go from the copies kept on this phone, with each item's count and last day
+async function scrubHistory() {
+  const zero = its => Array.isArray(its) ? its.map(it => (it && typeof it === 'object' ? { ...it, count: 0, lastAt: 0 } : it)) : its;
+  try {
+    for (const { key, ...c } of await copiesList()) {
+      const ls = { ...c.ls, history: '[]' };
+      try { ls.items = JSON.stringify(zero(JSON.parse(c.ls.items))); } catch (e) {}
+      await idbPut('snaps', key, { ...c, ls });
+    }
+    for (const { key, ...b } of await snapsOf('broken')) await idbPut('snaps', key, { ...b, ls: { ...b.ls, history: null } });
+    const s = await idbGet('snaps', 'beforeImport');
+    if (s) await idbPut('snaps', 'beforeImport', { ...s, hist: [], items: zero(s.items) });
+  } catch (e) {}
+}
+$('#clearTrash').addEventListener('click', async () => {
+  if (!(await ask('けした 品物を 完全に けしますか？', '写真も いっしょに 消えて、もう 戻せなく なります。', 'けす', 'やめる', { danger: true }))) return;
+  try { for (const t of await trashList()) await idbDel('snaps', t.key); } catch (e) {}
+  paintTrash();
+  toast('けした 品物を 完全に けしました。');
+});
+$('#clearCopies').addEventListener('click', async () => {
+  if (!(await ask('控えを ぜんぶ けしますか？', 'この スマホの 中の 自動の 控えを ぜんぶ けします。けした 控えには 戻せなく なります。', 'けす', 'やめる', { danger: true }))) return;
+  try { for (const c of await copiesList()) await idbDel('snaps', c.key); } catch (e) {}
+  paintCopies();
+  toast('控えを ぜんぶ けしました。');
 });
 $('#clearVoices').addEventListener('click', async () => {
   if (!(await ask('録音を ぜんぶ けしますか？', 'まだ 送って いない 声の メッセージも けします。けした 録音は 戻せません。', 'けす', 'やめる', { danger: true }))) return;
@@ -1897,6 +2065,11 @@ $('#clearVoices').addEventListener('click', async () => {
 // for handing the phone on: every key of this app, and the IndexedDB database with photos, recordings and the
 // copy before an import; other windows reload, so none of them writes its old copy back
 $('#wipeAll').addEventListener('click', async () => {
+  // whatever is not in a backup yet is offered one first: the copies kept on this phone go with everything else
+  if (!backupInfo.at || backupInfo.changes) {
+    if (await ask('先に バックアップ しますか？', (backupInfo.at ? `前回の バックアップ（${md(backupInfo.at)}）の あとに、品物や 写真を かえて います。` : 'まだ 一度も バックアップして いません。')
+      + 'けすと、この スマホの 中の 控えも いっしょに 消えます。', 'ドライブに 保存する', 'このまま すすむ')) { shareBackup(); return; }
+  }
   // the files written out are outside the app's reach, so the family is told where they are
   const dl = backupInfo.dl || [];
   const left = (dl.length ? `この スマホの「ダウンロード」に ${dl.length}回 書き出して います（最後は ${md(dl[dl.length - 1])}）。` : '')
@@ -1924,7 +2097,7 @@ $('#saveRetry').addEventListener('click', () => {
   toast(unsaved.size ? 'まだ 保存できません。スマホの 空きを ふやして、もう一度 ためして ください。' : '保存できました。');
 });
 // with everything, the sent lists and the list being picked included, so nothing in memory is lost while the phone can't save
-$('#saveOut').addEventListener('click', async () => downloadText(await backupText(true, true)));
+$('#saveOut').addEventListener('click', async () => { const t = await backupOut(true, true); if (t != null) downloadText(t); });
 
 /* ---------- start ---------- */
 applySize();
@@ -1933,6 +2106,8 @@ if (!canStore()) { unsaved.add('probe'); paintSaveBar(); }
 renderHome();
 if (pending) setTimeout(askSent, 700);
 (async () => {
+  // what could not be read is kept aside before anything is saved over it
+  if (broken.size) await keepBroken();
   // photos kept by 1.3 and before move out of localStorage first, then all of them are read in once
   await movePhotos();
   // a new version: a copy of what was stored, as it was, before this version saves anything over it
@@ -1942,6 +2117,9 @@ if (pending) setTimeout(askSent, 700);
   }
   await loadPhotos();
   renderHome();
+  // the clock is checked before anything is cleared by date
+  await checkClock();
+  trimHist();
   // a recording the phone has lost (its storage cleared) leaves the list, rather than being sent empty
   const lost = [];
   for (const x of cart.extras) if (x.voice && !(await clipGet(x.id))) lost.push(x.id);
