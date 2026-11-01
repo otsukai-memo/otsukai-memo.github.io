@@ -94,6 +94,10 @@
     const hinted = !$in(f, '#toast').hidden && /入れるときは/.test($in(f, '#toast').textContent);
     await wait(1100);
     check(hinted && $in(f, '#toast').hidden, '行を さわったときの 案内は 1秒で 消える');
+    // 1.13: the top of the parent's screen has no date, no まえと おなじ, no note for the family and no 「ほしいものの…」
+    const top13 = $in(f, '#home').textContent;
+    check(!$in(f, '#today') && !$in(f, '#sameBtn') && !$in(f, '#homeWelcome') && !/ほしいもの|ご家族の 方へ|まえと おなじ/.test(top13) && /えらび おわったら/.test(top13),
+      '親の 画面に 日付・まえと おなじ・家族への 文が ない');
 
     // ---------- what 1.3 left ----------
     await clean();

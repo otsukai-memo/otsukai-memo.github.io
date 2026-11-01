@@ -113,19 +113,9 @@ a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   margin-left:-.35rem;padding:.25rem .4rem;border:0;border-radius:var(--sh-m);background:transparent;color:var(--md-on-surface);font:600 .8rem/1.2 var(--font)}
 .navbtn .ic{width:1.75rem;height:1.75rem}
 .navbtn.end{margin:0 -.35rem 0 0}
-.today{margin:.1rem auto 0;font:var(--t-title-m);color:var(--md-on-surface-variant)}
-.how{margin:.6rem auto 0;font:var(--t-body-l);color:var(--md-on-surface-variant)}
-.how .k{display:inline-flex;align-items:center;gap:.15rem;padding:0 .65rem 0 .4rem;border-radius:999px;vertical-align:-.15rem;background:var(--md-primary);color:var(--md-on-primary);font:var(--t-label-l);line-height:1.65}
-.how .k .ic{width:1.1rem;height:1.1rem}
+.how{margin:.3rem auto 0;font:var(--t-body-l);color:var(--md-on-surface-variant)}
 .how .g{display:inline-flex;align-items:center;gap:.25rem;padding:0 .65rem 0 .5rem;border-radius:999px;vertical-align:-.15rem;background:var(--md-primary);color:var(--md-on-primary);font:var(--t-label-l);line-height:1.65}
 .how .g .ic{width:1rem;height:1rem}
-.same{display:flex;align-items:center;gap:.8rem;width:100%;min-height:4.2rem;margin:.8rem 0 .2rem;padding:.6rem .75rem .6rem 1rem;border:0;border-radius:var(--sh-l);
-  background:var(--md-secondary-container);color:var(--md-on-secondary-container);text-align:left;transition:border-radius .2s var(--ease)}
-.same:active{border-radius:var(--sh-xl)}
-.same .ic{width:1.75rem;height:1.75rem}
-.same-txt{flex:1;min-width:0;display:flex;flex-direction:column}
-.same-txt b{font:var(--t-title-m)}
-.same-txt small{font:var(--t-body-m)}
 .gh{margin:1.4rem .25rem .55rem;font:var(--t-title-m);color:var(--md-primary)}
 
 /* M3 Expressive segmented list: rows 2dp apart, 4dp inner and 16dp outer corners; a picked row rounds out all round */
@@ -255,7 +245,7 @@ html[data-size="xl"] .drawer-panel{width:min(94vw,26rem);padding-right:.5rem;pad
 .hero{display:flex;justify-content:center;margin-bottom:.75rem;color:var(--md-secondary)}
 .hero .ic{width:2rem;height:2rem}
 .hero + h2{text-align:center}
-@media (prefers-reduced-motion:reduce){.sheet,.layer.dialog .sheet,.drawer-panel,.navitem,.appbar,.btn,.icon-btn,.row,.same,.tf > span,.level span{transition:none}.nudge,#toast{animation:none}}
+@media (prefers-reduced-motion:reduce){.sheet,.layer.dialog .sheet,.drawer-panel,.navitem,.appbar,.btn,.icon-btn,.row,.tf > span,.level span{transition:none}.nudge,#toast{animation:none}}
 .acts{display:flex;flex-direction:column;gap:.6rem;margin-top:1.25rem}
 /* a sheet in two parts: the list scrolls, the buttons under it always stay in view */
 .sheet.split{display:flex;flex-direction:column;overflow:hidden;padding:0}
@@ -393,7 +383,6 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 .card p{margin:0 0 .75rem;font:var(--t-body-m);font-size:.95rem}
 .card.ok p{margin-bottom:.5rem}
 .card.warn{background:var(--md-error-container);color:var(--md-on-error-container)}
-.homenote{margin-top:1.25rem;color:var(--md-on-surface-variant)}
 .warnnote{color:var(--md-error)}
 .photohint{display:block;margin:.4rem .25rem 0;color:var(--md-on-surface-variant)}
 .facts{margin:.25rem 0 .75rem;padding-left:1.3rem;font:var(--t-body-m);color:var(--md-on-surface-variant)}
