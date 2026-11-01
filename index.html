@@ -401,6 +401,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 .card.warn{background:var(--md-error-container);color:var(--md-on-error-container)}
 .homenote{margin-top:1.25rem;color:var(--md-on-surface-variant)}
 .warnnote{color:var(--md-error)}
+.photohint{display:block;margin:.4rem .25rem 0;color:var(--md-on-surface-variant)}
 .facts{margin:.25rem 0 .75rem;padding-left:1.3rem;font:var(--t-body-m);color:var(--md-on-surface-variant)}
 .facts li{margin:.35rem 0}
 .datarow{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:.75rem 0}
@@ -442,6 +443,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
   <div class="wrap">
     <p class="note">ここは ご家族（準備をする人）用の 画面です。</p>
     <div class="card" id="welcomeCard" hidden><p><b>はじめて ひらいた 状態です。</b>前に この アプリを 使って いて データが 消えて しまった ときは、ドライブなどの バックアップを 読みこめば 戻せます。</p><div class="btnrow"><button type="button" id="welcomeImport" class="btn filled sl"><span data-ic="upload"></span>ファイルから 読みこむ</button><button type="button" id="welcomeClose" class="btn text sl">とじる</button></div></div>
+    <div class="card warn" id="troubleCard" hidden><p id="troubleText"></p><div class="btnrow"><button type="button" id="troubleClose" class="btn text sl">わかった</button></div></div>
     <div class="card warn" id="brokenCard" hidden><p id="brokenText"></p><div class="btnrow"><button type="button" id="brokenGo" class="btn filled sl">自動の 控えを 見る</button><button type="button" id="brokenClose" class="btn text sl">わかった</button></div></div>
     <div class="card" id="backupCard"><p id="backupState"></p><button type="button" id="backupNow" class="btn filled sl"><span data-ic="upload"></span>いま バックアップする</button></div>
 
@@ -462,7 +464,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 
     <h2 class="sh">送り方</h2>
     <div class="seg" id="sendSeg"><button type="button" class="sl" data-v="line"><span data-ic="check"></span>LINEを ひらく</button><button type="button" class="sl" data-v="share"><span data-ic="check"></span>共有メニュー</button></div>
-    <p class="note">「LINEで 送る」を 押したときの 動き方です。LINE が うまく ひらかないときは「共有メニュー」に して、出てきた中から LINE を えらんでください。声の メッセージが あるときは、音声ファイルを 渡すため いつも 共有メニューで 送ります。</p>
+    <p class="note">「LINEで 送る」を 押したときの 動き方です。LINE が うまく ひらかないときは「共有メニュー」に して、出てきた中から LINE を えらんでください。「LINEを ひらく」は 送る 文を アドレスに 入れて 渡すので、スマホに よっては 履歴などに 残る ことが あります。声の メッセージが あるときは、音声ファイルを 渡すため いつも 共有メニューで 送ります。</p>
     <a id="testSend" class="btn outlined sl" href="#" target="_blank" rel="noopener"><span data-ic="send"></span>ためしに 送ってみる</a>
     <label class="tf" style="margin-top:1.4rem"><input id="toName" type="text" maxlength="20" autocomplete="off" placeholder=" "><span>送る相手の 名前（LINEに 出る 名前）</span><small>送る前の 画面に「①（この名前）を 押す ② 送信を 押す」と 出ます。LINEで この人を お気に入りに しておくと、見つけやすく なります。</small></label>
 
@@ -489,6 +491,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <div class="btnrow" style="margin-top:.75rem"><button type="button" id="backupShare" class="btn filled sl"><span data-ic="cloud-upload"></span>Google ドライブに 保存</button><button type="button" id="verifyBtn" class="btn outlined sl"><span data-ic="file-check"></span>バックアップを たしかめる</button></div>
     <p class="note">「Google ドライブに 保存」を 押すと、共有の メニューが 出ます。「ドライブ」を えらんで「保存」を 押して ください。保存したら「バックアップを たしかめる」で その ファイルを えらぶと、ちゃんと 読めるか 見られます（いまの データは 変わりません）。</p>
     <div class="btnrow" style="margin-top:.6rem"><button type="button" id="exportBtn" class="btn outlined sl"><span data-ic="download"></span>この スマホに 書き出す</button><button type="button" id="importBtn" class="btn outlined sl"><span data-ic="upload"></span>ファイルから 読みこむ</button><button type="button" id="undoImport" class="btn text sl" hidden><span data-ic="history"></span><span class="lbl">読みこむ前に もどす</span></button></div>
+    <p class="note">ドライブには 新しい 3つほど 残して、古い バックアップは けして かまいません。パスワードを かけた ファイルは、アプリが なくても <a href="tools/open-backup.html" target="_blank" rel="noopener">開く ページ</a> で 開けます（その ページは 保存して おけます）。</p>
     <p class="note">「この スマホに 書き出す」は、スマホの「ダウンロード」に 置きます。ここは ほかの アプリからも 見える 場所なので、ドライブに 入れたら、ファイルアプリの「ダウンロード」から けして おくと 安心です。<span id="dlState"></span></p>
     <input type="file" id="importFile" accept=".json,.txt,application/json,text/plain" hidden>
     <input type="file" id="verifyFile" accept=".json,.txt,application/json,text/plain" hidden>
@@ -497,23 +500,31 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <p class="note" id="usage"></p>
 
     <h2 class="sh">自動の 控え</h2>
-    <p class="note">アプリが 新しく なる ときと 週に 1回、この スマホの 中に 自動で 控えを 取ります（新しい 3つまで）。品物や 写真を まちがえて かえた ときに 戻せます。スマホが こわれると 控えも 消えるので、バックアップも して ください。</p>
+    <p class="note">週に 1回（中身が かわった ときだけ）と、アプリが 新しく なる 前に、この スマホの 中に 自動で 控えを 取ります（週の 控えは 3つ、新しく なる 前の 控えは 2つまで）。品物や 写真を まちがえて かえた ときに 戻せます。スマホが こわれると 控えも 消えるので、バックアップも して ください。</p>
     <ul class="slist" id="copyList"></ul>
     <button type="button" id="clearCopies" class="btn text sl" hidden><span data-ic="trash-2"></span>控えを ぜんぶ けす</button>
+
+    <h2 class="sh">家族の設定の 暗証番号</h2>
+    <p class="note" id="pinState"></p>
+    <div class="btnrow"><button type="button" id="pinSet" class="btn outlined sl"><span data-ic="lock"></span><span class="lbl">暗証番号を つける</span></button><button type="button" id="pinOff" class="btn text sl" hidden>はずす</button></div>
 
     <h2 class="sh">データの 扱い</h2>
     <ul class="facts">
       <li>品物・写真・録音・送った記録・設定は、この スマホの 中だけに 保存します。作った人にも、ほかの だれにも 送られません。</li>
       <li>外に 出るのは、「LINEで 送る」を 押して LINE で 送信した ときの、リストの 文と 声の ファイルだけです。</li>
-      <li>送った記録は 3か月、送らなかった 録音は 7日で、自動で けします。</li>
-      <li>写真は 保存する ときに 描き直すので、撮った 場所などの 情報は 残りません。</li>
+      <li id="factKeep">送った記録は 3か月、送らなかった 録音は 7日で、自動で けします。</li>
+      <li>写真は 保存する ときに 描き直すので、撮った 場所などの 情報は 残りません。名前や 住所が 写らない ように 撮って ください（くすりの 袋や 届いた 箱の ラベルなど）。</li>
+      <li>スマホには 画面ロック（暗証番号や 指紋）を かけて おいて ください。かけて いないと、スマホを 拾った 人が 写真や 記録を 見られます。</li>
+      <li>送り方が「LINEを ひらく」の ときは、送る 文を LINE の アドレスに 入れて 渡します。スマホに よっては、ブラウザの 履歴などに 残る ことが あります。気に なる ときは「共有メニュー」に して ください。</li>
       <li>バックアップの ファイルには、品物と 写真と 設定（えらんだ ときは 送った記録も）が 入ります。置いた 場所で 大切に 保管して ください。</li>
       <li>書き出した ファイルや ドライブの バックアップは、この アプリの「データを ぜんぶ けす」では 消えません。</li>
-      <li>この スマホの 中には、自動の 控え（3つまで・60日まで）、けした 品物（30日）、ファイルを 読みこむ 前の 状態（7日）も 残ります。「送った記録を けす」は 控えの 中の 記録も けします。「データを ぜんぶ けす」は これらも ぜんぶ けします。</li>
+      <li>この スマホの 中には、自動の 控え（週の 控え 3つと、新しく なる 前の 控え 2つ。60日まで）、けした 品物（30日）、ファイルを 読みこむ 前の 状態（7日）も 残ります。「送った記録を けす」は 控えの 中の 記録も けします。「データを ぜんぶ けす」は これらも ぜんぶ けします。</li>
       <li>パスワードを かけた バックアップは、パスワードを 知って いる 人しか 読めません。</li>
       <li>古い 記録や 控えは、スマホの 時計で 日数を 数えて 片づけます。時計が 大きく ずれて いる ときは、片づけを 止めます。</li>
     </ul>
     <p class="note warnnote" id="clockNote" hidden>スマホの 時計が ずれて いるようです。日付と 時刻を たしかめて ください。合うまで、古い 記録や 控えを 日付で けすのは 止めて います。</p>
+    <p class="note" style="margin:1rem .25rem .45rem">送った 記録を 残す 長さ</p>
+    <div class="seg" id="keepSeg"><button type="button" class="sl" data-v="one"><span data-ic="check"></span>1回分</button><button type="button" class="sl" data-v="month"><span data-ic="check"></span>1か月</button><button type="button" class="sl" data-v="three"><span data-ic="check"></span>3か月</button></div>
     <div class="datarow"><p id="histState"></p><button type="button" id="clearHist" class="btn outlined sl"><span data-ic="trash-2"></span>送った記録を けす</button></div>
     <div class="datarow"><p id="voiceState"></p><button type="button" id="clearVoices" class="btn outlined sl"><span data-ic="trash-2"></span>録音を ぜんぶ けす</button></div>
 
@@ -521,7 +532,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <p class="note">スマホを 人に ゆずる ときなどに。品物・写真・送った記録・録音・設定を ぜんぶ けして、はじめの 状態に 戻します。先に バックアップを しておけば、あとで 読みこんで 戻せます。書き出した ファイルや ドライブの バックアップは 残ります。</p>
     <button type="button" id="wipeAll" class="btn danger sl"><span data-ic="trash-2"></span>データを ぜんぶ けす</button>
 
-    <p class="ver">かいものメモ 1.7</p>
+    <p class="ver">かいものメモ 1.8</p>
   </div>
 </section>
 
@@ -626,6 +637,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
       <div class="picrow"><span id="fPicBox"></span><button type="button" id="fPhoto" class="btn tonal sl"><span data-ic="camera"></span>写真を とる・えらぶ</button><button type="button" id="fNoPhoto" class="btn text sl" hidden><span data-ic="image-off"></span>写真を やめる</button></div>
       <input id="fPhotoFile" type="file" accept="image/*" hidden>
       <small id="fPhotoNote" hidden>写真が あるときは、写真が 出ます。</small>
+      <small class="photohint">名前や 住所が 写らない ように 撮って ください。</small>
       <div class="pics" id="fPics" role="group" aria-label="絵"></div>
     </div>
     <div class="fl"><span class="fl-t">数え方</span>
@@ -657,6 +669,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
     <h2 id="photoTitle">写真で そろえる</h2>
     <p class="note" id="photoCount"></p>
     <div class="photostep" id="photoStep"></div>
+    <p class="note photohint">名前や 住所が 写らない ように 撮って ください（くすりの 袋や 届いた 箱の ラベルなど）。</p>
     <input id="photoFile" type="file" accept="image/*" capture="environment" hidden>
     <div class="acts">
       <button type="button" id="photoTake" class="btn filled big sl"><span data-ic="camera"></span><span class="lbl">写真を とる</span></button>
@@ -671,7 +684,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
   <div class="sheet"><div class="wrap">
     <h2 id="passTitle"></h2>
     <p class="note" id="passText"></p>
-    <label class="tf"><input id="passIn" type="password" autocomplete="new-password" maxlength="64" placeholder=" "><span>パスワード</span><small>6文字 いじょう</small></label>
+    <label class="tf"><input id="passIn" type="password" autocomplete="new-password" maxlength="64" placeholder=" "><span id="passLabel">パスワード</span><small id="passHint"></small></label>
     <label class="tf" id="passAgainBox"><input id="passAgain" type="password" autocomplete="new-password" maxlength="64" placeholder=" "><span>もう一度</span><small>同じ パスワードを もう一度</small></label>
     <p class="msg" id="passMsg" aria-live="polite"></p>
     <div class="acts">
@@ -683,6 +696,6 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="app.js?v=1.7"></script>
+<script src="app.js?v=1.8"></script>
 </body>
 </html>

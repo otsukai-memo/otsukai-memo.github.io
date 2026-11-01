@@ -1,0 +1,62 @@
+# 公開の前に、アプリが動くかを自動で確かめる。だめなときは公開しない（公開中の版がそのまま残る）。
+# Before publishing, the app is opened in Chrome: the version must agree everywhere, the parent's list must appear,
+# and no script error may show. Only then does GitHub Pages get the new files.
+name: check and publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      LC_ALL: C.UTF-8
+    steps:
+      - uses: actions/checkout@v7
+      - name: the version agrees everywhere
+        run: |
+          v=$(grep -oP "APP_VER = '\K[0-9.]+" app.js)
+          echo "APP_VER $v"
+          grep -q "app.js?v=$v\"" index.html
+          grep -q "かいものメモ $v</p>" index.html
+      - name: the app starts in Chrome without errors
+        run: |
+          python3 -m http.server 8000 --bind 127.0.0.1 >/dev/null 2>&1 &
+          sleep 2
+          google-chrome --headless=new --no-sandbox --disable-gpu --enable-logging=stderr --v=0 \
+            --virtual-time-budget=8000 --dump-dom http://127.0.0.1:8000/index.html > dom.html 2> chrome.log || true
+          rows=$(grep -o 'class="row' dom.html | wc -l)
+          echo "rows on the parent's screen: $rows"
+          if grep -q "Uncaught" chrome.log; then grep "Uncaught" chrome.log; exit 1; fi
+          test "$rows" -ge 10
+      - name: the page for locked backups is there and opens
+        run: |
+          google-chrome --headless=new --no-sandbox --disable-gpu --virtual-time-budget=3000 \
+            --dump-dom http://127.0.0.1:8000/tools/open-backup.html > tool.html 2>/dev/null || true
+          grep -q 'id="go"' tool.html
+
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v5

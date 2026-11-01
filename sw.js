@@ -21,8 +21,12 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== location.origin) return;
-  // the page and app.js (whatever its ?v=) come from the network first, and from the copy when offline
-  const fresh = req.mode === 'navigate' ? INDEX : url.pathname.endsWith('/app.js') ? SCRIPT : '';
+  // the app's page and app.js (whatever its ?v=) come from the network first, and from the copy when offline;
+  // other pages here (tools/open-backup.html) go to the network as usual, never into the app's copy
+  const scope = new URL(self.registration.scope).pathname;
+  const isApp = req.mode === 'navigate' && (url.pathname === scope || url.pathname === scope + 'index.html');
+  if (req.mode === 'navigate' && !isApp) return;
+  const fresh = isApp ? INDEX : url.pathname.endsWith('/app.js') ? SCRIPT : '';
   if (fresh) {
     e.respondWith((async () => {
       try {

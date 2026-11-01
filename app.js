@@ -8,6 +8,7 @@ const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 // Lucide (lucide.dev, lucide-static 1.66.0), ISC License; a few come from Feather, MIT License: see LICENSE-lucide.txt.
 // Drawn with lines like the item pictures; play and stop are filled in, as people expect of them
 const ICONS = {
+  'lock': '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
   'cloud-upload': '<path d="M12 13v8"/><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="m8 17 4-4 4 4"/>',
   'file-check': '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="m9 15 2 2 4-4"/>',
   'arrow-down': '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
@@ -42,7 +43,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.7';
+const APP_VER = '1.8';
 const DAY = 864e5;
 
 const GROUPS = [
@@ -203,11 +204,25 @@ function load(name, fallback) {
   try { const s = localStorage.getItem(KEY + name); return s == null ? fallback : JSON.parse(s); }
   catch (e) { return fallback; }
 }
-// a failed save stays on screen (the bar at the top) until a later save of the same thing goes through
+// a failed save stays on screen (the bar at the top) until a later save of the same thing goes through;
+// items and the sent lists are saved whole, so when another window saved them after this one last read them
+// (before its storage event arrived), that version is kept as a copy before this one goes over it
+const seen = {};
 function save(name, value) {
-  try { localStorage.setItem(KEY + name, JSON.stringify(value)); if (unsaved.delete(name)) paintSaveBar(); return true; }
-  catch (e) { unsaved.add(name); paintSaveBar(); return false; }
+  try {
+    const raw = JSON.stringify(value);
+    if ((name === 'items' || name === 'history') && name in seen) {
+      const cur = localStorage.getItem(KEY + name);
+      if (cur !== null && cur !== seen[name] && cur !== raw) { const other = rawNow(); autoCopy('conflict', other).catch(() => noteTrouble('copy')); }
+    }
+    localStorage.setItem(KEY + name, raw);
+    seen[name] = raw;
+    if (unsaved.delete(name)) paintSaveBar();
+    return true;
+  } catch (e) { unsaved.add(name); paintSaveBar(); return false; }
 }
+// 3: something kept in IndexedDB (a copy, the bin, a photo) could not be saved: the family is told
+function noteTrouble(kind) { save('trouble', { at: Date.now(), kind }); if (typeof paintHomeNote === 'function') paintHomeNote(); }
 function drop(name) { try { localStorage.removeItem(KEY + name); unsaved.delete(name); } catch (e) {} }
 function paintSaveBar() {
   const bar = document.getElementById('saveBar');
@@ -256,13 +271,14 @@ function cleanItems(arr) {
 }
 const freshItems = () => DEFAULT_ITEMS.map(([name, icon, unit, group, sizes]) => fixItem({ name, icon, unit, group, sizes }));
 
-// how long things are kept: a sent list three months, a recording never sent a week
-const HIST_DAYS = 90, VOICE_DAYS = 7;
+// a recording never sent is kept a week (how long sent lists stay is the family's choice, settings.keep)
+const VOICE_DAYS = 7;
 // the most a file (or a damaged one) can bring in, so the list always fits in this phone's room for it
 const MAX_ITEMS = 200, MAX_LINES = 100, MAX_EXTRAS = 30;
 // to: the family member's name as LINE shows it; theme: light unless the family picks dark or 自動
-// lock: backups get a password
-const defaultSettings = () => ({ size: 'm', send: 'line', theme: 'light', to: '', lock: false });
+// lock: backups get a password; keep: how long sent lists stay (one: only the newest, for まえと おなじ)
+const defaultSettings = () => ({ size: 'm', send: 'line', theme: 'light', to: '', lock: false, keep: 'three' });
+const KEEP_DAYS = { month: 30, three: 90 };
 // stored data that can't be read (all of it, or some entries) is noted here, kept aside at start, and never
 // written over in silence
 const broken = new Set();
@@ -291,7 +307,14 @@ if (!items) { items = freshItems(); if (RAW.items == null) save('items', items);
 if (RAW.items == null && lastVer == null) save('welcome', Date.now());
 let cart = fixCart(load('cart', null));
 let hist = loadHist();
-let settings = Object.assign(defaultSettings(), load('settings', {}));
+const loadSettings = () => {
+  const v = load('settings', null);
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) { if (RAW.settings != null) broken.add('settings'); return defaultSettings(); }
+  return Object.assign(defaultSettings(), v);
+};
+let settings = loadSettings();
+// what this window last read or wrote, for the check in save()
+for (const n of ['items', 'history']) seen[n] = RAW[n];
 let pending = load('pending', null);
 if (pending && !(Date.now() - (+pending.at || 0) < 3 * DAY)) { pending = null; drop('pending'); }
 // at: when the family last saved a backup; changes: edits to items, photos or the name since then;
@@ -308,9 +331,15 @@ async function checkClock() {
   clockOK = server ? Math.abs(now - server) < 2 * DAY : !(seen && now - seen > 400 * DAY);
   if (clockOK && now > seen) save('clock', now);
 }
+// what stays of the sent lists under the family's choice: the newest only, or the last month or three
+function keptHist(list) {
+  if (settings.keep === 'one') return list.slice(0, 1);
+  const days = KEEP_DAYS[settings.keep] || 90;
+  return (clockOK ? list.filter(h => h.at >= Date.now() - days * DAY) : list).slice(0, 60);
+}
 function trimHist() {
   const n = hist.length;
-  hist = (clockOK ? hist.filter(h => h.at >= Date.now() - HIST_DAYS * DAY) : hist).slice(0, 60);
+  hist = keptHist(hist);
   if (hist.length !== n) save('history', hist);
 }
 function noteChange() { backupInfo.changes++; save('backup', backupInfo); if (!$('#settings').hidden) paintBackupState(); }
@@ -357,9 +386,9 @@ const blobData = b => new Promise((res, rej) => { const r = new FileReader(); r.
 const okPhoto = p => typeof p === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(p);
 
 // photos: JPEG blobs in IndexedDB, shown through object URLs read once into memory
-const photoURLs = new Map();
+const photoURLs = new Map(), badPhotos = new Set();
 let photosIn = false;
-const photoOf = it => (it && it.photo && photoURLs.get(it.id)) || '';
+const photoOf = it => (it && it.photo && !badPhotos.has(it.id) && photoURLs.get(it.id)) || '';
 async function loadPhotos() {
   try {
     const all = await idbAll('photos');
@@ -405,9 +434,9 @@ window.addEventListener('storage', e => {
   if (!e.key.startsWith(KEY)) return;
   const name = e.key.slice(KEY.length);
   if (name === 'cart') cart = fixCart(load('cart', null));
-  else if (name === 'items') items = loadItems() || items;
-  else if (name === 'history') hist = loadHist();
-  else if (name === 'settings') { settings = Object.assign(defaultSettings(), load('settings', {})); applySize(); applyTheme(); }
+  else if (name === 'items') { items = loadItems() || items; seen.items = localStorage.getItem(e.key); }
+  else if (name === 'history') { hist = loadHist(); seen.history = localStorage.getItem(e.key); }
+  else if (name === 'settings') { settings = loadSettings(); applySize(); applyTheme(); }
   else if (name === 'pending') pending = load('pending', null);
   else if (name === 'backup') backupInfo = Object.assign({ at: 0, changes: 0 }, load('backup', {}));
   else return;
@@ -454,13 +483,22 @@ function change(it, size, dir) {
 const qtyHTML = (it, q) => `<b>${q}</b><small>${esc(it.unit)}</small>`;
 function picHTML(it, cls = '', photo) {
   const p = photo === undefined ? photoOf(it) : photo;
-  if (p) return `<span class="pic ${cls}"><img src="${esc(p)}" alt=""></span>`;
+  if (p) return `<span class="pic ${cls}"><img src="${esc(p)}" alt=""${photo === undefined ? ` data-pid="${esc(it.id)}"` : ''}></span>`;
   // until the photos are read in at start, a photo's place stays empty rather than flashing the drawing
   if (photo === undefined && it.photo && !photosIn) return `<span class="pic ${cls}" aria-hidden="true"></span>`;
   const d = PIC[it.icon];
   if (d) return `<span class="pic lu h-${d[2]} ${cls}" aria-hidden="true">${svgOf(d[3])}</span>`;
   return `<span class="pic ini ${cls}" aria-hidden="true">${esc([...(it.name || '？')][0])}</span>`;
 }
+// a stored photo that turns out to be damaged gives way to the item's drawing, and the family is told
+document.addEventListener('error', e => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || !img.dataset.pid) return;
+  badPhotos.add(img.dataset.pid);
+  noteTrouble('photo');
+  const it = byId(img.dataset.pid), pic = img.closest('.pic');
+  if (it && pic) pic.outerHTML = picHTML(it, [...pic.classList].filter(c => c === 'sm' || c === 'big').join(' '));
+}, true);
 const notePic = (cls = '', icon = 'notebook-pen') => `<span class="pic memo ${cls}" aria-hidden="true">${ic(icon)}</span>`;
 const VOICE_LABEL = '声の メッセージ';
 const secText = s => `${Math.max(1, Math.round(s))}びょう`;
@@ -608,7 +646,7 @@ const groupsEl = $('#groups');
 let shownDay = new Date().toDateString();
 function renderHome() {
   shownDay = new Date().toDateString();
-  $('#homeWelcome').hidden = !load('welcome', 0);
+  paintHomeNote();
   $('#today').textContent = mdw(Date.now());
   const last = hist[0];
   $('#sameBtn').hidden = !last;
@@ -1086,6 +1124,7 @@ document.addEventListener('visibilitychange', () => {
     else setTouch = Date.now();
   }
   dropOldVoices();
+  maybeWeekCopy();
   if (pending && wentAway) { wentAway = false; setTimeout(askSent, 300); }
   else if (new Date().toDateString() !== shownDay && $('#settings').hidden && !sheetsOpen()) renderHome();
 });
@@ -1182,7 +1221,49 @@ const standalone = () => matchMedia('(display-mode: standalone)').matches || nav
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 let homeScroll = 0;
 $('#openSettings').addEventListener('click', async () => {
-  if (await ask('ご家族用の 設定です', '品物の 登録や、送り方の 設定を します。ご家族の方は「ひらく」を 押したまま 2びょう まって ください。', 'ひらく（押したまま）', 'もどる', { gate: true })) openSettings();
+  if (await ask('ご家族用の 設定です', '品物の 登録や、送り方の 設定を します。ご家族の方は「ひらく」を 押したまま 2びょう まって ください。', 'ひらく（押したまま）', 'もどる', { gate: true }) && await pinOK()) openSettings();
+});
+/* ---------- the family's PIN (kept apart from backups and copies, so restoring one never brings it back) ---------- */
+const PIN_ITER = 200000;
+async function pinHash(v, salt, iter) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(v), 'PBKDF2', false, ['deriveBits']);
+  return b64(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: unb64(salt), iterations: iter, hash: 'SHA-256' }, base, 256));
+}
+// asked after the hold when one is set; five wrong tries wait a minute
+let pinFails = 0, pinWait = 0;
+async function pinOK() {
+  const pin = load('pin', null);
+  if (!pin || !pin.hash) return true;
+  for (let text = '家族の設定の 暗証番号を 入れて ください。'; ;) {
+    if (Date.now() < pinWait) { toast('まちがいが 続いたので、1分 待ってから ためして ください。'); return false; }
+    const v = await askPass('暗証番号', text, false, { pin: true });
+    if (v == null) return false;
+    if (await pinHash(v, pin.salt, pin.iter || PIN_ITER) === pin.hash) { pinFails = 0; return true; }
+    if (++pinFails >= 5) { pinFails = 0; pinWait = Date.now() + 60000; }
+    text = '暗証番号が ちがいます。もう一度 入れて ください。';
+  }
+}
+function paintPin() {
+  const on = !!load('pin', null);
+  $('#pinState').textContent = on
+    ? 'つけて います。家族の設定を ひらく ときに 聞きます。忘れた ときは、Chrome の 設定で この サイトの データを けして、ドライブの バックアップを 読みこんで ください（暗証番号は バックアップに 入りません）。'
+    : 'つけると、家族の設定を ひらく ときに 暗証番号を 聞きます（親の 画面は 今までどおり）。スマホを ほかの 人が さわる ことが あるときに。';
+  $('.lbl', $('#pinSet')).textContent = on ? '暗証番号を かえる' : '暗証番号を つける';
+  $('#pinOff').hidden = !on;
+}
+$('#pinSet').addEventListener('click', async () => {
+  const v = await askPass('暗証番号を きめて ください', '家族の設定を ひらく ときに 聞きます。忘れた ときは、データを けして バックアップから 戻す ことに なるので、紙に 書いて しまって おいて ください。', true, { pin: true });
+  if (v == null) return;
+  const salt = b64(crypto.getRandomValues(new Uint8Array(16)));
+  save('pin', { salt, iter: PIN_ITER, hash: await pinHash(v, salt, PIN_ITER) });
+  paintPin();
+  toast('暗証番号を つけました。');
+});
+$('#pinOff').addEventListener('click', async () => {
+  if (!(await ask('暗証番号を はずしますか？', '家族の設定を ひらく ときに、暗証番号を 聞かなく なります。', 'はずす'))) return;
+  drop('pin');
+  paintPin();
+  toast('暗証番号を はずしました。');
 });
 function openSettings() {
   homeScroll = window.scrollY;
@@ -1259,8 +1340,12 @@ function renderSettings() {
     : 'Chrome の 右上「︙」→「ホーム画面に追加」（または「アプリを インストール」）を 押してください。';
   paintBackupState();
   paintBackupHist();
-  $('#histState').textContent = (hist.length ? `送った 記録：${hist.length}回分（${md(hist[hist.length - 1].at)}から）。` : '送った 記録は ありません。')
-    + `${HIST_DAYS / 30}か月より 前の ものは 自動で けします。`;
+  const keepText = settings.keep === 'one' ? 'いちばん 新しい 1回分だけ 残します。' : `${settings.keep === 'month' ? '1か月' : '3か月'}より 前の ものは 自動で けします。`;
+  $('#histState').textContent = (hist.length ? `送った 記録：${hist.length}回分（${md(hist[hist.length - 1].at)}から）。` : '送った 記録は ありません。') + keepText;
+  $('#factKeep').textContent = `送った記録は ${settings.keep === 'one' ? '1回分だけ 残し' : settings.keep === 'month' ? '1か月' : '3か月'}、送らなかった 録音は 7日で、自動で けします。`;
+  setSeg('#keepSeg', settings.keep);
+  paintPin();
+  paintTrouble();
   $('#clearHist').hidden = !hist.length && !items.some(it => it.count || it.lastAt);
   renderUsage();
   paintPersist();
@@ -1348,6 +1433,18 @@ function applyTheme() {
   $('#themeColor').content = dark ? '#10140f' : '#ecefe6';
 }
 darkPhone.addEventListener('change', () => { if (settings.theme === 'auto') applyTheme(); });
+$('#keepSeg').addEventListener('click', async e => {
+  const b = e.target.closest('[data-v]');
+  if (!b || b.dataset.v === settings.keep) return;
+  const before = settings.keep;
+  settings.keep = b.dataset.v;
+  const gone = hist.length - keptHist(hist).length;
+  if (gone > 0 && !(await ask('送った 記録を へらしますか？', `${gone}回分の 記録を けします。この スマホの 中の 控えに ある 記録も、同じように けします。`, 'けす', 'やめる', { danger: true }))) { settings.keep = before; setSeg('#keepSeg', before); return; }
+  save('settings', settings);
+  trimHist();
+  scrubHistory(keptHist, false);
+  renderSettings();
+});
 $('#themeSeg').addEventListener('click', e => {
   const b = e.target.closest('[data-v]');
   if (!b) return;
@@ -1584,7 +1681,7 @@ $('#fDelete').addEventListener('click', async () => {
   const idx = items.indexOf(it), photo = it.photo ? await photoBlob(it.id) : null;
   const keys = Object.entries(cart.lines).filter(([k]) => splitKey(k)[0] === it.id);
   // kept in けした 品物 for 30 days, photo and all, in case it was the wrong one
-  try { await idbPut('snaps', 'trash:' + it.id, { at: Date.now(), item: clone(it), idx, photo }); } catch (e) {}
+  try { await idbPut('snaps', 'trash:' + it.id, { at: Date.now(), item: clone(it), idx, photo }); } catch (e) { noteTrouble('trash'); }
   items.splice(idx, 1);
   delPhoto(it.id);
   keys.forEach(([k]) => { delete cart.lines[k]; });
@@ -1663,12 +1760,15 @@ let backupHist = false;
 async function backupText(withHist, withCart) {
   const photos = {};
   for (const it of items) if (it.photo) { const b = await photoBlob(it.id); if (b) photos[it.id] = await blobData(b); }
-  const data = { app: 'kaimono', version: 1, exportedAt: new Date().toISOString(), items, photos, settings };
+  const data = { app: 'kaimono', version: 1, appVersion: APP_VER, exportedAt: new Date().toISOString(), items, photos, settings };
   if (withHist) data.history = hist;
   // 書き出して 残す also keeps the list being picked, which is most often what could not be saved (recordings stay out)
   if (withCart) data.cart = { lines: cart.lines, extras: cart.extras.filter(x => !x.voice), when: cart.when };
+  // a check sum over all the rest, so a file damaged on the way is told apart from a good one
+  data.sum = await sha256(JSON.stringify(data));
   return JSON.stringify(data);
 }
+const sha256 = async text => b64(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
 // file names carry the minute too, so several backups of one day are told apart
 const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`; };
 function backedUp(extra = {}) { backupInfo = { at: Date.now(), changes: 0, dl: backupInfo.dl || [], ...extra }; save('backup', backupInfo); drop('welcome'); if (!$('#settings').hidden) renderSettings(); }
@@ -1735,18 +1835,29 @@ async function unlockText(locked, data, pass) {
   return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(locked.iv) }, key, unb64(data)));
 }
 // the password: twice when it is being set; null when the family gives up
-function askPass(title, text, twice) {
+// set twice (a password of 8 or more, not digits alone under 12, not one letter repeated; a PIN of 4 to 8 digits),
+// asked once to open something (any length, so older ones still work)
+function askPass(title, text, twice, { pin = false } = {}) {
   return new Promise(res => {
     let done = false;
-    const a = $('#passIn'), b = $('#passAgain'), msg = $('#passMsg');
+    const a = $('#passIn'), b = $('#passAgain'), msg = $('#passMsg'), word = pin ? '暗証番号' : 'パスワード';
     $('#passTitle').textContent = title;
     $('#passText').textContent = text;
+    $('#passLabel').textContent = word;
+    $('#passHint').textContent = !twice ? '' : pin ? '4〜8けたの 数字' : '8文字 いじょう。数字だけより、英字などを まぜると 強く なります';
+    a.inputMode = b.inputMode = pin ? 'numeric' : 'text';
     a.value = b.value = '';
     msg.textContent = '';
     $('#passAgainBox').hidden = !twice;
     $('#passOk').onclick = async () => {
-      if (a.value.length < 6) { msg.textContent = '6文字 いじょうに して ください。'; return; }
-      if (twice && a.value !== b.value) { msg.textContent = '2つの パスワードが ちがいます。'; return; }
+      const p = a.value;
+      const bad = !p ? `${word}を 入れて ください。` : !twice ? ''
+        : pin ? (/^\d{4,8}$/.test(p) ? '' : '4〜8けたの 数字に して ください。')
+        : p.length < 8 ? '8文字 いじょうに して ください。'
+        : /^\d+$/.test(p) && p.length < 12 ? '数字だけの ときは 12けた いじょうに して ください。'
+        : /^(.)\1+$/.test(p) ? '同じ 文字だけの パスワードは 使えません。' : '';
+      if (bad) { msg.textContent = bad; return; }
+      if (twice && p !== b.value) { msg.textContent = `2つの ${word}が ちがいます。`; return; }
       if (done) return;
       done = true;
       const v = a.value;
@@ -1786,6 +1897,10 @@ async function readBackup(f) {
   }
   if (!data || data.app !== 'kaimono' || !Array.isArray(data.items)) return { err: 'かいものメモの ファイルでは ないようです。' };
   if ((+data.version || 1) > 1) return { err: '新しい 版の ファイルです。アプリを 新しくしてから 読みこんでください。' };
+  if (typeof data.sum === 'string') {
+    const { sum, ...rest } = data;
+    if (await sha256(JSON.stringify(rest)) !== sum) return { err: 'ファイルの 中身が 一部 こわれて います。ほかの バックアップを 使って ください。' };
+  }
   return { data, locked };
 }
 // a photo in a file is used only when it really is a picture, and not an outsized one
@@ -1813,7 +1928,7 @@ $('#verifyFile').addEventListener('change', async e => {
   // the newest backup made on this phone counts as checked when this file is that one, or newer
   if (at && backupInfo.at && at >= backupInfo.at - 10 * 60000) { backupInfo.checked = Date.now(); save('backup', backupInfo); paintBackupState(); }
   await ask('この バックアップは 読めます',
-    `${at ? `${md(at)} ${hm(at)}に 作った ` : ''}${locked ? 'パスワードつきの ' : ''}バックアップです。品物 ${list.length}こ・写真 ${good}まい${nHist >= 0 ? `・送った記録 ${nHist}回分` : ''}が 入って います。`
+    `${at ? `${md(at)} ${hm(at)}に 作った ` : ''}${locked ? 'パスワードつきの ' : ''}バックアップです${data.appVersion ? `（${data.appVersion}で 作成）` : ''}。品物 ${list.length}こ・写真 ${good}まい${nHist >= 0 ? `・送った記録 ${nHist}回分` : ''}が 入って います。`
     + (bad ? `写真 ${bad}まいは こわれて いて 読めません。` : '')
     + (same ? 'いまの 品物と 同じ 中身です。' : 'いまの 品物とは ちがう ところが あります（前に 作った ファイルかも しれません）。')
     + 'いまの データは 何も 変えて いません。', 'とじる', '', { one: true });
@@ -1874,8 +1989,12 @@ $('#importFile').addEventListener('change', async e => {
     fileCart.extras = fileCart.extras.filter(x => !x.voice);
   }
   const nCart = fileCart ? Object.keys(fileCart.lines).length + fileCart.extras.length : 0;
-  if (!(await ask('ファイルから 読みこみますか？', `品物 ${list.length}こ を 読みこみます。いまの 品物と 写真と 設定${withHist ? 'と 送った記録' : ''}は、ファイルの 中身に 入れかわります。`
-    + (nCart ? `ファイルに 入って いる、えらんで いた リスト（${nCart}こ）も 戻します。` : '') + '1週間は「読みこむ前に もどす」で 戻せます。', '読みこむ'))) return;
+  const at = Date.parse(data.exportedAt) || 0, older = !!(at && backupInfo.at && at < backupInfo.at - 10 * 60000);
+  const names = list.slice(0, 4).map(it => it.name).join('・') + (list.length > 4 ? ' など' : '');
+  if (!(await ask(older ? '古い ファイルかも しれません' : 'ファイルから 読みこみますか？', (at ? `${md(at)} ${hm(at)}に 作った バックアップです（${names}）。` : '')
+    + (older ? `この スマホで いちばん 新しい バックアップ（${md(backupInfo.at)}）より 前の ファイルです。読みこむと、その あとの 変更は 消えます。` : '')
+    + `品物 ${list.length}こ を 読みこみます。いまの 品物と 写真と 設定${withHist ? 'と 送った記録' : ''}は、ファイルの 中身に 入れかわります。`
+    + (nCart ? `ファイルに 入って いる、えらんで いた リスト（${nCart}こ）も 戻します。` : '') + '1週間は「読みこむ前に もどす」で 戻せます。', '読みこむ', 'やめる', { danger: older }))) return;
   // first the copy to go back to, then all the photos in one go (all or nothing), and only then the list
   try { await snapshot(); } catch (err) { toast('いまの 状態を 取っておけないため、読みこみを やめました。スマホの 空きを たしかめて ください。'); return; }
   const photos = data.photos && typeof data.photos === 'object' ? data.photos : {};
@@ -1910,17 +2029,33 @@ $('#importFile').addEventListener('change', async e => {
 /* ---------- automatic copies, and the items taken off the list ---------- */
 // before a new version changes how things are kept, and once a week: what is stored, just as it is stored, so going
 // back is putting it back and starting again; the newest three are kept, none longer than 60 days
-const COPY_KEEP = 3, COPY_DAYS = 60, TRASH_DAYS = 30;
+const COPY_KEEP = 3, UPDATE_KEEP = 2, COPY_DAYS = 60, TRASH_DAYS = 30;
 async function autoCopy(why, raw, from = '') {
   const photos = await idbAll('photos');
-  await idbPut('snaps', 'auto:' + Date.now(), { at: Date.now(), why, from, to: APP_VER, ls: raw, photos });
+  const sig = photos.map(([k, b]) => k + ':' + ((b && b.size) || 0)).sort().join(',');
+  await idbPut('snaps', 'auto:' + Date.now(), { at: Date.now(), why, from, to: APP_VER, ls: raw, photos, sig });
   await pruneCopies();
 }
 const snapsOf = async kind => (await idbAll('snaps')).filter(([k]) => String(k).startsWith(kind + ':')).map(([key, v]) => ({ key, ...v })).sort((a, b) => b.at - a.at);
 const copiesList = () => snapsOf('auto');
 const trashList = () => snapsOf('trash');
+// the copies made before an update are kept apart, so weekly ones never push them out
 async function pruneCopies() {
-  for (const [i, c] of (await copiesList()).entries()) if (i >= COPY_KEEP || (clockOK && Date.now() - c.at > COPY_DAYS * DAY)) await idbDel('snaps', c.key);
+  const list = await copiesList();
+  for (const [group, keep] of [[list.filter(c => c.why === 'update'), UPDATE_KEEP], [list.filter(c => c.why !== 'update'), COPY_KEEP]]) {
+    for (const [i, c] of group.entries()) if (i >= keep || (clockOK && Date.now() - c.at > COPY_DAYS * DAY)) await idbDel('snaps', c.key);
+  }
+}
+// once a week, and only when something changed since the newest copy (photos included)
+async function maybeWeekCopy() {
+  try {
+    const last = (await copiesList())[0];
+    if (Date.now() - Math.max(last ? last.at : 0, +load('copyCheck', 0)) < 7 * DAY) return;
+    save('copyCheck', Date.now());
+    const raw = rawNow(), sig = (await idbAll('photos')).map(([k, b]) => k + ':' + ((b && b.size) || 0)).sort().join(',');
+    if (last && RAW_KEYS.every(n => (last.ls || {})[n] === raw[n]) && last.sig === sig) return;
+    await autoCopy('week', raw);
+  } catch (e) { noteTrouble('copy'); }
 }
 async function paintCopies() {
   let list = [];
@@ -1928,7 +2063,7 @@ async function paintCopies() {
   $('#copyList').innerHTML = list.length ? list.map(c => {
     let n = 0;
     try { n = (JSON.parse(c.ls.items) || []).length; } catch (e) {}
-    const what = c.why === 'update' ? `${esc(c.to || '')} に なる 前` : c.why === 'restore' ? '戻す 前の 状態' : '週の 控え';
+    const what = c.why === 'update' ? `${esc(c.to || '')} に なる 前` : c.why === 'restore' ? '戻す 前の 状態' : c.why === 'conflict' ? 'ほかの 窓が 保存した 状態' : '週の 控え';
     return `<li class="srow"><span class="stx"><b>${md(c.at)} ${hm(c.at)}</b><small>${what}・品物 ${n}こ・写真 ${(c.photos || []).length}まい</small></span>`
       + `<button type="button" class="btn tonal sl" data-k="${esc(c.key)}">もどす</button></li>`;
   }).join('') : '<li class="srow empty">まだ ありません。</li>';
@@ -1988,17 +2123,19 @@ $('#trashList').addEventListener('click', async e => {
 async function keepBroken() {
   try {
     const last = (await snapsOf('broken'))[0];
-    if (last && last.ls.items === RAW.items && last.ls.history === RAW.history) return;
+    if (last && RAW_KEYS.every(n => last.ls[n] === RAW[n])) return;
     await idbPut('snaps', 'broken:' + Date.now(), { at: Date.now(), what: [...broken], ls: RAW });
-  } catch (e) {}
+  } catch (e) { noteTrouble('broken'); }
 }
 async function paintBroken() {
   let b = null;
   try { b = (await snapsOf('broken')).find(x => !x.seen) || null; } catch (e) {}
+  brokenUnseen = !!b;
+  paintHomeNote();
   $('#brokenCard').hidden = !b;
   $('#brokenCard').dataset.k = b ? b.key : '';
   if (!b) return;
-  const what = b.what.map(w => w === 'items' ? '品物' : '送った記録').join('と ');
+  const what = b.what.map(w => w === 'items' ? '品物' : w === 'settings' ? '設定' : '送った記録').join('と ');
   $('#brokenText').innerHTML = `<b>${what}の データの 一部が 読めませんでした</b>（${md(b.at)}）。読めなかった 元の データは、この スマホの 中に とって あります。前の 状態に 戻すときは「自動の 控え」から えらんで ください。`;
 }
 $('#brokenGo').addEventListener('click', () => { const h = $('#copyList').previousElementSibling.previousElementSibling; h.scrollIntoView({ block: 'start' }); window.scrollBy(0, -90); });
@@ -2008,6 +2145,30 @@ $('#brokenClose').addEventListener('click', async () => {
   paintBroken();
 });
 function paintWelcome() { $('#welcomeCard').hidden = !load('welcome', 0); }
+// a save into IndexedDB that went wrong (copies are skipped when nothing changed, so an old newest copy is no sign
+// of trouble; a failed one is)
+let brokenUnseen = false;
+function paintTrouble() {
+  const t = load('trouble', null);
+  const kinds = { copy: '自動の 控え', trash: 'けした 品物', photo: '写真', broken: '読めなかった データの 取りおき' };
+  $('#troubleCard').hidden = !t;
+  if (t) $('#troubleText').innerHTML = `<b>この スマホの 中の 保存で、うまく いかない ことが ありました</b>（${kinds[t.kind] || '保存'}・${md(t.at)}）。スマホの 空きを たしかめて ください。写真の ときは、とり直すと なおります。`;
+  paintHomeNote();
+}
+$('#troubleClose').addEventListener('click', () => { drop('trouble'); paintTrouble(); });
+// one line on the parent's screen, for the family, when something needs them
+function paintHomeNote() {
+  const el = $('#homeWelcome');
+  if (!el) return;
+  const b = backupInfo;
+  const text = load('trouble', null) || brokenUnseen ? 'ご家族の 方へ：保存で 気に なる ことが あります。下の「家族の設定」を 見て ください。'
+    : !clockOK ? 'ご家族の 方へ：スマホの 時計が ずれて いるようです。下の「家族の設定」を 見て ください。'
+    : load('welcome', 0) ? 'ご家族の 方へ：はじめての 状態です。前の データを 戻すときは、下の「家族の設定」から どうぞ。'
+    : (!b.at && b.changes >= 3) || (b.at && b.changes >= 3 && Date.now() - b.at > 30 * DAY) ? 'ご家族の 方へ：バックアップを おすすめします（下の「家族の設定」から）。'
+    : '';
+  el.textContent = text;
+  el.hidden = !text;
+}
 $('#welcomeClose').addEventListener('click', () => { drop('welcome'); paintWelcome(); });
 $('#welcomeImport').addEventListener('click', () => $('#importFile').click());
 
@@ -2028,17 +2189,18 @@ $('#clearHist').addEventListener('click', async () => {
   scrubHistory();
 });
 // the sent lists also go from the copies kept on this phone, with each item's count and last day
-async function scrubHistory() {
+async function scrubHistory(keep = () => [], counts = true) {
   const zero = its => Array.isArray(its) ? its.map(it => (it && typeof it === 'object' ? { ...it, count: 0, lastAt: 0 } : it)) : its;
+  const cut = raw => { try { const h = JSON.parse(raw); return Array.isArray(h) ? JSON.stringify(keep(h)) : raw; } catch (e) { return counts ? null : raw; } };
   try {
     for (const { key, ...c } of await copiesList()) {
-      const ls = { ...c.ls, history: '[]' };
-      try { ls.items = JSON.stringify(zero(JSON.parse(c.ls.items))); } catch (e) {}
+      const ls = { ...c.ls, history: c.ls.history == null ? null : cut(c.ls.history) };
+      if (counts) try { ls.items = JSON.stringify(zero(JSON.parse(c.ls.items))); } catch (e) {}
       await idbPut('snaps', key, { ...c, ls });
     }
-    for (const { key, ...b } of await snapsOf('broken')) await idbPut('snaps', key, { ...b, ls: { ...b.ls, history: null } });
+    for (const { key, ...b } of await snapsOf('broken')) await idbPut('snaps', key, { ...b, ls: { ...b.ls, history: counts ? null : b.ls.history } });
     const s = await idbGet('snaps', 'beforeImport');
-    if (s) await idbPut('snaps', 'beforeImport', { ...s, hist: [], items: zero(s.items) });
+    if (s) await idbPut('snaps', 'beforeImport', { ...s, hist: keep(s.hist || []), items: counts ? zero(s.items) : s.items });
   } catch (e) {}
 }
 $('#clearTrash').addEventListener('click', async () => {
@@ -2107,13 +2269,13 @@ renderHome();
 if (pending) setTimeout(askSent, 700);
 (async () => {
   // what could not be read is kept aside before anything is saved over it
-  if (broken.size) await keepBroken();
+  if (broken.size) { await keepBroken(); brokenUnseen = true; }
   // photos kept by 1.3 and before move out of localStorage first, then all of them are read in once
   await movePhotos();
   // a new version: a copy of what was stored, as it was, before this version saves anything over it
   if (lastVer !== APP_VER) {
     if (RAW.items == null) save('ver', APP_VER);
-    else { try { await autoCopy('update', RAW, lastVer || ''); save('ver', APP_VER); } catch (e) {} }
+    else { try { await autoCopy('update', RAW, lastVer || ''); save('ver', APP_VER); } catch (e) { noteTrouble('copy'); } }
   }
   await loadPhotos();
   renderHome();
@@ -2128,7 +2290,8 @@ if (pending) setTimeout(askSent, 700);
   pruneClips();
   await pruneSnap();
   // and a copy once a week
-  try { const last = (await copiesList())[0]; if (!last || Date.now() - last.at > 7 * DAY) await autoCopy('week', rawNow()); } catch (e) {}
+  await maybeWeekCopy();
+  paintHomeNote();
 })();
 // after going back to a copy, the page starts again and says so
 try { const note = sessionStorage.getItem(KEY + 'note'); if (note) { sessionStorage.removeItem(KEY + 'note'); setTimeout(() => toast(note), 400); } } catch (e) {}
