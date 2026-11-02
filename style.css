@@ -98,6 +98,8 @@ a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   margin-left:-.35rem;padding:.25rem .4rem;border:0;border-radius:var(--sh-m);background:transparent;color:var(--md-on-surface);font:600 .8rem/1.2 var(--font)}
 .navbtn .ic{width:1.75rem;height:1.75rem}
 .navbtn.end{margin:0 -.35rem 0 0}
+/* 設定 at the right end of the bar, on the line of ジャンル */
+.appbar .navbtn.end{margin-left:auto}
 .how{margin:.3rem auto 0;font:var(--t-body-l);color:var(--md-on-surface-variant)}
 .how .g{display:inline-flex;align-items:center;gap:.25rem;padding:0 .65rem 0 .5rem;border-radius:999px;vertical-align:-.15rem;background:var(--md-primary);color:var(--md-on-primary);font:var(--t-label-l);line-height:1.65}
 .how .g .ic{width:1rem;height:1rem}
@@ -169,7 +171,6 @@ a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .row.sel .btn.outlined{color:var(--md-on-primary-container);box-shadow:inset 0 0 0 1px var(--md-on-primary-container)}
 /* bigger text: the buttons get their own line so the name keeps its width */
 html[data-size="l"] .row,html[data-size="xl"] .row{grid-template-areas:"pic txt" "step step"}
-.foot{padding-top:1.4rem;padding-bottom:1rem;text-align:center}
 .empty{margin-top:1rem}
 #home{padding-bottom:calc(var(--barH) + 1rem)}
 

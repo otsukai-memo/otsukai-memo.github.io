@@ -16,7 +16,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/basket-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/basket-apple-touch.png">
-<link rel="stylesheet" href="style.css?v=1.18">
+<link rel="stylesheet" href="style.css?v=1.19">
 </head>
 <body>
 
@@ -30,13 +30,13 @@
 <main id="home">
   <header class="appbar" id="appbar"><div class="wrap">
     <button type="button" id="navBtn" class="navbtn sl" aria-haspopup="dialog" aria-controls="sh-nav" aria-expanded="false"><span data-ic="menu"></span><span class="navlbl">ジャンル</span></button>
+    <button type="button" id="openSettings" class="navbtn end sl"><span data-ic="settings"></span><span class="navlbl">設定</span></button>
   </div></header>
   <p class="wrap placenote" id="placeNote" role="alert" hidden></p>
   <p class="how wrap" id="how">えらび おわったら、下の <span class="g"><span data-ic="send"></span>送る</span> を 押してください。</p>
   <section id="extrasSec" class="wrap" hidden><h2 class="gh">ほかに たのむもの</h2><ul id="extrasList" class="rows"></ul></section>
   <div id="groups" class="wrap"></div>
-  <p id="emptyItems" class="wrap note empty" hidden>品物が ありません。下の「家族の設定」から ふやしてください。</p>
-  <footer class="foot wrap"><button type="button" id="openSettings" class="btn text quiet sl"><span data-ic="settings"></span>家族の設定</button></footer>
+  <p id="emptyItems" class="wrap note empty" hidden>品物が ありません。右上の「設定」から ふやしてください。</p>
 </main>
 
 <nav id="bar" aria-label="送る">
@@ -47,7 +47,7 @@
 </nav>
 
 <section id="settings" hidden aria-labelledby="setTitle">
-  <header class="topbar"><div class="wrap"><button type="button" id="closeSettings" class="icon-btn sl" aria-label="もどる"><span data-ic="arrow-left"></span></button><h1 id="setTitle">家族の設定</h1></div></header>
+  <header class="topbar"><div class="wrap"><button type="button" id="closeSettings" class="icon-btn sl" aria-label="もどる"><span data-ic="arrow-left"></span></button><h1 id="setTitle">設定</h1></div></header>
   <div class="wrap">
     <p class="note">ここは ご家族（準備をする人）用の 画面です。</p>
     <div class="card warn" id="troubleCard" hidden><p id="troubleText"></p><div class="btnrow"><button type="button" id="troubleClose" class="btn text sl">わかった</button></div></div>
@@ -94,7 +94,7 @@
     <button type="button" id="selfCheck" class="btn outlined sl"><span data-ic="file-check"></span>チェックする</button>
     <ul class="checks" id="checkList"></ul>
 
-    <h2 class="sh">家族の設定の 暗証番号</h2>
+    <h2 class="sh">設定の 暗証番号</h2>
     <p class="note" id="pinState"></p>
     <div class="btnrow"><button type="button" id="pinSet" class="btn outlined sl"><span data-ic="lock"></span><span class="lbl">暗証番号を つける</span></button><button type="button" id="pinOff" class="btn text sl" hidden>はずす</button></div>
 
@@ -126,7 +126,7 @@
     <p class="note">スマホを 人に ゆずる ときなどに。品物・写真・送った記録・録音・設定を ぜんぶ けして、はじめの 状態に 戻します。けした データは 戻せません。</p>
     <button type="button" id="wipeAll" class="btn danger sl"><span data-ic="trash-2"></span>データを ぜんぶ けす</button>
 
-    <p class="ver">かいものメモ 1.18</p>
+    <p class="ver">かいものメモ 1.19</p>
   </div>
 </section>
 
@@ -284,7 +284,7 @@
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="check.js?v=1.18"></script>
-<script src="app.js?v=1.18"></script>
+<script src="check.js?v=1.19"></script>
+<script src="app.js?v=1.19"></script>
 </body>
 </html>

@@ -106,6 +106,11 @@
     const top13 = $in(f, '#home').textContent;
     check(!$in(f, '#today') && !$in(f, '#sameBtn') && !$in(f, '#homeWelcome') && !/ほしいもの|ご家族の 方へ|まえと おなじ/.test(top13) && /えらび おわったら/.test(top13),
       '親の 画面に 日付・まえと おなじ・家族への 文が ない');
+    // 1.19: 設定 (no longer 家族の設定) sits at the top right, on the line of ジャンル
+    const nb = $in(f, '#navBtn').getBoundingClientRect(), sb = $in(f, '#openSettings').getBoundingClientRect();
+    check(!!$in(f, '#appbar #openSettings') && Math.abs(nb.top - sb.top) <= 2 && f.contentDocument.documentElement.clientWidth - sb.right < 24 && !$in(f, '.foot'),
+      `「設定」は 右上、「ジャンル」と 同じ 高さ（${Math.round(nb.top)}px・${Math.round(sb.top)}px、右から ${Math.round(f.contentDocument.documentElement.clientWidth - sb.right)}px）`);
+    check($in(f, '#openSettings').textContent === '設定' && $in(f, '#setTitle').textContent === '設定' && !/家族の設定/.test(f.contentDocument.body.textContent), '名前は「家族の設定」では なく「設定」');
     // 1.17: 品物を ふやす asks for no picture: the name's first letter is the item's picture (drawings and photos on なおす)
     await openSettings(f);
     $in(f, '#addItem').click();
@@ -128,11 +133,11 @@
     await wait(900);
     const homeRow = named(f, 'みかんの かんづめ');
     check(!!homeRow && (homeRow.querySelector('.pic.ini') || {}).textContent === 'み', '親の 画面にも 名前の 1文字目の 絵で 出る');
-    // 1.18: 家族の設定 has no choice of how to send or of colours, nothing on the home-screen icon, and no backups
+    // 1.18: 設定 has no choice of how to send or of colours, nothing on the home-screen icon, and no backups
     await openSettings(f);
     const set18 = $in(f, '#settings').textContent;
     check(['#sendSeg', '#themeSeg', '#installBtn', '#backupSec', '#backupCard', '#welcomeCard', '#importFile', '#verifyFile', '#saveOut'].every(s => !$in(f, s))
-      && !/バックアップ|ホーム画面に アイコンを 置く|画面の 色/.test(set18), '家族の設定に 送り方と 画面の 色の えらび・ホーム画面の アイコン・バックアップが ない');
+      && !/バックアップ|ホーム画面に アイコンを 置く|画面の 色/.test(set18), '設定に 送り方と 画面の 色の えらび・ホーム画面の アイコン・バックアップが ない');
     // the sheet that asked for backups' passwords too asks for the PIN only
     $in(f, '#pinSet').click();
     await wait(600);
@@ -155,7 +160,7 @@
     $in(f, '#passIn').value = '2580';
     $in(f, '#passOk').click();
     await wait(1500);
-    check(/ちがいます/.test(wrong) && !$in(f, '#settings').hidden, `暗証番号で 家族の設定が ひらく（ちがうと「${wrong}」）`);
+    check(/ちがいます/.test(wrong) && !$in(f, '#settings').hidden, `暗証番号で 設定が ひらく（ちがうと「${wrong}」）`);
 
     // ---------- what 1.3 left ----------
     await clean();

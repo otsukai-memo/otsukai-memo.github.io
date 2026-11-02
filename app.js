@@ -47,7 +47,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.18';
+const APP_VER = '1.19';
 const DAY = 864e5;
 
 // 1.15: たべもの is split into the genres of a supermarket's shelves, so the genre menu reaches each of them
@@ -336,7 +336,7 @@ document.addEventListener('pointerdown', e => {
 }, { passive: true });
 
 // Chrome on Android turns a press of about half a second into a long press and drops the tap, and older fingers
-// press slowly: a long press on a button counts as pressing it (ひらく in the 家族の設定 question keeps its own hold)
+// press slowly: a long press on a button counts as pressing it (ひらく in the 設定 question keeps its own hold)
 let longPress = null;
 document.addEventListener('contextmenu', e => {
   if (e.pointerType && e.pointerType !== 'touch') return;
@@ -1066,7 +1066,7 @@ function jumpTo(key) {
 const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
 const VOICE_MAX = 60;
 const REC_ERRORS = {
-  NotAllowedError: 'マイクが 許可されていません。ご家族に「家族の設定」の「ためしに 録音してみる」を 押してもらって ください。',
+  NotAllowedError: 'マイクが 許可されていません。ご家族に「設定」の「ためしに 録音してみる」を 押してもらって ください。',
   NotFoundError: 'マイクが 見つかりませんでした。',
   NotReadableError: 'マイクを 使えませんでした。ほかの アプリを 閉じてから、もういちど 押して ください。',
 };
@@ -1451,7 +1451,7 @@ $('#clearAll').addEventListener('click', async () => {
   toast('ぜんぶ けしました。', 'もとに もどす', () => { cart = fixCart(before); saveCart(); renderHome(); });
 });
 
-/* ---------- 家族の設定 ---------- */
+/* ---------- 設定 ---------- */
 let homeScroll = 0;
 $('#openSettings').addEventListener('click', async () => {
   if (await ask('ご家族用の 設定です', '品物の 登録や、送り方の 設定を します。ご家族の方は「ひらく」を 押したまま 2びょう まって ください。', 'ひらく（押したまま）', 'もどる', { gate: true }) && await pinOK()) openSettings();
@@ -1494,7 +1494,7 @@ async function pinHash(v, salt, iter) {
 async function pinOK() {
   const pin = load('pin', null);
   if (!pin || !pin.hash) return true;
-  for (let text = '家族の設定の 暗証番号を 入れて ください。'; ;) {
+  for (let text = '設定の 暗証番号を 入れて ください。'; ;) {
     const t = load('pinTry', { fails: 0, until: 0 });
     if (Date.now() < t.until) { toast(`まちがいが 続いたので、${Math.ceil((t.until - Date.now()) / 60000)}分 ほど 待ってから ためして ください。`); return false; }
     const v = await askPass('暗証番号', text, false);
@@ -1508,13 +1508,13 @@ async function pinOK() {
 function paintPin() {
   const on = !!load('pin', null);
   $('#pinState').textContent = on
-    ? 'つけて います。家族の設定を ひらく ときに 聞きます。忘れると、Chrome の 設定で この サイトの データを けす ほか なく、品物や 写真も 消えます。'
-    : 'つけると、家族の設定を ひらく ときに 暗証番号を 聞きます（親の 画面は 今までどおり）。スマホを ほかの 人が さわる ことが あるときに。';
+    ? 'つけて います。設定を ひらく ときに 聞きます。忘れると、Chrome の 設定で この サイトの データを けす ほか なく、品物や 写真も 消えます。'
+    : 'つけると、設定を ひらく ときに 暗証番号を 聞きます（親の 画面は 今までどおり）。スマホを ほかの 人が さわる ことが あるときに。';
   $('.lbl', $('#pinSet')).textContent = on ? '暗証番号を かえる' : '暗証番号を つける';
   $('#pinOff').hidden = !on;
 }
 $('#pinSet').addEventListener('click', async () => {
-  const v = await askPass('暗証番号を きめて ください', '家族の設定を ひらく ときに 聞きます。忘れると データを ぜんぶ けす ことに なるので、紙に 書いて しまって おいて ください。', true);
+  const v = await askPass('暗証番号を きめて ください', '設定を ひらく ときに 聞きます。忘れると データを ぜんぶ けす ことに なるので、紙に 書いて しまって おいて ください。', true);
   if (v == null) return;
   const salt = b64(crypto.getRandomValues(new Uint8Array(16)));
   save('pin', { salt, iter: PIN_ITER, hash: await pinHash(v, salt, PIN_ITER) });
@@ -1522,7 +1522,7 @@ $('#pinSet').addEventListener('click', async () => {
   toast('暗証番号を つけました。');
 });
 $('#pinOff').addEventListener('click', async () => {
-  if (!(await ask('暗証番号を はずしますか？', '家族の設定を ひらく ときに、暗証番号を 聞かなく なります。', 'はずす'))) return;
+  if (!(await ask('暗証番号を はずしますか？', '設定を ひらく ときに、暗証番号を 聞かなく なります。', 'はずす'))) return;
   drop('pin');
   paintPin();
   toast('暗証番号を はずしました。');
@@ -1967,7 +1967,7 @@ window.addEventListener('beforeinstallprompt', e => e.preventDefault());
 /* ---------- asking for the PIN ---------- */
 const b64 = buf => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
 const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-// twice when it is being set (4 to 8 digits), once to open 家族の設定 (any length, so older ones still work);
+// twice when it is being set (4 to 8 digits), once to open 設定 (any length, so older ones still work);
 // null when the family gives up
 function askPass(title, text, twice) {
   return new Promise(res => {
@@ -2142,7 +2142,7 @@ $('#brokenClose').addEventListener('click', async () => {
   paintBroken();
 });
 // a save into IndexedDB that went wrong (copies are skipped when nothing changed, so an old newest copy is no sign
-// of trouble; a failed one is), and room running out (spaceLow, measured at start): both told in 家族の設定
+// of trouble; a failed one is), and room running out (spaceLow, measured at start): both told in 設定
 let spaceLow = false;
 function paintTrouble() {
   const t = load('trouble', null);
