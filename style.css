@@ -363,6 +363,7 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 .fl-t{display:block;margin:0 .25rem .55rem;font:var(--t-title-m);color:var(--md-on-surface-variant)}
 .fl > small,.fl-help{display:block;margin:.4rem .25rem 0;font:var(--t-body-m);color:var(--md-on-surface-variant)}
 .picrow{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
+.picrow .autonote{flex:1 1 9rem;font:var(--t-body-m);color:var(--md-on-surface-variant)}
 .pics{display:grid;grid-template-columns:repeat(auto-fill,minmax(3rem,1fr));gap:.3rem;max-height:12.5rem;overflow-y:auto;margin-top:.7rem;padding:.4rem;
   border-radius:var(--sh-m);background:var(--item)}
 .pics button{display:flex;align-items:center;justify-content:center;height:3rem;padding:0;border:0;border-radius:var(--sh-s);background:var(--hb,none);color:var(--hf,inherit)}

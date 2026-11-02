@@ -103,6 +103,28 @@
     const top13 = $in(f, '#home').textContent;
     check(!$in(f, '#today') && !$in(f, '#sameBtn') && !$in(f, '#homeWelcome') && !/ほしいもの|ご家族の 方へ|まえと おなじ/.test(top13) && /えらび おわったら/.test(top13),
       '親の 画面に 日付・まえと おなじ・家族への 文が ない');
+    // 1.17: 品物を ふやす asks for no picture: the name's first letter is the item's picture (drawings and photos on なおす)
+    await openSettings(f);
+    $in(f, '#addItem').click();
+    await wait(600);
+    $in(f, '#fName').value = 'みかんの かんづめ';
+    $in(f, '#fName').dispatchEvent(new f.contentWindow.Event('input'));
+    check($in(f, '#fPics').hidden && $in(f, '#fPhoto').hidden && !$in(f, '#fAutoNote').hidden && ($in(f, '#fPicBox .pic.ini') || {}).textContent === 'み',
+      '品物を ふやす ときは 絵・写真を 聞かず、名前の 1文字目が 絵に なる');
+    $in(f, '#fSave').click();
+    await wait(900);
+    const made = (stored('items') || []).find(it => it.name === 'みかんの かんづめ') || {};
+    const madeRow = $in(f, `#sItems [data-id="${made.id}"]`);
+    check(made.icon === '' && made.photo === false && !!madeRow && !!madeRow.querySelector('.pic.ini'), 'ふやした 品物は 名前の 1文字目の 絵で 保存される');
+    if (madeRow) madeRow.querySelector('.sedit').click();
+    await wait(600);
+    check(!$in(f, '#fPics').hidden && !$in(f, '#fPhoto').hidden && $in(f, '#fAutoNote').hidden, 'なおす ときは 絵・写真を えらべる');
+    $in(f, '#sh-edit .sheet-foot [data-close]').click();
+    await wait(600);
+    $in(f, '#closeSettings').click();
+    await wait(900);
+    const homeRow = named(f, 'みかんの かんづめ');
+    check(!!homeRow && (homeRow.querySelector('.pic.ini') || {}).textContent === 'み', '親の 画面にも 名前の 1文字目の 絵で 出る');
 
     // ---------- what 1.3 left ----------
     await clean();

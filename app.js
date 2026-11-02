@@ -47,7 +47,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.16';
+const APP_VER = '1.17';
 const DAY = 864e5;
 
 // 1.15: たべもの is split into the genres of a supermarket's shelves, so the genre menu reaches each of them
@@ -1863,6 +1863,11 @@ function openEdit(it, name = '') {
   $('#fName').value = draft.name;
   $('#fNote').value = draft.note;
   $('#fDelete').hidden = $('#fCopyBox').hidden = !it;
+  // a new item takes the first letter of its name for a picture, so adding one is only typing its name;
+  // a drawing or a photo is picked when an item is opened again (なおす)
+  $('#fPicT').textContent = it ? '絵・写真' : '絵';
+  $('#fAutoNote').hidden = !!it;
+  $('#fPhoto').hidden = $('#fPhotoHint').hidden = $('#fPics').hidden = !it;
   $('#fPics').innerHTML = `<button type="button" class="sl" data-p="" aria-label="絵なし（名前の 1文字目）" title="絵なし"><span class="ini"></span></button>`
     + PICS.map(([n, label, hue, d]) => `<button type="button" class="sl h-${hue}" data-p="${n}" aria-label="${label}" title="${label}">${svgOf(d)}</button>`).join('');
   paintEdit(); paintUnits(); paintGroup();
