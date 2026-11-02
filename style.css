@@ -36,20 +36,6 @@
   --barH:5.5rem;
   color-scheme:light;font-size:20px;
 }
-/* dark colours only when 家族の設定 asks for them: light text on black blurs for eyes with cataracts or astigmatism,
-   so the light scheme stays even when the phone itself is dark ("自動" follows the phone) */
-html[data-theme="dark"]{
-  --md-primary:#a1d39a;--md-on-primary:#0a390f;--md-primary-container:#235024;--md-on-primary-container:#bcf0b4;
-  --md-secondary:#baccb3;--md-on-secondary:#253423;--md-secondary-container:#3b4b38;--md-on-secondary-container:#d5e8cf;
-  --md-tertiary:#a0cfd4;--md-on-tertiary:#00363b;--md-tertiary-container:#1f4d52;--md-on-tertiary-container:#bcebf0;
-  --md-error:#ffb4ab;--md-on-error:#690005;--md-error-container:#93000a;--md-on-error-container:#ffdad6;
-  --md-surface:#10140f;--md-surface-container-lowest:#0b0f0a;--md-surface-container-low:#191d17;--md-surface-container:#1d211b;
-  --md-surface-container-high:#272b25;--md-surface-container-highest:#323630;
-  --md-on-surface:#e0e4db;--md-on-surface-variant:#c2c9bd;--md-outline:#8c9388;--md-outline-variant:#424940;
-  --md-inverse-surface:#e0e4db;--md-inverse-on-surface:#2d322c;--md-inverse-primary:#3b693a;
-  --page:var(--md-surface);--item:var(--md-surface-container-high);--bar:var(--md-surface-container);--picbg:var(--md-surface-container-highest);
-  color-scheme:dark;
-}
 html[data-size="l"]{font-size:23px}
 html[data-size="xl"]{font-size:26px}
 /* the text size is for the parent's screen; 家族の設定 stays at the normal size */
@@ -133,7 +119,7 @@ a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .hit{position:absolute;inset:0;z-index:1;margin:0;padding:0;border:0;border-radius:inherit;background:transparent}
 .picbox{grid-area:pic;position:relative;width:4.25rem;height:4.25rem}
 .pic{display:flex;align-items:center;justify-content:center;flex:none;width:4.25rem;height:4.25rem;border-radius:var(--sh-m);overflow:hidden;background:var(--picbg)}
-/* a drawing in its colour (tone 40) on that colour's tint (tone 95); tone 80 on tone 20 when dark: 5:1 or more */
+/* a drawing in its colour (tone 40) on that colour's tint (tone 95): 5:1 or more */
 .pic.lu{background:var(--hb);color:var(--hf)}
 .h-red{--hf:#B3261E;--hb:#FDE7E4}
 .h-orange{--hf:#A3480F;--hb:#FDEADB}
@@ -145,16 +131,6 @@ a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .h-pink{--hf:#A2336B;--hb:#FBE4EE}
 .h-brown{--hf:#7A4B26;--hb:#F4E7DB}
 .h-gray{--hf:#4F5B57;--hb:#E7EBE8}
-html[data-theme="dark"] .h-red{--hf:#FFB4AB;--hb:#4C1D19}
-html[data-theme="dark"] .h-orange{--hf:#FFB787;--hb:#4A2610}
-html[data-theme="dark"] .h-amber{--hf:#F2C35A;--hb:#3E2E04}
-html[data-theme="dark"] .h-green{--hf:#A3D59A;--hb:#1D381C}
-html[data-theme="dark"] .h-teal{--hf:#7FD6D0;--hb:#0D3734}
-html[data-theme="dark"] .h-blue{--hf:#A9C7FF;--hb:#172F50}
-html[data-theme="dark"] .h-purple{--hf:#D2BCFF;--hb:#33214F}
-html[data-theme="dark"] .h-pink{--hf:#FFB1D0;--hb:#4A1B32}
-html[data-theme="dark"] .h-brown{--hf:#E6C1A2;--hb:#3D2A1B}
-html[data-theme="dark"] .h-gray{--hf:#C1C9C5;--hb:#2D3431}
 .pic.lu svg{width:3rem;height:3rem}
 .pic.ini{background:var(--md-secondary-container);color:var(--md-on-secondary-container);font:500 1.7rem/1 var(--font)}
 .pic.memo{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
@@ -377,11 +353,9 @@ html.insettings:not(.lock) #toast{bottom:calc(1rem + env(safe-area-inset-bottom)
 .savebar{position:fixed;left:0;right:0;top:0;z-index:95;padding:calc(.75rem + env(safe-area-inset-top)) 0 .75rem;
   background:var(--md-error-container);color:var(--md-on-error-container);box-shadow:0 2px 12px rgba(0,0,0,.25)}
 .savebar p{margin:0 .25rem .6rem;font:var(--t-body-m);font-size:.95rem}
-/* backups and data: a card that asks for a backup while one is due, quiet once it is done */
+/* a card at the top of 家族の設定 when something kept on this phone needs a look */
 .card{margin:.6rem 0 0;padding:1rem;border-radius:var(--sh-l);background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
-.card.ok{background:var(--item);color:var(--md-on-surface);box-shadow:inset 0 0 0 1px var(--md-outline-variant)}
 .card p{margin:0 0 .75rem;font:var(--t-body-m);font-size:.95rem}
-.card.ok p{margin-bottom:.5rem}
 .card.warn{background:var(--md-error-container);color:var(--md-on-error-container)}
 .warnnote{color:var(--md-error)}
 .photohint{display:block;margin:.4rem .25rem 0;color:var(--md-on-surface-variant)}

@@ -27,7 +27,7 @@ jobs:
           site=https://otsukai-memo.github.io
           if ! curl -fsS "$site/?v=$(date +%s)" -o page.html; then echo "problem=サイトが 開けません" >> "$GITHUB_OUTPUT"; exit 0; fi
           if ! grep -q "かいものメモ $v</p>" page.html; then echo "problem=公開中の 版が $v では ありません" >> "$GITHUB_OUTPUT"; exit 0; fi
-          for f in "app.js?v=$v" "check.js?v=$v" "style.css?v=$v" sw.js manifest.webmanifest tools/open-backup.html; do
+          for f in "app.js?v=$v" "check.js?v=$v" "style.css?v=$v" sw.js manifest.webmanifest; do
             if ! curl -fsS -o /dev/null "$site/$f"; then echo "problem=$f が 開けません" >> "$GITHUB_OUTPUT"; exit 0; fi
           done
           google-chrome --headless=new --no-sandbox --disable-gpu --virtual-time-budget=8000 --dump-dom "$site/" > live.html 2>/dev/null || true

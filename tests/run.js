@@ -47,12 +47,6 @@
   const ADDED = 23, ADDED3 = 100, ADDED4 = 10;
   const groupOf = id => ((stored('items') || []).find(it => it.id === id) || {}).group;
   const named = (f, name) => [...f.contentDocument.querySelectorAll('#groups .row')].find(r => r.querySelector('.nm').textContent === name);
-  const giveFile = (f, input, text) => {
-    const dt = new f.contentWindow.DataTransfer();
-    dt.items.add(new f.contentWindow.File([text], 'kaimono-backup.json', { type: 'application/json' }));
-    $in(f, input).files = dt.files;
-    $in(f, input).dispatchEvent(new f.contentWindow.Event('change'));
-  };
   const stored = name => { try { return JSON.parse(localStorage.getItem(KEY + name)); } catch (e) { return undefined; } };
   async function photoURL(color) {
     const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -69,6 +63,15 @@
       lines: [line(fx.items[i % fx.items.length]), ...(i ? [] : fx.histSized || [])], extras: i ? [] : ['ふつうの メモ'], when: '' }))));
     if (fx.backup) localStorage.setItem(KEY + 'backup', JSON.stringify(fx.backup));
     if (fx.ver) localStorage.setItem(KEY + 'ver', JSON.stringify(fx.ver));
+  }
+  // something kept in IndexedDB, as an earlier version left it
+  async function putSnap(key, v) {
+    const db = await new Promise((res, rej) => {
+      const q = indexedDB.open('kaimono-voice', 2);
+      q.onupgradeneeded = () => { for (const s of ['clips', 'photos', 'snaps']) if (!q.result.objectStoreNames.contains(s)) q.result.createObjectStore(s); };
+      q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
+    });
+    try { await new Promise((res, rej) => { const tx = db.transaction('snaps', 'readwrite'); tx.objectStore('snaps').put(v, key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } finally { db.close(); }
   }
   async function openSettings(f) {
     $in(f, '#openSettings').click(); await wait(300);
@@ -125,6 +128,34 @@
     await wait(900);
     const homeRow = named(f, 'みかんの かんづめ');
     check(!!homeRow && (homeRow.querySelector('.pic.ini') || {}).textContent === 'み', '親の 画面にも 名前の 1文字目の 絵で 出る');
+    // 1.18: 家族の設定 has no choice of how to send or of colours, nothing on the home-screen icon, and no backups
+    await openSettings(f);
+    const set18 = $in(f, '#settings').textContent;
+    check(['#sendSeg', '#themeSeg', '#installBtn', '#backupSec', '#backupCard', '#welcomeCard', '#importFile', '#verifyFile', '#saveOut'].every(s => !$in(f, s))
+      && !/バックアップ|ホーム画面に アイコンを 置く|画面の 色/.test(set18), '家族の設定に 送り方と 画面の 色の えらび・ホーム画面の アイコン・バックアップが ない');
+    // the sheet that asked for backups' passwords too asks for the PIN only
+    $in(f, '#pinSet').click();
+    await wait(600);
+    $in(f, '#passIn').value = $in(f, '#passAgain').value = '12';
+    $in(f, '#passOk').click();
+    await wait(200);
+    const short = $in(f, '#passMsg').textContent;
+    $in(f, '#passIn').value = $in(f, '#passAgain').value = '2580';
+    $in(f, '#passOk').click();
+    await wait(900);
+    check(/4〜8けた/.test(short) && !!(stored('pin') || {}).hash && $in(f, '#sh-pass').hidden, `暗証番号を つけられる（短いと「${short}」）`);
+    $in(f, '#closeSettings').click();
+    await wait(900);
+    $in(f, '#openSettings').click(); await wait(300);
+    $in(f, '#askOk').click(); await wait(900);
+    $in(f, '#passIn').value = '0000';
+    $in(f, '#passOk').click();
+    await wait(1500);
+    const wrong = $in(f, '#passText').textContent;
+    $in(f, '#passIn').value = '2580';
+    $in(f, '#passOk').click();
+    await wait(1500);
+    check(/ちがいます/.test(wrong) && !$in(f, '#settings').hidden, `暗証番号で 家族の設定が ひらく（ちがうと「${wrong}」）`);
 
     // ---------- what 1.3 left ----------
     await clean();
@@ -167,33 +198,6 @@
     check(!!$in(f, '#groups [data-id="b2"] .pic.lu'), 'Lucide の 絵が 出る');
     check((await keys('snaps')).some(k => k.startsWith('auto:')), '新しい 版の 前の 控えが 取られる');
 
-    // ---------- a backup out, then back into an empty app ----------
-    await openSettings(f);
-    let href = null;
-    f.contentWindow.HTMLAnchorElement.prototype.click = function () { if (this.download) href = this.href; };
-    $in(f, '#exportBtn').click();
-    for (let i = 0; i < 40 && !href; i++) await wait(100);
-    check(!!href, 'バックアップを 書き出せる');
-    const text = href ? await (await f.contentWindow.fetch(href)).text() : '{}';
-    const file = JSON.parse(text);
-    check(file.items && file.items.length === splitN(f18.items) + ADDED + ADDED3 + ADDED4 && typeof file.sum === 'string' && file.appVersion === appVer, '書き出した ファイルに 品物・版・印が 入る');
-    await clean();
-    f = await openApp();
-    await openSettings(f);
-    giveFile(f, '#importFile', text);
-    await wait(800);
-    $in(f, '#askOk').click();
-    await wait(2000);
-    const back = stored('items') || [];
-    check(back.length === file.items.length && file.items.every(it => back.some(b => b.id === it.id && b.name === it.name && b.icon === it.icon)), 'バックアップを 読みこむと 同じ 品物に 戻る');
-    check((stored('settings') || {}).to === 'ゆうこ', '送る 相手の 名前も 戻る');
-
-    // ---------- a damaged file is refused ----------
-    const bad = JSON.parse(text); bad.items[0].name += 'x';
-    giveFile(f, '#verifyFile', JSON.stringify(bad));
-    await wait(800);
-    check(/こわれて/.test($in(f, '#askText').textContent), '中身が かわった ファイルは「こわれて います」と 断る');
-
     // ---------- 1.14: a list kept by 1.13 gets the new starting items once, but not one it has already ----------
     await clean();
     const kept = [
@@ -229,32 +233,25 @@
     check(grown16.length === kept15.length + ADDED4 - 1 && grown16.slice(kept15.length).every(it => it.group === 'drink') && kept15.every((it, i) => grown16[i].id === it.id),
       `1.15 の リストに のみものが 足される（${grown16.length}こ。日本酒は 1つの まま）`);
 
-    // ---------- a backup made by 1.9, with sizes, looked at and read in ----------
+    // ---------- 1.18: what 1.17 kept for the share menu, the dark screen and backups stays behind ----------
     await clean();
+    localStorage.setItem(KEY + 'settings', JSON.stringify({ size: 'm', send: 'share', theme: 'dark', to: 'ゆうこ', lock: true, keep: 'three', copyDays: 60 }));
+    localStorage.setItem(KEY + 'backup', JSON.stringify({ at: 1790000000000, changes: 4, dl: [1790000000000] }));
+    localStorage.setItem(KEY + 'welcome', JSON.stringify(1790000000000));
+    localStorage.setItem(KEY + 'ver', JSON.stringify('1.17'));
+    await putSnap('beforeImport', { at: Date.now() - 864e5, items: [], hist: [], settings: {}, cart: null, photos: [] });
     f = await openApp();
-    await openSettings(f);
-    const old = JSON.parse(JSON.stringify(FIXTURES['1.9 backup']));
-    old.photos = Object.fromEntries(await Promise.all(old.photos.map(async id => [id, await photoURL('#3a3')])));
-    old.history[0].at = Date.now() - 864e5;
-    giveFile(f, '#verifyFile', JSON.stringify(old));
-    await wait(800);
-    const told = ($in(f, '#askText').textContent.match(/品物 \d+こ・写真 \d+まい/) || [''])[0];
-    check(told === '品物 4こ・写真 2まい', `1.9 の バックアップは 大きさごとに 数える（${told}）`);
-    $in(f, '#askNo').click();
-    await wait(500);
-    giveFile(f, '#importFile', JSON.stringify(old));
-    await wait(800);
-    $in(f, '#askOk').click();
-    await wait(2000);
-    const its = stored('items') || [];
-    check(['お米 2kg', 'お米 5kg', 'たまご', 'ヨーグルト'].every(n => its.some(it => it.name === n)) && its.length === 4 && its.every(it => !it.sizes.length), '1.9 の バックアップを 読みこむと 大きさごとの 品物に なる');
-    check((its.find(it => it.name === 'ヨーグルト') || {}).note === '400g・プレーン', '大きさが 1つの ものは「くわしく」に 入る');
-    check(groupOf('c1~2kg') === 'staple' && groupOf('c2') === 'chilled', '1.9 の バックアップの たべものも ジャンルに 分かれる');
-    const ph = await keys('photos');
-    check(ph.includes('c1~2kg') && ph.includes('c1~5kg') && !ph.includes('c1'), 'その 写真も 大きさごとの 品物に つく');
-    const lines19 = ((stored('history') || [])[0] || { lines: [] }).lines;
-    check(lines19.some(l => l.id === 'c1~5kg' && l.name === 'お米 5kg') && (its.find(it => it.id === 'c1~5kg') || {}).count === 1, 'ファイルの 送った 記録も 大きさごとの 品物に つく');
-    check(((stored('cart') || {}).lines || {})['c1~2kg'] === 2, 'ファイルの えらんで いた リストも 大きさごとの 品物に 入る');
+    await wait(1000);
+    const bg = (f.contentWindow.getComputedStyle(f.contentDocument.body).backgroundColor.match(/\d+/g) || []).slice(0, 3).map(Number);
+    check(f.contentDocument.documentElement.dataset.theme !== 'dark' && bg.length === 3 && bg[0] + bg[1] + bg[2] > 600, `「暗い」に して いても 明るい 画面に なる（${bg.join(',')}）`);
+    named(f, 'たまご').querySelector('.plus').click();
+    await wait(300);
+    $in(f, '#sendBtn').click();
+    await wait(700);
+    check($in(f, '#stepsT').textContent === 'LINEが ひらいたら：' && /ゆうこ/.test($in(f, '#steps').textContent) && /^https:\/\/line\.me\//.test($in(f, '#lineSend').getAttribute('href') || ''),
+      `「共有メニュー」に して いても LINE を ひらいて 送る（${$in(f, '#stepsT').textContent}）`);
+    check(localStorage.getItem(KEY + 'backup') === null && localStorage.getItem(KEY + 'welcome') === null && !(await keys('snaps')).includes('beforeImport'),
+      'バックアップの 記録と、ファイルを 読みこむ 前の 状態は 消える');
 
     // ---------- data that can't be read is kept, not written over ----------
     await clean();

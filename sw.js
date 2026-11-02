@@ -24,7 +24,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== location.origin) return;
   // the app's page, scripts and styles come from the network first, and from the copy when offline;
-  // other pages here (tools/open-backup.html) go to the network as usual, never into the app's copy
+  // other pages here go to the network as usual, never into the app's copy
   const scope = new URL(self.registration.scope).pathname;
   const isApp = req.mode === 'navigate' && (url.pathname === scope || url.pathname === scope + 'index.html');
   if (req.mode === 'navigate' && !isApp) return;

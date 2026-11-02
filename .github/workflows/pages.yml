@@ -43,7 +43,7 @@ jobs:
           echo "rows on the parent's screen: $rows"
           if grep -q "Uncaught" chrome.log; then grep "Uncaught" chrome.log; exit 1; fi
           test "$rows" -ge 10
-      - name: old data, a backup out and back, a damaged file, unreadable data
+      - name: old data, the settings 1.18 left behind, unreadable data
         run: |
           python3 tests/sleepserver.py 8001 >/dev/null 2>&1 &
           sleep 2
@@ -67,11 +67,6 @@ jobs:
           rows=$(grep -o 'class="row' off.html | wc -l)
           echo "rows offline: $rows"
           test "$rows" -ge 10
-      - name: the page for locked backups is there and opens
-        run: |
-          google-chrome --headless=new --no-sandbox --disable-gpu --virtual-time-budget=3000 \
-            --dump-dom http://127.0.0.1:8000/tools/open-backup.html > tool.html 2>/dev/null || true
-          grep -q 'id="go"' tool.html
 
   deploy:
     needs: check
@@ -88,7 +83,7 @@ jobs:
       - name: only the site's own files
         run: |
           mkdir _site
-          cp -r index.html app.js check.js style.css sw.js manifest.webmanifest icons tools LICENSE-lucide.txt README.md _site/
+          cp -r index.html app.js check.js style.css sw.js manifest.webmanifest icons LICENSE-lucide.txt README.md _site/
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

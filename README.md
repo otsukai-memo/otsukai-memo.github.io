@@ -22,11 +22,8 @@ otsukai-memo の中のリポジトリで GitHub Pages を有効にすると、`o
 住所が変わると、新しい住所の アプリは 空っぽで 始まる（前の データは 古い住所に 残ったまま 読めない）。
 
 - organization 名（otsukai-memo）と リポジトリ名（otsukai-memo.github.io）は 変えない
-- どうしても 変えるときの 引っ越し：
-  1. 古い住所の アプリで「家族の設定」→「Google ドライブに 保存」（送った記録も 入れる）
-  2. 新しい住所を 公開して、スマホで 開く（ホーム画面の アイコンも 作り直す）
-  3. 新しい住所の「家族の設定」→「ファイルから 読みこむ」で 1 の ファイルを 読みこむ
-  4. 古い住所の「データを ぜんぶ けす」で 片づける
+- 1.18 から バックアップが ないので、住所を 変えると 品物・写真・記録は 引っ越せない
+  （新しい 住所では はじめの 品物から やり直しに なる）
 
 ## 公開のしくみ
 
@@ -36,10 +33,9 @@ otsukai-memo の中のリポジトリで GitHub Pages を有効にすると、`o
 - 版の 番号が そろって いるか（`app.js` の APP_VER、`index.html` の `?v=` と 下の 表示）
 - まっさらな 状態で 開いて 品物が 出るか、スクリプトの エラーが ないか
 - 前の 版の データ（`tests/` の 見本）を 入れた 状態で 開いて、品物・記録・写真が 正しく 読めるか
-- バックアップを 書き出して 読みこむ 往復で、中身が 同じに 戻るか
+- 前の 版の 設定（共有メニュー・暗い 画面）が 残って いても、LINE を ひらく 送り方と 明るい 画面で 動くか
 - 読めない データを 上書きしないか
 - 一度 開いた あと、ネットが なくても 開けるか（オフライン）
-- パスワードつき バックアップを 開く ページが あるか
 
 公開されるのは 決まった ファイルだけ（`tests/` や `.github/` は 公開しない）。
 GitHub Pages の Settings → Pages → Source は「GitHub Actions」に しておく。
@@ -74,17 +70,14 @@ Actions の 部品は コミットの 番号で 固定して あり、新しい 
 | 1.14 | はじめの 品物の 一覧に 番号（`catalog`）。2 で 23こ ふえた。前から ある リストには、まだ ない 名前（りんご と リンゴ は 同じ）で、けした 品物に ない ものだけ、ジャンルの 終わりに 1回 足す |
 | 1.15 | たべもの を 10の ジャンルに（`group`：staple・veg・fruit・meat・fish・chilled・season・snack・deli・dry。`food` は「ほかの たべもの」）。品物に `gset`（2：この 分け方で 見た）。`gset` の ない 品物は、たべもの なら はじめの 品物と 同じ 名前の ジャンルへ 1回 移す。`catalog` 3 で 100こ ふえた。品物は 500こまで |
 | 1.16 | `catalog` 4 で のみもの が 10こ ふえた（足し方は 1.14 と 同じ） |
+| 1.18 | `settings` の `send`・`theme`・`lock` は 読まない（送り方は いつも LINE を ひらく、画面は いつも 明るい、バックアップは ない）。`backup`・`welcome` の キーと `snaps` の `beforeImport` は 開いた ときに けす |
 
 形を 変える ときは：前の 形も 読める ように する、`tests/fixtures.js` に その版の 見本を 足す、この 表に 書く。
 
-## バックアップの ファイル
+## バックアップ
 
-- ふつうの ファイル：`{ app: 'kaimono', version: 1, appVersion, exportedAt, items, photos, settings, history?, cart?, sum }`
-  - `photos` は 品物の id ごとの JPEG（data URL）。`sum` は `sum` を のぞいた 中身の JSON の SHA-256（base64）
-- パスワードつき：`{ app: 'kaimono', version: 1, locked: { cipher: 'AES-GCM', kdf: 'PBKDF2-SHA256', iter, salt, iv, hint? }, data }`
-  - `data` は 上の ふつうの ファイルの 文字を、パスワードから PBKDF2-SHA256（`iter` 回）で 作った 256 ビットの 鍵で AES-GCM 暗号化した もの。どれも base64
-  - `hint` は パスワードを 思い出す ための 手がかり（ふつうの 文字。パスワード そのものは 入れない）
-  - アプリが なくても `tools/open-backup.html` で 開ける（https://otsukai-memo.github.io/tools/open-backup.html 。保存して おけば ネットなしでも 動く）
+1.18 で なくした。1.17 までに 作った バックアップの ファイルは、もう 読みこめない。
+スマホの 中の 自動の 控え（「家族の設定」→「自動の 控え」）と けした 品物は 残して ある。
 
 ## アプリを書きかえられる鍵を守る
 
@@ -109,7 +102,6 @@ Actions の 部品は コミットの 番号で 固定して あり、新しい 
 - `app.js` … アプリ本体
 - `style.css` … 見た目
 - `sw.js` … オフライン用。ページ・`app.js`・`check.js`・`style.css` は いつも ネットから 新しい ものを 取る
-- `tools/open-backup.html` … パスワードつき バックアップを アプリなしで 開く ページ（CSP は 中の スクリプトと スタイルの ハッシュだけ 許す）
 - `tests/` … 公開前の テスト（公開は しない）
 - `.github/workflows/pages.yml` … 公開の 前の 確認と 公開、`watch.yml` … 毎日の 見回り、`.github/dependabot.yml` … 部品の 更新の 知らせ
 - `manifest.webmanifest`・`icons/` … ホーム画面のアイコン
