@@ -43,8 +43,8 @@
   // 1.10: an item with two sizes or more is shown as one item for each size
   const splitN = list => list.reduce((n, it) => n + ((it.sizes || []).length >= 2 ? it.sizes.length : 1), 0);
   // the starting items added to a list kept from before: 23 by 1.14 (none of them is in the fixtures), a hundred
-  // by 1.15 (おにぎり is in the 1.3 fixture), ten drinks by 1.16 and two by 1.20
-  const ADDED = 23, ADDED3 = 100, ADDED4 = 10, ADDED5 = 2;
+  // by 1.15 (おにぎり is in the 1.3 fixture), ten drinks by 1.16, two by 1.20 and two by 1.21
+  const ADDED = 23, ADDED3 = 100, ADDED4 = 10, ADDED5 = 2, ADDED6 = 2;
   const namesIn = (f, key) => [...f.contentDocument.querySelectorAll(`#g-${key} .row .nm`)].map(n => n.textContent);
   const groupOf = id => ((stored('items') || []).find(it => it.id === id) || {}).group;
   const named = (f, name) => [...f.contentDocument.querySelectorAll('#groups .row')].find(r => r.querySelector('.nm').textContent === name);
@@ -83,7 +83,7 @@
     // ---------- a first start ----------
     await clean();
     let f = await openApp();
-    check(rows(f) >= 158, `はじめて 開くと はじめの 品物が 出る（${rows(f)}行）`);
+    check(rows(f) >= 160, `はじめて 開くと はじめの 品物が 出る（${rows(f)}行）`);
     // 1.20: 大トロ after さしみ, パルミジャーノレッジャーノ after チーズ, and still one まんじゅう (there since 1.15)
     const fish = namesIn(f, 'fish'), dairy = namesIn(f, 'chilled');
     check(fish.indexOf('大トロ') > 0 && fish.indexOf('大トロ') === fish.indexOf('さしみ') + 1 && dairy.indexOf('パルミジャーノレッジャーノ') > 0
@@ -93,11 +93,40 @@
     check(!!named(f, 'お米 2kg') && !!named(f, 'お米 5kg') && (stored('items') || []).every(it => !it.sizes.length), 'はじめの 品物は 大きさごとに 分かれて いる');
     check($in(f, '.ver').textContent === 'かいものメモ ' + appVer, `表示の 版が ${appVer}`);
     check(stored('ver') === appVer, 'ver が 保存される');
+    // 1.21: ごぼう after 大根, カレールー before レトルトカレー, and the two starting sets at the top of the parent's screen
+    const veg = namesIn(f, 'veg'), dry = namesIn(f, 'dry');
+    check(veg.indexOf('ごぼう') > 0 && veg.indexOf('ごぼう') === veg.indexOf('大根') + 1 && dry.indexOf('カレールー') >= 0 && dry.indexOf('カレールー') + 1 === dry.indexOf('レトルトカレー'),
+      'はじめの 品物に ごぼう（大根の 次）と カレールー（レトルトカレーの 前）');
+    const its = stored('items') || [], idOf = n => (its.find(it => it.name === n) || {}).id;
+    const lineText = st => st.lines.map(l => (its.find(it => it.id === l.id) || {}).name + l.qty).join();
+    const sets0 = stored('sets') || [];
+    check(sets0.map(st => st.name).join() === 'カレーセット,豚汁セット' && lineText(sets0[0]) === 'じゃがいも1,にんじん1,たまねぎ2,ぶた肉300,カレールー1'
+      && lineText(sets0[1]) === 'ぶた肉200,大根1,にんじん1,ごぼう1,こんにゃく1,ねぎ1', `はじめの セット（${sets0.map(st => st.name + '：' + lineText(st)).join(' ')}）`);
+    const setRows = [...f.contentDocument.querySelectorAll('#setList .setrow')];
+    check(!$in(f, '#g-set').hidden && setRows.map(r => r.querySelector('.nm').textContent).join() === 'カレーセット,豚汁セット'
+      && $in(f, '#g-set').getBoundingClientRect().bottom <= $in(f, '#groups').getBoundingClientRect().top, '親の 画面の 上に セットが 出る');
+    setRows[0].querySelector('.put').click();
+    await wait(400);
+    const cart1 = (stored('cart') || {}).lines || {}, said1 = $in(f, '#toast .tmsg').textContent;
+    check(cart1[idOf('じゃがいも')] === 1 && cart1[idOf('にんじん')] === 1 && cart1[idOf('たまねぎ')] === 2 && cart1[idOf('ぶた肉')] === 300 && cart1[idOf('カレールー')] === 1
+      && Object.keys(cart1).length === 5 && named(f, 'たまねぎ').classList.contains('sel') && $in(f, '#sendN').textContent === '5' && setRows[0].classList.contains('sel')
+      && said1 === 'カレーセットの 品物を 5こ 入れました。', `「ぜんぶ 入れる」で カレーセットの 5つが 入る（${said1}）`);
+    setRows[0].querySelector('.put').click();
+    await wait(400);
+    check(JSON.stringify((stored('cart') || {}).lines) === JSON.stringify(cart1) && /もう ぜんぶ 入って います/.test($in(f, '#toast').textContent), 'もう一度 押しても ふえない');
+    setRows[1].querySelector('.put').click();
+    await wait(400);
+    const cart2 = (stored('cart') || {}).lines || {};
+    const added2 = Object.keys(cart2).filter(k => !(k in cart1)).map(k => (its.find(it => it.id === k) || {}).name).join();
+    check(added2 === '大根,ごぼう,こんにゃく,ねぎ' && cart2[idOf('ぶた肉')] === 300 && cart2[idOf('にんじん')] === 1, `豚汁セットは 足りない ものだけ 入る（${added2}。ぶた肉 300g は そのまま）`);
+    $in(f, '#toast .tact').click();
+    await wait(300);
+    check(JSON.stringify((stored('cart') || {}).lines) === JSON.stringify(cart1) && !named(f, '大根').classList.contains('sel'), '「もとに もどす」で 豚汁セットの 分が もどる');
     // 1.11: the genre menu at the top left lists the genres, and each one takes the list to its place
     $in(f, '#navBtn').click();
     await wait(700);
     const genres = [...f.contentDocument.querySelectorAll('#navList [data-g]')].map(b => b.dataset.g).join(',');
-    check(!$in(f, '#sh-nav').hidden && genres === 'staple,veg,fruit,meat,fish,chilled,season,snack,deli,dry,drink,daily,other', `左上の メニューに ジャンルが 出る（${genres}）`);
+    check(!$in(f, '#sh-nav').hidden && genres === 'set,staple,veg,fruit,meat,fish,chilled,season,snack,deli,dry,drink,daily,other', `左上の メニューに セットと ジャンルが 出る（${genres}）`);
     $in(f, '#navList [data-g="daily"]').click();
     await wait(600);
     const ghTop = Math.round($in(f, '#g-daily .gh').getBoundingClientRect().top), under = $in(f, '#appbar').offsetHeight + 8;
@@ -144,6 +173,49 @@
     const set18 = $in(f, '#settings').textContent;
     check(['#sendSeg', '#themeSeg', '#installBtn', '#backupSec', '#backupCard', '#welcomeCard', '#importFile', '#verifyFile', '#saveOut'].every(s => !$in(f, s))
       && !/バックアップ|ホーム画面に アイコンを 置く|画面の 色/.test(set18), '設定に 送り方と 画面の 色の えらび・ホーム画面の アイコン・バックアップが ない');
+    // 1.21: a set is made in 設定 (a name, items picked from the list, their amounts), shown to the parent, changed and taken away
+    $in(f, '#addSet').click();
+    await wait(600);
+    $in(f, '#setName').value = 'やさいいため';
+    $in(f, '#setPick').click();
+    await wait(600);
+    const findIn = v => { $in(f, '#pickFind').value = v; $in(f, '#pickFind').dispatchEvent(new f.contentWindow.Event('input')); };
+    findIn('もや');
+    const found = [...f.contentDocument.querySelectorAll('#pickList .pick b')].map(b => b.textContent).join();
+    findIn('');
+    for (const n of ['キャベツ', 'もやし', 'ピーマン']) { [...f.contentDocument.querySelectorAll('#pickList .pick')].find(b => b.querySelector('b').textContent === n).click(); await wait(100); }
+    const counted = $in(f, '#pickCount').textContent;
+    $in(f, '#sh-setpick .sheet-foot [data-close]').click();
+    await wait(600);
+    const lineNames = () => [...f.contentDocument.querySelectorAll('#setLines .lnm')].map(e => e.textContent).join();
+    check(found === 'もやし' && /3こ/.test(counted) && lineNames() === 'キャベツ,もやし,ピーマン', `えらんだ 品物が セットに 入る（さがす「もや」→ ${found}、${counted}）`);
+    $in(f, `#setLines [data-id="${idOf('もやし')}"] .lplus`).click();
+    await wait(100);
+    $in(f, '#setSave').click();
+    await wait(900);
+    const made21 = (stored('sets') || [])[2] || { lines: [] };
+    check(made21.name === 'やさいいため' && lineText(made21) === 'キャベツ1,もやし2,ピーマン1' && /やさいいため/.test($in(f, '#sSets').textContent), `セットを ふやせる（${made21.name}：${lineText(made21)}）`);
+    $in(f, '#closeSettings').click();
+    await wait(900);
+    const homeSets = [...f.contentDocument.querySelectorAll('#setList .setrow')].map(r => r.querySelector('.nm').textContent + '：' + r.querySelector('.sub').textContent);
+    // (a name and its amount are joined by a space that never breaks)
+    check(homeSets.length === 3 && homeSets[2] === 'やさいいため：キャベツ・もやし\u00a02袋・ピーマン', `ふやした セットが 親の 画面に 出る（${homeSets[2]}）`);
+    await openSettings(f);
+    const sRow = () => [...f.contentDocument.querySelectorAll('#sSets .srow')].find(r => /やさいいため/.test(r.textContent));
+    sRow().querySelector('.sedit').click();
+    await wait(600);
+    $in(f, `#setLines [data-id="${idOf('ピーマン')}"] .ldel`).click();
+    await wait(100);
+    $in(f, '#setSave').click();
+    await wait(900);
+    check(lineText((stored('sets') || [])[2] || { lines: [] }) === 'キャベツ1,もやし2', 'セットを なおせる（ピーマンを はずした）');
+    sRow().querySelector('.sedit').click();
+    await wait(600);
+    $in(f, '#setDelete').click();
+    await wait(600);
+    $in(f, '#askOk').click();
+    await wait(900);
+    check((stored('sets') || []).map(st => st.name).join() === 'カレーセット,豚汁セット' && !$in(f, '#sh-set').classList.contains('open'), 'セットを けせる');
     // the sheet that asked for backups' passwords too asks for the PIN only
     $in(f, '#pinSet').click();
     await wait(600);
@@ -174,7 +246,7 @@
     put(f13);
     for (const [i, id] of f13.photos.entries()) localStorage.setItem(KEY + 'photo:' + id, await photoURL(i ? '#36c' : '#c63'));
     f = await openApp();
-    check(rows(f) === splitN(f13.items) + ADDED + ADDED3 + ADDED4 + ADDED5 - 1, `1.3 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f13.items) + ADDED + ADDED3 + ADDED4 + ADDED5 - 1}）`);
+    check(rows(f) === splitN(f13.items) + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6 - 1, `1.3 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f13.items) + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6 - 1}）`);
     check(groupOf('a3') === 'deli' && groupOf('a1~6枚切り') === 'staple', '1.3 の たべものが それぞれの ジャンルに 移る（おにぎり → おそうざい）');
     const moved = await keys('photos');
     check(['a1~6枚切り', 'a1~8枚切り', 'a2'].every(id => moved.includes(id)) && !moved.includes('a1'), '1.3 の 写真が IndexedDB に 移る（分けた 品物には それぞれ）');
@@ -194,7 +266,7 @@
     const f18 = FIXTURES['1.8'];
     put(f18);
     f = await openApp();
-    check(rows(f) === splitN(f18.items) + ADDED + ADDED3 + ADDED4 + ADDED5, `1.8 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f18.items) + ADDED + ADDED3 + ADDED4 + ADDED5}）`);
+    check(rows(f) === splitN(f18.items) + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6, `1.8 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f18.items) + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6}）`);
     check(groupOf('b1~8枚切り') === 'staple' && groupOf('b2') === 'chilled' && groupOf('b3') === 'veg' && groupOf('b4') === 'drink', '1.8 の たべものが それぞれの ジャンルに 移る（のみものは そのまま）');
     check((stored('history') || []).length === f18.history, '1.8 の 送った 記録が 残る');
     check(f.contentDocument.documentElement.dataset.size === 'l', '文字の 大きさの 設定が 残る');
@@ -221,13 +293,13 @@
     localStorage.setItem(KEY + 'ver', JSON.stringify('1.13'));
     f = await openApp();
     const grown = stored('items') || [];
-    check(grown.length === kept.length + ADDED + ADDED3 + ADDED4 + ADDED5 - 1 && grown.filter(it => /りんご|リンゴ/.test(it.name)).length === 1, `1.13 の リストに 新しい 品物が 足される（${grown.length}こ。りんごは 1つの まま）`);
+    check(grown.length === kept.length + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6 - 1 && grown.filter(it => /りんご|リンゴ/.test(it.name)).length === 1, `1.13 の リストに 新しい 品物が 足される（${grown.length}こ。りんごは 1つの まま）`);
     check(groupOf('d1') === 'chilled' && groupOf('d2') === 'fruit' && groupOf('d3') === 'other' && groupOf('d4') === 'food' && /ほかの たべもの/.test($in(f, '#groups').textContent),
       'リンゴは くだものへ、名前の ちがう ものは「ほかの たべもの」に 残る');
     check(kept.every((it, i) => grown[i] && grown[i].id === it.id), 'もとの 品物の ならびは かわらない');
     f.remove();
     f = await openApp();
-    check((stored('items') || []).length === grown.length && stored('catalog') === 5, 'もう一度 ひらいても 足すのは 1回だけ');
+    check((stored('items') || []).length === grown.length && stored('catalog') === 6, 'もう一度 ひらいても 足すのは 1回だけ');
 
     // ---------- 1.16: a list kept by 1.15 gets the ten drinks only, after its own ones ----------
     await clean();
@@ -241,7 +313,7 @@
     localStorage.setItem(KEY + 'ver', JSON.stringify('1.15'));
     f = await openApp();
     const grown16 = stored('items') || [], add16 = grown16.slice(kept15.length);
-    check(grown16.length === kept15.length + ADDED4 + ADDED5 - 1 && add16.filter(it => it.group === 'drink').length === ADDED4 - 1 && kept15.every((it, i) => grown16[i].id === it.id),
+    check(grown16.length === kept15.length + ADDED4 + ADDED5 + ADDED6 - 1 && add16.filter(it => it.group === 'drink').length === ADDED4 - 1 && kept15.every((it, i) => grown16[i].id === it.id),
       `1.15 の リストに のみものが 足される（${grown16.length}こ。日本酒は 1つの まま）`);
 
     // ---------- 1.20: a list kept by 1.19 gets 大トロ and パルミジャーノレッジャーノ, each at the end of its genre ----------
@@ -257,7 +329,7 @@
     localStorage.setItem(KEY + 'ver', JSON.stringify('1.19'));
     f = await openApp();
     const grown20 = stored('items') || [];
-    check(grown20.length === kept19.length + ADDED5 && kept19.every((it, i) => grown20[i].id === it.id) && stored('catalog') === 5
+    check(grown20.length === kept19.length + ADDED5 + ADDED6 && kept19.every((it, i) => grown20[i].id === it.id) && stored('catalog') === 6
       && namesIn(f, 'fish').join() === 'さしみ,ちくわ,大トロ' && namesIn(f, 'chilled').join() === 'チーズ,パルミジャーノレッジャーノ' && namesIn(f, 'snack').join() === 'まんじゅう',
       `1.19 の リストに 大トロ と パルミジャーノレッジャーノ が ジャンルの 終わりに 足される（${grown20.length}こ。まんじゅうは 1つの まま）`);
     const picOf = name => (named(f, name) || { querySelector: () => null }).querySelector('.pic.ini');
@@ -265,6 +337,33 @@
     f.remove();
     f = await openApp();
     check((stored('items') || []).length === grown20.length, '1.20 も もう一度 ひらいても 足すのは 1回だけ');
+
+    // ---------- 1.21: a list kept by 1.20 gets ごぼう and カレールー at the ends of their genres, and the starting sets once ----------
+    await clean();
+    const kept20 = [
+      { id: 'h1', name: 'じゃがいも', icon: '', unit: '袋', group: 'veg', sizes: [], note: '', photo: false, count: 0, lastAt: 0, gset: 2 },
+      { id: 'h2', name: 'にんじん', icon: 'carrot', unit: '本', group: 'veg', sizes: [], note: '', photo: false, count: 0, lastAt: 0, gset: 2 },
+      { id: 'h3', name: 'たまねぎ', icon: '', unit: '個', group: 'veg', sizes: [], note: '', photo: false, count: 0, lastAt: 0, gset: 2 },
+      { id: 'h4', name: 'ぶた肉', icon: '', unit: 'g', group: 'meat', sizes: [], note: '', photo: false, count: 0, lastAt: 0, gset: 2 },
+      { id: 'h5', name: 'ツナ缶', icon: '', unit: '個', group: 'dry', sizes: [], note: '', photo: false, count: 0, lastAt: 0, gset: 2 },
+    ];
+    localStorage.setItem(KEY + 'items', JSON.stringify(kept20));
+    localStorage.setItem(KEY + 'catalog', JSON.stringify(5));
+    localStorage.setItem(KEY + 'ver', JSON.stringify('1.20'));
+    f = await openApp();
+    const grown21 = stored('items') || [], sets21 = stored('sets') || [];
+    const text21 = st => st.lines.map(l => (grown21.find(it => it.id === l.id) || {}).name + l.qty).join();
+    check(grown21.length === kept20.length + ADDED6 && kept20.every((it, i) => grown21[i].id === it.id) && stored('catalog') === 6
+      && namesIn(f, 'veg').join() === 'じゃがいも,にんじん,たまねぎ,ごぼう' && namesIn(f, 'dry').join() === 'ツナ缶,カレールー',
+      `1.20 の リストに ごぼう と カレールー が ジャンルの 終わりに 足される（${grown21.length}こ）`);
+    check(sets21.length === 2 && sets21[0].lines.slice(0, 4).map(l => l.id).join() === 'h1,h2,h3,h4' && text21(sets21[0]) === 'じゃがいも1,にんじん1,たまねぎ2,ぶた肉300,カレールー1'
+      && text21(sets21[1]) === 'ぶた肉200,にんじん1,ごぼう1' && f.contentDocument.querySelectorAll('#setList .setrow').length === 2,
+      `いまの 品物で はじめの セットが できる（${sets21.map(st => st.name + '：' + text21(st)).join(' ')}）`);
+    // sets the family took away don't come back
+    f.remove();
+    localStorage.setItem(KEY + 'sets', '[]');
+    f = await openApp();
+    check((stored('sets') || [1]).length === 0 && (stored('items') || []).length === grown21.length && $in(f, '#g-set').hidden, 'セットを ぜんぶ けしたら、もう 作らない');
 
     // ---------- 1.18: what 1.17 kept for the share menu, the dark screen and backups stays behind ----------
     await clean();
@@ -294,10 +393,18 @@
     check(localStorage.getItem(KEY + 'items') === broken, '読めない 品物の データを 上書きしない');
     check((await keys('snaps')).some(k => k.startsWith('broken:')), '読めない データを 取って おく');
     check(rows(f) >= 20, 'その あいだは はじめの 品物で 使える');
+    // 1.21: and so are sets that can't be read
+    await clean();
+    const brokenSets = '[{"id":"s1","name":"';
+    localStorage.setItem(KEY + 'sets', brokenSets);
+    f = await openApp();
+    check(localStorage.getItem(KEY + 'sets') === brokenSets && $in(f, '#g-set').hidden && rows(f) >= 160 && (await keys('snaps')).some(k => k.startsWith('broken:')),
+      '読めない セットの データを 上書きしない（品物は 出る）');
     await clean();
   } catch (e) {
     check(false, 'テストの 途中で エラー: ' + (e && e.message));
   }
+  log(`${Math.round(performance.now() / 1000)}びょう`);
   log(fails ? `FAIL ${fails}` : 'ALL OK');
   document.title = 'done';
 })();

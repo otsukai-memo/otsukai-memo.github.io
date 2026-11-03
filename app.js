@@ -47,7 +47,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.20';
+const APP_VER = '1.21';
 const DAY = 864e5;
 
 // 1.15: たべもの is split into the genres of a supermarket's shelves, so the genre menu reaches each of them
@@ -153,7 +153,8 @@ const TO_EMOJI = {};
 for (const [e, n] of Object.entries(FROM_EMOJI)) TO_EMOJI[n] = TO_EMOJI[n] || e;
 // name, picture, unit, genre, and the catalog that brought it (none: the first one; 2: 1.14; 3: 1.15, a hundred
 // everyday things from a supermarket, none of them a maker's product; 4: 1.16, ten more drinks; 5: 1.20, 大トロ and
-// パルミジャーノレッジャーノ, asked for by name). Each size is an item of its own, so the parent is never asked which one.
+// パルミジャーノレッジャーノ, asked for by name; 6: 1.21, ごぼう and カレールー for the starting sets). Each size is an item of
+// its own, so the parent is never asked which one.
 const DEFAULT_ITEMS = [
   ['食パン 6枚切り', 'sandwich', '袋', 'staple'],
   ['食パン 8枚切り', 'sandwich', '袋', 'staple'],
@@ -177,6 +178,7 @@ const DEFAULT_ITEMS = [
   ['白菜', '', '個', 'veg', 3],
   ['レタス', 'salad', '個', 'veg', 3],
   ['大根', '', '本', 'veg', 3],
+  ['ごぼう', '', '本', 'veg', 6],
   ['ねぎ', '', '本', 'veg', 3],
   ['きゅうり', '', '本', 'veg', 3],
   ['なす', '', '本', 'veg', 3],
@@ -269,6 +271,7 @@ const DEFAULT_ITEMS = [
   ['冷凍うどん', '', '袋', 'deli', 3],
   ['ツナ缶', 'can', '個', 'dry', 3],
   ['さば缶', '', '個', 'dry', 3],
+  ['カレールー', '', '箱', 'dry', 6],
   ['レトルトカレー', '', '箱', 'dry', 3],
   ['インスタントみそしる', '', '袋', 'dry', 3],
   ['のり', '', '袋', 'dry', 3],
@@ -316,6 +319,12 @@ const DEFAULT_ITEMS = [
 ];
 // the newest catalog: a phone keeps which one its list has had (catalog), and a list from before gets the rest
 const CATALOG = Math.max(...DEFAULT_ITEMS.map(d => d[4] || 1));
+// 1.21: the sets made at first, each line a starting item's name, how many, and how many grams when it goes by g;
+// the family changes them, or makes more, in 設定
+const DEFAULT_SETS = [
+  ['カレーセット', [['じゃがいも', 1], ['にんじん', 1], ['たまねぎ', 2], ['ぶた肉', 1, 300], ['カレールー', 1]]],
+  ['豚汁セット', [['ぶた肉', 1, 200], ['大根', 1], ['にんじん', 1], ['ごぼう', 1], ['こんにゃく', 1], ['ねぎ', 1]]],
+];
 
 let seq = 0;
 const uid = () => Date.now().toString(36) + (seq++).toString(36) + Math.random().toString(36).slice(2, 5);
@@ -440,6 +449,17 @@ function fixHist(h) {
     when: String(h.when || '').slice(0, 20),
   };
 }
+// 1.21: a set is a name and the items it puts into the list, each with its amount in the item's own unit
+function okSet(s) { return s && typeof s === 'object' && String(s.name || '').trim() !== '' && Array.isArray(s.lines); }
+function fixSet(s) {
+  const ids = new Set();
+  return {
+    id: String(s.id || uid()).slice(0, 40),
+    name: String(s.name).trim().slice(0, 20),
+    lines: s.lines.filter(l => l && l.id && !ids.has(String(l.id)) && ids.add(String(l.id))).slice(0, MAX_SET_LINES)
+      .map(l => ({ id: String(l.id).slice(0, 80), qty: Math.min(Math.max(1, Math.round(+l.qty) || 1), 9900) })),
+  };
+}
 // made gets each new item's id and the old one's, for its photo; a single size moves into くわしく, where it showed already
 function splitSizes(list, made = new Map()) {
   const out = [];
@@ -480,7 +500,7 @@ function regroup(list) {
 // a recording never sent is kept a week (how long sent lists stay is the family's choice, settings.keep)
 const VOICE_DAYS = 7;
 // the most stored data (or a damaged one) can bring in, so the list always fits in this phone's room for it
-const MAX_ITEMS = 500, MAX_LINES = 100, MAX_EXTRAS = 30;
+const MAX_ITEMS = 500, MAX_LINES = 100, MAX_EXTRAS = 30, MAX_SETS = 30, MAX_SET_LINES = 30;
 // to: the family member's name as LINE shows it; keep: how long sent lists stay (one: only the newest);
 // copyDays: how long the automatic copies stay
 const defaultSettings = () => ({ size: 'm', to: '', keep: 'three', copyDays: 60 });
@@ -509,8 +529,29 @@ const loadHist = () => {
   if (ok.length < v.length) broken.add('history');
   return ok.map(fixHist);
 };
+// null when there have never been any (the starting sets are made then); sets that can't be read are noted, and none
+// of it is saved over till the family changes the sets
+const loadSets = () => {
+  let raw = null;
+  try { raw = localStorage.getItem(KEY + 'sets'); } catch (e) {}
+  const v = load('sets', null);
+  if (!Array.isArray(v)) { if (raw != null) { broken.add('sets'); return []; } return null; }
+  const ok = v.filter(okSet);
+  if (ok.length < v.length) broken.add('sets');
+  return ok.slice(0, MAX_SETS).map(fixSet);
+};
+// the starting sets, made of the items of those names on the list now: a name the list doesn't have is left out, and
+// a set left with nothing isn't made
+function startSets() {
+  const byName = new Map();
+  for (const it of items) if (!byName.has(nameKey(it.name))) byName.set(nameKey(it.name), it);
+  return DEFAULT_SETS.map(([name, lines]) => fixSet({ name, lines: lines.map(([n, count, grams]) => {
+    const it = byName.get(nameKey(n));
+    return it && { id: it.id, qty: it.unit === 'g' ? grams || 100 : count };
+  }).filter(Boolean) })).filter(s => s.lines.length);
+}
 // what was stored when this version started, before anything here rewrote it: the copy taken on an update
-const RAW_KEYS = ['items', 'history', 'settings'];
+const RAW_KEYS = ['items', 'history', 'settings', 'sets'];
 const rawNow = () => { const r = {}; for (const n of RAW_KEYS) { try { r[n] = localStorage.getItem(KEY + n); } catch (e) { r[n] = null; } } return r; };
 const RAW = rawNow(), lastVer = load('ver', null);
 let items = loadItems();
@@ -518,6 +559,9 @@ let items = loadItems();
 if (!items) { items = freshItems(); if (RAW.items == null) { save('items', items); save('catalog', CATALOG); } }
 let cart = fixCart(load('cart', null));
 let hist = loadHist();
+let sets = loadSets();
+// a first start makes the starting sets at once; a list kept from before gets them at start, once its new items are in
+if (sets === null && RAW.items == null) { sets = startSets(); save('sets', sets); }
 statsFor(items, splitMade);
 const loadSettings = () => {
   const v = load('settings', null);
@@ -713,6 +757,7 @@ window.addEventListener('storage', e => {
   }
   else if (name === 'history') { hist = loadHist(); seen.history = localStorage.getItem(e.key); }
   else if (name === 'settings') { settings = loadSettings(); applySize(); }
+  else if (name === 'sets') sets = loadSets();
   else if (name === 'pending') pending = load('pending', null);
   else return;
   // what this window could not save is now what the other window saved
@@ -909,6 +954,7 @@ let shownDay = new Date().toDateString();
 function renderHome() {
   shownDay = new Date().toDateString();
   renderExtras();
+  renderSets();
   const frag = document.createDocumentFragment();
   for (const g of GROUPS) {
     const list = inGroup(g.key);
@@ -1006,11 +1052,72 @@ $('#extrasList').addEventListener('click', async e => {
   setTimeout(pruneClips, 16000);
 });
 
+/* ---------- セット: the items of a set go into the list with one press (1.21) ---------- */
+// each item goes in at the set's amount, and one in at that amount or more already stays as it is, so pressing again
+// (or a trembling second press) adds nothing
+const setPic = (cls = '') => `<span class="pic lu h-orange ${cls}" aria-hidden="true">${svgOf(PIC['cooking-pot'][3])}</span>`;
+// an amount the family set, fitted to the item's unit as it is now (g goes by 100)
+const setQty = (it, q) => { const s = stepOf(it); return Math.min(Math.max(Math.round(q / s) * s, s), 99 * s); };
+// a set's items still on the list, with their amounts
+const setItems = s => s.lines.map(l => ({ it: byId(l.id), qty: l.qty })).filter(x => x.it).map(x => ({ it: x.it, qty: setQty(x.it, x.qty) }));
+// (a name and its amount never part at the end of a line)
+const setLabel = ({ it, qty }) => it.name + (it.unit === 'g' || qty > 1 ? `\u00a0${qty}${it.unit}` : '');
+const setIn = s => { const xs = setItems(s); return xs.length > 0 && xs.every(x => qtyIn(x.it) >= x.qty); };
+function renderSets() {
+  const list = (sets || []).filter(s => setItems(s).length);
+  $('#g-set').hidden = !list.length;
+  $('#setList').innerHTML = list.map(s => `<li class="row setrow" data-set="${esc(s.id)}"><button type="button" class="hit sl" tabindex="-1" aria-hidden="true"></button>`
+    + `<span class="picbox">${setPic()}<span class="selmark">${ic('check')}</span></span>`
+    + `<span class="txt"><span class="nm">${esc(s.name)}</span></span><span class="sub">${esc(setItems(s).map(setLabel).join('・'))}</span>`
+    + `<span class="step"><button type="button" class="put btn sl"></button></span></li>`).join('');
+}
+// a set whose items are all in looks like a picked row
+function paintSets() {
+  for (const li of $$('#setList [data-set]')) {
+    const s = (sets || []).find(x => x.id === li.dataset.set), on = !!s && setIn(s), b = $('.put', li);
+    li.classList.toggle('sel', on);
+    b.innerHTML = on ? `${ic('check')}入っています` : `${ic('plus')}ぜんぶ 入れる`;
+    if (s) b.setAttribute('aria-label', on ? `${s.name}は ぜんぶ 入っています` : `${s.name}の 品物を ぜんぶ 入れる`);
+  }
+}
+function putSet(s) {
+  const before = [];
+  for (const { it, qty } of setItems(s)) {
+    const q = qtyIn(it);
+    if (q >= qty) continue;
+    before.push([it, q]);
+    cart.lines[it.id] = qty;
+  }
+  if (!before.length) { toast(`「${s.name}」の 品物は、もう ぜんぶ 入って います。`, '', null, 4000); return; }
+  saveCart(); buzz();
+  for (const [it] of before) { const li = $(`#groups [data-id="${CSS.escape(it.id)}"]`); if (li) paintRow(li, it); }
+  renderBar();
+  // short, so it covers little of the screen at 特大: the set's row (now picked) and its line already name the items
+  toast(`${s.name}の 品物を ${before.length}こ 入れました。`, 'もとに もどす', () => {
+    for (const [it, q] of before) { if (q) cart.lines[it.id] = q; else delete cart.lines[it.id]; }
+    saveCart(); renderHome();
+  });
+}
+$('#setList').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  const li = b && b.closest('[data-set]');
+  const s = li && (sets || []).find(x => x.id === li.dataset.set);
+  if (!s || tooFast(b)) return;
+  if (b.classList.contains('hit')) {
+    const p = $('.put', li);
+    p.classList.remove('nudge'); void p.offsetWidth; p.classList.add('nudge');
+    toast(li.classList.contains('sel') ? '数を かえるときは、下の 品物の −・＋ を 押してください。' : '入れるときは「＋ ぜんぶ 入れる」を 押してください。', '', null, 1000);
+    return;
+  }
+  putSet(s);
+});
+
 function renderBar() {
   const n = cartCount();
   $('#sendBtn').setAttribute('aria-disabled', n ? 'false' : 'true');
   $('#sendN').hidden = !n;
   $('#sendN').textContent = n;
+  paintSets();
 }
 const bar = $('#bar');
 new ResizeObserver(() => { if (bar.offsetHeight) document.documentElement.style.setProperty('--barH', bar.offsetHeight + 'px'); }).observe(bar);
@@ -1027,13 +1134,14 @@ function renderNav() {
   // the genre now at the top of the screen is marked, so the parent sees where they are
   const below = appbar.getBoundingClientRect().bottom + 40;
   let cur = '';
-  for (const sec of $$('#groups section')) if (sec.getBoundingClientRect().top <= below) cur = sec.dataset.g;
-  const list = GROUPS.filter(g => inGroup(g.key).length);
-  $('#navList').innerHTML = list.length ? list.map(g => {
+  for (const sec of $$('#g-set:not([hidden]), #groups section')) if (sec.getBoundingClientRect().top <= below) cur = sec.dataset.g;
+  // the sets (1.21) come first, as on the screen
+  const list = [...($('#g-set').hidden ? [] : [{ key: 'set', label: 'セット', pic: setPic() }]), ...GROUPS.filter(g => inGroup(g.key).length).map(g => {
     const [, , hue, d] = PIC[NAV_PICS[g.key]];
-    return `<li><button type="button" class="navitem sl" data-g="${g.key}"${g.key === cur ? ' aria-current="true"' : ''}>`
-      + `<span class="pic lu h-${hue}" aria-hidden="true">${svgOf(d)}</span><span class="nl">${g.label}</span></button></li>`;
-  }).join('') : '<li class="note">品物が ありません。</li>';
+    return { ...g, pic: `<span class="pic lu h-${hue}" aria-hidden="true">${svgOf(d)}</span>` };
+  })];
+  $('#navList').innerHTML = list.length ? list.map(g => `<li><button type="button" class="navitem sl" data-g="${g.key}"${g.key === cur ? ' aria-current="true"' : ''}>`
+    + `${g.pic}<span class="nl">${g.label}</span></button></li>`).join('') : '<li class="note">品物が ありません。</li>';
 }
 $('#navBtn').addEventListener('click', () => {
   renderNav();
@@ -1584,6 +1692,7 @@ function renderSettings() {
       + `<button type="button" class="down icon-btn sl" aria-label="${esc(it.name)}を 下へ"${i === list.length - 1 ? ' disabled' : ''}>${ic('arrow-down')}</button></span></li>`).join('');
     return `<section class="sgrp"><h3>${g.label}<span>${list.length}こ</span></h3>${list.length ? `<ul class="slist">${rows}</ul>` : '<p class="note">まだ ありません。</p>'}</section>`;
   }).join('');
+  renderSetList();
   renderRecent();
   setSeg('#sizeSeg', settings.size);
   $('#toName').value = settings.to || '';
@@ -1751,6 +1860,117 @@ $('#sortFreq').addEventListener('click', () => {
   toast('よく 頼む順に ならべました。', 'もとに もどす', () => { items = before; save('items', items); renderSettings(); });
 });
 
+/* ---------- セット in 設定: made, changed and taken away by the family ---------- */
+function renderSetList() {
+  const list = sets || [];
+  $('#sSets').innerHTML = list.length ? list.map((s, i) => {
+    const xs = setItems(s);
+    return `<li class="srow" data-set="${esc(s.id)}"><button type="button" class="sedit sl">${setPic('sm')}`
+      + `<span class="stx"><b>${esc(s.name)}</b><small>${xs.length ? esc(xs.map(setLabel).join('・')) : '品物が ありません（親の 画面には 出ません）'}</small></span></button><span class="mv">`
+      + `<button type="button" class="up icon-btn sl" aria-label="${esc(s.name)}を 上へ"${i === 0 ? ' disabled' : ''}>${ic('arrow-up')}</button>`
+      + `<button type="button" class="down icon-btn sl" aria-label="${esc(s.name)}を 下へ"${i === list.length - 1 ? ' disabled' : ''}>${ic('arrow-down')}</button></span></li>`;
+  }).join('') : '<li class="srow empty">まだ ありません。</li>';
+}
+$('#sSets').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  const row = b && b.closest('[data-set]');
+  const i = row && sets ? sets.findIndex(s => s.id === row.dataset.set) : -1;
+  if (i < 0) return;
+  if (b.classList.contains('sedit')) { openSetEdit(sets[i]); return; }
+  const up = b.classList.contains('up'), j = up ? i - 1 : i + 1;
+  if (j < 0 || j >= sets.length) return;
+  [sets[i], sets[j]] = [sets[j], sets[i]];
+  save('sets', sets);
+  renderSetList();
+  const nb = $(`#sSets [data-set="${CSS.escape(sets[j].id)}"] .${up ? 'up' : 'down'}`);
+  if (nb && !nb.disabled) nb.focus();
+});
+// the set being made or changed, saved only with 保存する
+let setDraft = null;
+$('#addSet').addEventListener('click', () => openSetEdit(null));
+function openSetEdit(s) {
+  setDraft = s ? { id: s.id, name: s.name, lines: setItems(s).map(({ it, qty }) => ({ id: it.id, qty })) } : { id: uid(), name: '', lines: [] };
+  $('#setEditTitle').textContent = s ? 'セットを なおす' : 'セットを ふやす';
+  $('#setName').value = setDraft.name;
+  $('#setDelete').hidden = !s;
+  paintSetLines();
+  openSheet('sh-set');
+}
+function paintSetLines() {
+  const xs = setDraft.lines.map(l => ({ it: byId(l.id), qty: l.qty })).filter(x => x.it);
+  $('#setLines').innerHTML = xs.length ? xs.map(({ it, qty }) => {
+    const nm = esc(it.name);
+    return `<li class="setline" data-id="${esc(it.id)}">${picHTML(it, 'sm')}<span class="lnm">${nm}</span><span class="q">`
+      + `<button type="button" class="lminus icon-btn sl" aria-label="${nm}を へらす"${qty <= stepOf(it) ? ' disabled' : ''}>${ic('minus')}</button>`
+      + `<span class="n">${qtyHTML(it, qty)}</span><button type="button" class="lplus icon-btn sl" aria-label="${nm}を ふやす"${qty >= 99 * stepOf(it) ? ' disabled' : ''}>${ic('plus')}</button></span>`
+      + `<button type="button" class="ldel icon-btn sl" aria-label="${nm}を セットから はずす">${ic('x')}</button></li>`;
+  }).join('') : '<li class="srow empty">まだ ありません。「品物を えらぶ」から 入れて ください。</li>';
+}
+$('#setLines').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  const li = b && b.closest('[data-id]');
+  const it = li && byId(li.dataset.id), i = it ? setDraft.lines.findIndex(l => l.id === it.id) : -1;
+  if (i < 0) return;
+  const cls = ['lplus', 'lminus'].find(c => b.classList.contains(c));
+  if (cls) setDraft.lines[i].qty = setQty(it, setDraft.lines[i].qty + (cls === 'lplus' ? 1 : -1) * stepOf(it));
+  else setDraft.lines.splice(i, 1);
+  paintSetLines();
+  // the focus stays where the finger was
+  const nb = cls && $(`#setLines [data-id="${CSS.escape(it.id)}"] .${cls}`);
+  (nb && !nb.disabled ? nb : $('#setPick')).focus();
+});
+// all the items, by genre, each picked or not with one press; a name can be looked for
+$('#setPick').addEventListener('click', () => { $('#pickFind').value = ''; renderPick(); openSheet('sh-setpick'); });
+function renderPick() {
+  const on = new Set(setDraft.lines.map(l => l.id)), q = nameKey($('#pickFind').value);
+  const html = GROUPS.map(g => {
+    const list = inGroup(g.key).filter(it => !q || nameKey(it.name).includes(q));
+    return list.length ? `<section class="sgrp"><h3>${g.label}</h3><ul class="slist">${list.map(it => `<li class="srow"><button type="button" class="sedit pick sl" data-id="${esc(it.id)}" aria-pressed="${on.has(it.id)}">`
+      + `${picHTML(it, 'sm')}<span class="stx"><b>${esc(it.name)}</b></span><span class="pmark">${ic('check')}</span></button></li>`).join('')}</ul></section>` : '';
+  }).join('');
+  $('#pickList').innerHTML = html;
+  $('#pickNone').hidden = !!html;
+  paintPickCount();
+}
+const paintPickCount = () => { $('#pickCount').textContent = `えらんだ 品物：${setDraft.lines.length}こ`; };
+$('#pickFind').addEventListener('input', renderPick);
+$('#pickList').addEventListener('click', e => {
+  const b = e.target.closest('[data-id]');
+  const it = b && byId(b.dataset.id);
+  if (!it) return;
+  const i = setDraft.lines.findIndex(l => l.id === it.id);
+  if (i < 0 && setDraft.lines.length >= MAX_SET_LINES) { toast(`1つの セットに 入る 品物は ${MAX_SET_LINES}こまで です。`); return; }
+  if (i >= 0) setDraft.lines.splice(i, 1); else setDraft.lines.push({ id: it.id, qty: stepOf(it) });
+  b.setAttribute('aria-pressed', i < 0);
+  paintPickCount();
+});
+$('#sh-setpick').addEventListener('closed', paintSetLines);
+$('#setSave').addEventListener('click', async () => {
+  const name = $('#setName').value.trim();
+  if (!name) { toast('なまえを 入れてください。'); $('#setName').focus(); return; }
+  const lines = setDraft.lines.filter(l => byId(l.id));
+  if (!lines.length) { toast('品物を 1つ 以上 えらんで ください。'); return; }
+  if (!sets) sets = [];
+  const s = fixSet({ ...setDraft, name, lines }), at = sets.findIndex(x => x.id === s.id);
+  if (at < 0 && sets.length >= MAX_SETS) { toast(`セットは ${MAX_SETS}こまで です。`); return; }
+  if (at >= 0) sets[at] = s; else sets.push(s);
+  save('sets', sets);
+  await closeSheet();
+  renderSettings();
+  toast(at < 0 ? `「${s.name}」を ふやしました。` : '保存しました。');
+});
+$('#setDelete').addEventListener('click', async () => {
+  const s = (sets || []).find(x => x.id === setDraft.id);
+  if (!s || !(await ask(`「${s.name}」を けしますか？`, '親の 画面から この セットが なくなります。品物は そのまま 残ります。', 'けす', 'やめる', { danger: true }))) return;
+  await closeSheet();
+  const i = sets.indexOf(s);
+  if (i < 0) return;
+  sets.splice(i, 1);
+  save('sets', sets);
+  renderSettings();
+  toast(`「${s.name}」を けしました。`, 'もとに もどす', () => { sets.splice(Math.min(i, sets.length), 0, s); save('sets', sets); redraw(); });
+});
+
 function recentExtras() {
   const map = new Map();
   for (const h of hist) for (const t of h.extras) {
@@ -1904,7 +2124,10 @@ $('#fSave').addEventListener('click', async () => {
 });
 $('#fDelete').addEventListener('click', async () => {
   const it = editing;
-  if (!it || !(await ask(`「${it.name}」を けしますか？`, '親の 画面から この ボタンが なくなります。', 'けす', 'やめる', { danger: true }))) return;
+  if (!it) return;
+  // (it stays in its sets, out of sight, so it is back in them if it comes back from けした 品物)
+  const inSets = (sets || []).filter(s => s.lines.some(l => l.id === it.id)).map(s => `「${s.name}」`).join('');
+  if (!(await ask(`「${it.name}」を けしますか？`, '親の 画面から この ボタンが なくなります。' + (inSets ? `${inSets}からも はずれます。` : ''), 'けす', 'やめる', { danger: true }))) return;
   await closeSheet();
   const idx = items.indexOf(it), photo = it.photo ? await itemPhoto(it) : null;
   const keys = Object.entries(cart.lines).filter(([k]) => k === it.id);
@@ -2079,7 +2302,8 @@ async function restoreCopy(key) {
   // what there is now becomes a copy too, so going back can itself be undone
   try { await autoCopy('restore', rawNow()); } catch (e) { toast('いまの 状態を 取っておけないため、やめました。スマホの 空きを たしかめて ください。'); return; }
   try {
-    for (const n of RAW_KEYS) { const v = (c.ls || {})[n]; if (v == null) localStorage.removeItem(KEY + n); else localStorage.setItem(KEY + n, v); }
+    // a copy from before 1.21 has no sets: the sets stay as they are
+    for (const n of RAW_KEYS) { if (!(n in (c.ls || {}))) continue; const v = c.ls[n]; if (v == null) localStorage.removeItem(KEY + n); else localStorage.setItem(KEY + n, v); }
     await idbReplace('photos', c.photos || []);
   } catch (e) { toast('戻せませんでした。スマホの 空きを たしかめて ください。'); return; }
   try { sessionStorage.setItem(KEY + 'note', `${md(c.at)} ${hm(c.at)}の 控えに 戻しました。`); } catch (e) {}
@@ -2134,7 +2358,7 @@ async function paintBroken() {
   $('#brokenCard').hidden = !b;
   $('#brokenCard').dataset.k = b ? b.key : '';
   if (!b) return;
-  const what = b.what.map(w => w === 'items' ? '品物' : w === 'settings' ? '設定' : '送った記録').join('と ');
+  const what = b.what.map(w => ({ items: '品物', settings: '設定', sets: 'セット' })[w] || '送った記録').join('と ');
   $('#brokenText').innerHTML = `<b>${what}の データの 一部が 読めませんでした</b>（${md(b.at)}）。読めなかった 元の データは、この スマホの 中に とって あります。前の 状態に 戻すときは「自動の 控え」から えらんで ください。`;
 }
 $('#brokenGo').addEventListener('click', () => { const h = $('#copyList').previousElementSibling.previousElementSibling; h.scrollIntoView({ block: 'start' }); window.scrollBy(0, -90); });
@@ -2285,7 +2509,7 @@ $('#wipeAll').addEventListener('click', async () => {
 
 /* ---------- a save that failed ---------- */
 const canStore = () => { try { localStorage.setItem(KEY + 'probe', '1'); localStorage.removeItem(KEY + 'probe'); return true; } catch (e) { return false; } };
-const current = { items: () => items, cart: () => cart, history: () => hist, settings: () => settings };
+const current = { items: () => items, cart: () => cart, history: () => hist, settings: () => settings, sets: () => sets };
 $('#saveRetry').addEventListener('click', () => {
   for (const n of [...unsaved]) {
     if (n === 'probe') { if (canStore()) unsaved.delete(n); }
@@ -2328,6 +2552,9 @@ if (pending) setTimeout(askSent, 700);
   if (regrouped && !broken.size) { save('items', items); regrouped = 0; }
   // 1.14: the starting items grew; a list from before gets the new ones, also only after that copy
   await addNewItems();
+  // 1.21: and the starting sets, once, made of its items (new ones included); with data that couldn't be read they are
+  // shown, and not saved
+  if (sets === null) { sets = startSets(); if (!broken.size) save('sets', sets); }
   await loadPhotos();
   renderHome();
   // the clock is checked before anything is cleared by date
