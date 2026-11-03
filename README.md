@@ -71,6 +71,7 @@ Actions の 部品は コミットの 番号で 固定して あり、新しい 
 | 1.15 | たべもの を 10の ジャンルに（`group`：staple・veg・fruit・meat・fish・chilled・season・snack・deli・dry。`food` は「ほかの たべもの」）。品物に `gset`（2：この 分け方で 見た）。`gset` の ない 品物は、たべもの なら はじめの 品物と 同じ 名前の ジャンルへ 1回 移す。`catalog` 3 で 100こ ふえた。品物は 500こまで |
 | 1.16 | `catalog` 4 で のみもの が 10こ ふえた（足し方は 1.14 と 同じ） |
 | 1.18 | `settings` の `send`・`theme`・`lock` は 読まない（送り方は いつも LINE を ひらく、画面は いつも 明るい、バックアップは ない）。`backup`・`welcome` の キーと `snaps` の `beforeImport` は 開いた ときに けす |
+| 1.20 | `catalog` 5 で 大トロ・パルミジャーノレッジャーノ が ふえた（足し方は 1.14 と 同じ） |
 
 形を 変える ときは：前の 形も 読める ように する、`tests/fixtures.js` に その版の 見本を 足す、この 表に 書く。
 

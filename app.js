@@ -47,7 +47,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.19';
+const APP_VER = '1.20';
 const DAY = 864e5;
 
 // 1.15: たべもの is split into the genres of a supermarket's shelves, so the genre menu reaches each of them
@@ -152,8 +152,8 @@ const FROM_EMOJI = { '🍞': 'sandwich', '🥚': 'egg', '🌾': 'wheat', '🍚':
 const TO_EMOJI = {};
 for (const [e, n] of Object.entries(FROM_EMOJI)) TO_EMOJI[n] = TO_EMOJI[n] || e;
 // name, picture, unit, genre, and the catalog that brought it (none: the first one; 2: 1.14; 3: 1.15, a hundred
-// everyday things from a supermarket, none of them a maker's product; 4: 1.16, ten more drinks). Each size is an item
-// of its own, so the parent is never asked which one.
+// everyday things from a supermarket, none of them a maker's product; 4: 1.16, ten more drinks; 5: 1.20, 大トロ and
+// パルミジャーノレッジャーノ, asked for by name). Each size is an item of its own, so the parent is never asked which one.
 const DEFAULT_ITEMS = [
   ['食パン 6枚切り', 'sandwich', '袋', 'staple'],
   ['食パン 8枚切り', 'sandwich', '袋', 'staple'],
@@ -215,6 +215,7 @@ const DEFAULT_ITEMS = [
   ['あじ', '', 'パック', 'fish', 3],
   ['ぶり', '', 'パック', 'fish', 3],
   ['さしみ', '', 'パック', 'fish', 3],
+  ['大トロ', '', 'パック', 'fish', 5],
   ['いか', '', 'パック', 'fish', 3],
   ['えび', 'shrimp', 'パック', 'fish', 3],
   ['あさり', '', 'パック', 'fish', 3],
@@ -228,6 +229,7 @@ const DEFAULT_ITEMS = [
   ['こんにゃく', '', '個', 'chilled', 3],
   ['ヨーグルト', '', '個', 'chilled', 2],
   ['チーズ', '', '個', 'chilled', 3],
+  ['パルミジャーノレッジャーノ', '', '個', 'chilled', 5],
   ['バター', '', '個', 'chilled', 3],
   ['マーガリン', '', '個', 'chilled', 3],
   ['つけもの', '', 'パック', 'chilled', 3],

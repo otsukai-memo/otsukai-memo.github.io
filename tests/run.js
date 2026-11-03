@@ -43,8 +43,9 @@
   // 1.10: an item with two sizes or more is shown as one item for each size
   const splitN = list => list.reduce((n, it) => n + ((it.sizes || []).length >= 2 ? it.sizes.length : 1), 0);
   // the starting items added to a list kept from before: 23 by 1.14 (none of them is in the fixtures), a hundred
-  // by 1.15 (おにぎり is in the 1.3 fixture) and ten drinks by 1.16
-  const ADDED = 23, ADDED3 = 100, ADDED4 = 10;
+  // by 1.15 (おにぎり is in the 1.3 fixture), ten drinks by 1.16 and two by 1.20
+  const ADDED = 23, ADDED3 = 100, ADDED4 = 10, ADDED5 = 2;
+  const namesIn = (f, key) => [...f.contentDocument.querySelectorAll(`#g-${key} .row .nm`)].map(n => n.textContent);
   const groupOf = id => ((stored('items') || []).find(it => it.id === id) || {}).group;
   const named = (f, name) => [...f.contentDocument.querySelectorAll('#groups .row')].find(r => r.querySelector('.nm').textContent === name);
   const stored = name => { try { return JSON.parse(localStorage.getItem(KEY + name)); } catch (e) { return undefined; } };
@@ -82,7 +83,12 @@
     // ---------- a first start ----------
     await clean();
     let f = await openApp();
-    check(rows(f) >= 156, `はじめて 開くと はじめの 品物が 出る（${rows(f)}行）`);
+    check(rows(f) >= 158, `はじめて 開くと はじめの 品物が 出る（${rows(f)}行）`);
+    // 1.20: 大トロ after さしみ, パルミジャーノレッジャーノ after チーズ, and still one まんじゅう (there since 1.15)
+    const fish = namesIn(f, 'fish'), dairy = namesIn(f, 'chilled');
+    check(fish.indexOf('大トロ') > 0 && fish.indexOf('大トロ') === fish.indexOf('さしみ') + 1 && dairy.indexOf('パルミジャーノレッジャーノ') > 0
+      && dairy.indexOf('パルミジャーノレッジャーノ') === dairy.indexOf('チーズ') + 1 && namesIn(f, 'snack').filter(n => n === 'まんじゅう').length === 1,
+      'はじめの 品物に 大トロ（さしみの 次）と パルミジャーノレッジャーノ（チーズの 次）。まんじゅうは 1つ');
     check(!$in(f, '#appbar h1') && !/かいものメモ/.test($in(f, '#appbar').textContent), '上の 帯に「かいものメモ」の 文字が ない');
     check(!!named(f, 'お米 2kg') && !!named(f, 'お米 5kg') && (stored('items') || []).every(it => !it.sizes.length), 'はじめの 品物は 大きさごとに 分かれて いる');
     check($in(f, '.ver').textContent === 'かいものメモ ' + appVer, `表示の 版が ${appVer}`);
@@ -168,7 +174,7 @@
     put(f13);
     for (const [i, id] of f13.photos.entries()) localStorage.setItem(KEY + 'photo:' + id, await photoURL(i ? '#36c' : '#c63'));
     f = await openApp();
-    check(rows(f) === splitN(f13.items) + ADDED + ADDED3 + ADDED4 - 1, `1.3 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f13.items) + ADDED + ADDED3 + ADDED4 - 1}）`);
+    check(rows(f) === splitN(f13.items) + ADDED + ADDED3 + ADDED4 + ADDED5 - 1, `1.3 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f13.items) + ADDED + ADDED3 + ADDED4 + ADDED5 - 1}）`);
     check(groupOf('a3') === 'deli' && groupOf('a1~6枚切り') === 'staple', '1.3 の たべものが それぞれの ジャンルに 移る（おにぎり → おそうざい）');
     const moved = await keys('photos');
     check(['a1~6枚切り', 'a1~8枚切り', 'a2'].every(id => moved.includes(id)) && !moved.includes('a1'), '1.3 の 写真が IndexedDB に 移る（分けた 品物には それぞれ）');
@@ -188,7 +194,7 @@
     const f18 = FIXTURES['1.8'];
     put(f18);
     f = await openApp();
-    check(rows(f) === splitN(f18.items) + ADDED + ADDED3 + ADDED4, `1.8 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f18.items) + ADDED + ADDED3 + ADDED4}）`);
+    check(rows(f) === splitN(f18.items) + ADDED + ADDED3 + ADDED4 + ADDED5, `1.8 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f18.items) + ADDED + ADDED3 + ADDED4 + ADDED5}）`);
     check(groupOf('b1~8枚切り') === 'staple' && groupOf('b2') === 'chilled' && groupOf('b3') === 'veg' && groupOf('b4') === 'drink', '1.8 の たべものが それぞれの ジャンルに 移る（のみものは そのまま）');
     check((stored('history') || []).length === f18.history, '1.8 の 送った 記録が 残る');
     check(f.contentDocument.documentElement.dataset.size === 'l', '文字の 大きさの 設定が 残る');
@@ -215,13 +221,13 @@
     localStorage.setItem(KEY + 'ver', JSON.stringify('1.13'));
     f = await openApp();
     const grown = stored('items') || [];
-    check(grown.length === kept.length + ADDED + ADDED3 + ADDED4 - 1 && grown.filter(it => /りんご|リンゴ/.test(it.name)).length === 1, `1.13 の リストに 新しい 品物が 足される（${grown.length}こ。りんごは 1つの まま）`);
+    check(grown.length === kept.length + ADDED + ADDED3 + ADDED4 + ADDED5 - 1 && grown.filter(it => /りんご|リンゴ/.test(it.name)).length === 1, `1.13 の リストに 新しい 品物が 足される（${grown.length}こ。りんごは 1つの まま）`);
     check(groupOf('d1') === 'chilled' && groupOf('d2') === 'fruit' && groupOf('d3') === 'other' && groupOf('d4') === 'food' && /ほかの たべもの/.test($in(f, '#groups').textContent),
       'リンゴは くだものへ、名前の ちがう ものは「ほかの たべもの」に 残る');
     check(kept.every((it, i) => grown[i] && grown[i].id === it.id), 'もとの 品物の ならびは かわらない');
     f.remove();
     f = await openApp();
-    check((stored('items') || []).length === grown.length && stored('catalog') === 4, 'もう一度 ひらいても 足すのは 1回だけ');
+    check((stored('items') || []).length === grown.length && stored('catalog') === 5, 'もう一度 ひらいても 足すのは 1回だけ');
 
     // ---------- 1.16: a list kept by 1.15 gets the ten drinks only, after its own ones ----------
     await clean();
@@ -234,9 +240,31 @@
     localStorage.setItem(KEY + 'catalog', JSON.stringify(3));
     localStorage.setItem(KEY + 'ver', JSON.stringify('1.15'));
     f = await openApp();
-    const grown16 = stored('items') || [];
-    check(grown16.length === kept15.length + ADDED4 - 1 && grown16.slice(kept15.length).every(it => it.group === 'drink') && kept15.every((it, i) => grown16[i].id === it.id),
+    const grown16 = stored('items') || [], add16 = grown16.slice(kept15.length);
+    check(grown16.length === kept15.length + ADDED4 + ADDED5 - 1 && add16.filter(it => it.group === 'drink').length === ADDED4 - 1 && kept15.every((it, i) => grown16[i].id === it.id),
       `1.15 の リストに のみものが 足される（${grown16.length}こ。日本酒は 1つの まま）`);
+
+    // ---------- 1.20: a list kept by 1.19 gets 大トロ and パルミジャーノレッジャーノ, each at the end of its genre ----------
+    await clean();
+    const kept19 = [
+      { id: 'g1', name: 'さしみ', icon: '', unit: 'パック', group: 'fish', sizes: [], note: '', photo: false, count: 0, lastAt: 0, gset: 2 },
+      { id: 'g2', name: 'ちくわ', icon: '', unit: '袋', group: 'fish', sizes: [], note: '', photo: false, count: 0, lastAt: 0, gset: 2 },
+      { id: 'g3', name: 'チーズ', icon: '', unit: '個', group: 'chilled', sizes: [], note: '', photo: false, count: 0, lastAt: 0, gset: 2 },
+      { id: 'g4', name: 'まんじゅう', icon: '', unit: '個', group: 'snack', sizes: [], note: '', photo: false, count: 0, lastAt: 0, gset: 2 },
+    ];
+    localStorage.setItem(KEY + 'items', JSON.stringify(kept19));
+    localStorage.setItem(KEY + 'catalog', JSON.stringify(4));
+    localStorage.setItem(KEY + 'ver', JSON.stringify('1.19'));
+    f = await openApp();
+    const grown20 = stored('items') || [];
+    check(grown20.length === kept19.length + ADDED5 && kept19.every((it, i) => grown20[i].id === it.id) && stored('catalog') === 5
+      && namesIn(f, 'fish').join() === 'さしみ,ちくわ,大トロ' && namesIn(f, 'chilled').join() === 'チーズ,パルミジャーノレッジャーノ' && namesIn(f, 'snack').join() === 'まんじゅう',
+      `1.19 の リストに 大トロ と パルミジャーノレッジャーノ が ジャンルの 終わりに 足される（${grown20.length}こ。まんじゅうは 1つの まま）`);
+    const picOf = name => (named(f, name) || { querySelector: () => null }).querySelector('.pic.ini');
+    check((picOf('大トロ') || {}).textContent === '大' && (picOf('パルミジャーノレッジャーノ') || {}).textContent === 'パ', '足した 2つの 絵は 名前の 1文字目');
+    f.remove();
+    f = await openApp();
+    check((stored('items') || []).length === grown20.length, '1.20 も もう一度 ひらいても 足すのは 1回だけ');
 
     // ---------- 1.18: what 1.17 kept for the share menu, the dark screen and backups stays behind ----------
     await clean();
