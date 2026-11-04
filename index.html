@@ -16,7 +16,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/basket-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/basket-apple-touch.png">
-<link rel="stylesheet" href="style.css?v=1.22">
+<link rel="stylesheet" href="style.css?v=1.23">
 </head>
 <body>
 
@@ -54,16 +54,15 @@
     <div class="card warn" id="troubleCard" hidden><p id="troubleText"></p><div class="btnrow"><button type="button" id="troubleClose" class="btn text sl">わかった</button></div></div>
     <div class="card warn" id="brokenCard" hidden><p id="brokenText"></p><div class="btnrow"><button type="button" id="brokenGo" class="btn filled sl">自動の 控えを 見る</button><button type="button" id="brokenClose" class="btn text sl">わかった</button></div></div>
 
+    <h2 class="sh">セット</h2>
+    <p class="note">すきな 名前で、品物と 数を えらんで 作れます（リストに ない 品物も、その場で ふやせます）。親の 画面の いちばん 上の「料理を えらぶ」から 出ます。</p>
+    <div class="btnrow"><button type="button" id="addSet" class="btn filled sl"><span data-ic="plus"></span>セットを ふやす</button><button type="button" id="openSetList" class="btn tonal sl setlistbtn" aria-haspopup="dialog" aria-controls="sh-setlist">セットの 一覧<span id="setCount"></span><span data-ic="chevron-right"></span></button></div>
+
     <h2 class="sh">品物</h2>
     <div class="btnrow"><button type="button" id="addItem" class="btn filled sl"><span data-ic="plus"></span>品物を ふやす</button><button type="button" id="photoAll" class="btn tonal sl"><span data-ic="camera"></span>写真で そろえる</button><button type="button" id="sortFreq" class="btn outlined sl"><span data-ic="arrow-down-wide-narrow"></span>よく頼む順に ならべる</button></div>
     <p class="note">絵は どの スマホでも 同じに 出ます。いつも 買う 品物の 写真を とっておくと、いちばん 分かりやすく なります（「写真で そろえる」で 続けて とれます）。ボタンの 場所は 勝手には 変わりません。↑↓ で ならべかえられます。</p>
     <div id="sItems"></div>
     <section class="sgrp" id="trashBox" hidden><h3>けした 品物<span>30日 とっておきます</span></h3><ul class="slist" id="trashList"></ul><button type="button" id="clearTrash" class="btn text sl"><span data-ic="trash-2"></span>ぜんぶ 完全に けす</button></section>
-
-    <h2 class="sh">セット</h2>
-    <p class="note">親の 画面の いちばん 上の「料理を えらぶ」を 押すと 出ます。「ぜんぶ 入れる」を 押すと、セットの 品物が まとめて 入ります。もう 入って いる 品物は、セットの 数に 足りない ときだけ ふえます。</p>
-    <div class="btnrow"><button type="button" id="addSet" class="btn filled sl"><span data-ic="plus"></span>セットを ふやす</button></div>
-    <ul class="slist mt-m" id="sSets"></ul>
 
     <h2 class="sh">文字で たのまれたもの</h2>
     <p class="note">文字で 入れたもので よく出てくるものは「ボタンにする」と、次から 押すだけで たのめます。</p>
@@ -132,7 +131,7 @@
     <p class="note">スマホを 人に ゆずる ときなどに。品物・写真・送った記録・録音・設定を ぜんぶ けして、はじめの 状態に 戻します。けした データは 戻せません。</p>
     <button type="button" id="wipeAll" class="btn danger sl"><span data-ic="trash-2"></span>データを ぜんぶ けす</button>
 
-    <p class="ver">かいものメモ 1.22</p>
+    <p class="ver">かいものメモ 1.23</p>
   </div>
 </section>
 
@@ -256,6 +255,23 @@
   </div>
 </div>
 
+<div class="layer" id="sh-setlist" hidden role="dialog" aria-modal="true" aria-labelledby="setListTitle">
+  <div class="scrim" data-close></div>
+  <div class="sheet split">
+    <div class="sheet-body"><div class="wrap">
+      <h2 id="setListTitle">セットの 一覧</h2>
+      <p class="note">押すと なおせます。↑↓ で ならべかえると、親の 画面も その 順に なります。「ぜんぶ 入れる」では、もう 入って いる 品物は セットの 数に 足りない ときだけ ふえます。</p>
+      <ul class="slist mt-m" id="sSets"></ul>
+    </div></div>
+    <div class="sheet-foot"><div class="wrap">
+      <div class="acts">
+        <button type="button" id="addSet2" class="btn tonal big sl"><span data-ic="plus"></span>セットを ふやす</button>
+        <button type="button" class="btn outlined big sl" data-close>とじる</button>
+      </div>
+    </div></div>
+  </div>
+</div>
+
 <div class="layer" id="sh-set" hidden role="dialog" aria-modal="true" aria-labelledby="setEditTitle">
   <div class="scrim" data-close></div>
   <div class="sheet split">
@@ -282,7 +298,8 @@
   <div class="sheet split">
     <div class="sheet-body"><div class="wrap">
       <h2 id="pickTitle">品物を えらぶ</h2>
-      <label class="tf"><input id="pickFind" type="text" maxlength="20" autocomplete="off" enterkeyhint="search" placeholder=" "><span>名前で さがす</span></label>
+      <label class="tf"><input id="pickFind" type="text" maxlength="20" autocomplete="off" enterkeyhint="search" placeholder=" "><span>名前で さがす</span><small>リストに ない 品物は、名前を 入れると ふやせます。</small></label>
+      <button type="button" id="pickNew" class="btn tonal sl mt-s picknew" hidden><span data-ic="plus"></span><span id="pickNewT"></span></button>
       <div id="pickList"></div>
       <p class="note" id="pickNone" hidden>その 名前の 品物は ありません。</p>
     </div></div>
@@ -340,7 +357,7 @@
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="check.js?v=1.22"></script>
-<script src="app.js?v=1.22"></script>
+<script src="check.js?v=1.23"></script>
+<script src="app.js?v=1.23"></script>
 </body>
 </html>

@@ -48,7 +48,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.22';
+const APP_VER = '1.23';
 const DAY = 864e5;
 
 // 1.15: たべもの is split into the genres of a supermarket's shelves, so the genre menu reaches each of them
@@ -1924,8 +1924,11 @@ $('#sortFreq').addEventListener('click', () => {
 });
 
 /* ---------- セット in 設定: made, changed and taken away by the family ---------- */
+// 1.23: at the top of 設定 (below the items, it sat under some 160 rows): making one is a button there, and the list,
+// to change or reorder them, opens over it
 function renderSetList() {
   const list = sets || [];
+  $('#setCount').textContent = list.length ? `（${list.length}こ）` : '';
   $('#sSets').innerHTML = list.length ? list.map((s, i) => {
     const xs = setItems(s);
     return `<li class="srow" data-set="${esc(s.id)}"><button type="button" class="sedit sl">${setPic('sm')}`
@@ -1951,6 +1954,8 @@ $('#sSets').addEventListener('click', e => {
 // the set being made or changed, saved only with 保存する
 let setDraft = null;
 $('#addSet').addEventListener('click', () => openSetEdit(null));
+$('#addSet2').addEventListener('click', () => openSetEdit(null));
+$('#openSetList').addEventListener('click', () => { renderSetList(); openSheet('sh-setlist'); });
 function openSetEdit(s) {
   setDraft = s ? { id: s.id, name: s.name, lines: setItems(s).map(({ it, qty }) => ({ id: it.id, qty })) } : { id: uid(), name: '', lines: [] };
   $('#setEditTitle').textContent = s ? 'セットを なおす' : 'セットを ふやす';
@@ -1993,8 +1998,23 @@ function renderPick() {
   }).join('');
   $('#pickList').innerHTML = html;
   $('#pickNone').hidden = !!html;
+  // a name no item has: it can be made one here
+  const typed = $('#pickFind').value.trim();
+  $('#pickNew').hidden = !q || items.some(it => nameKey(it.name) === q);
+  $('#pickNewT').textContent = `「${typed}」を 品物に ふやす`;
   paintPickCount();
 }
+// 1.23: the item sheet opens over this one with the name filled in (the family picks its group and unit there), and
+// the item, once saved, is in the list and in the set
+let pickAdding = false;
+$('#pickNew').addEventListener('click', () => {
+  const name = $('#pickFind').value.trim();
+  if (!name) return;
+  if (setDraft.lines.length >= MAX_SET_LINES) { toast(`1つの セットに 入る 品物は ${MAX_SET_LINES}こまで です。`); return; }
+  pickAdding = true;
+  openEdit(null, name);
+});
+$('#sh-edit').addEventListener('closed', () => { pickAdding = false; });
 const paintPickCount = () => { $('#pickCount').textContent = `えらんだ 品物：${setDraft.lines.length}こ`; };
 $('#pickFind').addEventListener('input', renderPick);
 $('#pickList').addEventListener('click', e => {
@@ -2180,10 +2200,12 @@ $('#fSave').addEventListener('click', async () => {
   else if (copyOf && items.includes(copyOf)) items.splice(items.indexOf(copyOf) + 1, 0, item);
   else items.push(item);
   save('items', items);
-  const isNew = !editing;
+  const isNew = !editing, forSet = isNew && pickAdding;
   await closeSheet();
   renderSettings();
-  toast(isNew ? `「${item.name}」を ふやしました。` : '保存しました。');
+  // made from a set's list of items: it goes into the set (saved with the set's 保存する), shown picked
+  if (forSet && setDraft && !setDraft.lines.some(l => l.id === item.id)) { setDraft.lines.push({ id: item.id, qty: stepOf(item) }); renderPick(); }
+  toast(forSet ? `「${item.name}」を ふやして、セットに 入れました。` : isNew ? `「${item.name}」を ふやしました。` : '保存しました。');
 });
 $('#fDelete').addEventListener('click', async () => {
   const it = editing;

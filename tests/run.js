@@ -202,6 +202,9 @@
     const set18 = $in(f, '#settings').textContent;
     check(['#sendSeg', '#themeSeg', '#installBtn', '#backupSec', '#backupCard', '#welcomeCard', '#importFile', '#verifyFile', '#saveOut'].every(s => !$in(f, s))
       && !/バックアップ|ホーム画面に アイコンを 置く|画面の 色/.test(set18), '設定に 送り方と 画面の 色の えらび・ホーム画面の アイコン・バックアップが ない');
+    // 1.23: セット comes first in 設定, above the items (it was under all of them), and its list opens from a button that counts them
+    check($in(f, '#addSet').getBoundingClientRect().bottom < $in(f, '#addItem').getBoundingClientRect().top && $in(f, '#openSetList').textContent === 'セットの 一覧（20こ）'
+      && !!$in(f, '#sh-setlist #sSets'), `設定の いちばん 上に「セットを ふやす」と「${$in(f, '#openSetList').textContent}」`);
     // 1.21: a set is made in 設定 (a name, items picked from the list, their amounts), shown to the parent, changed and taken away
     $in(f, '#addSet').click();
     await wait(600);
@@ -231,7 +234,11 @@
     check(homeSets.length === 21 && homeSets[20] === 'やさいいため：キャベツ・もやし\u00a02袋・ピーマン' && /・牛乳\u00a01L・/.test(homeSets[17])
       && /など 21こ$/.test($in(f, '#setOpen .sub').textContent), `ふやした セットが 親の 画面に 出る（${homeSets[20]}）`);
     await openSettings(f);
+    $in(f, '#openSetList').click();
+    await wait(600);
     const sRow = () => [...f.contentDocument.querySelectorAll('#sSets .srow')].find(r => /やさいいため/.test(r.textContent));
+    check(!$in(f, '#sh-setlist').hidden && f.contentDocument.querySelectorAll('#sSets .srow').length === 21 && $in(f, '#openSetList').textContent === 'セットの 一覧（21こ）',
+      '「セットの 一覧」を 押すと、なおす セットを えらべる');
     sRow().querySelector('.sedit').click();
     await wait(600);
     $in(f, `#setLines [data-id="${idOf('ピーマン')}"] .ldel`).click();
@@ -245,7 +252,9 @@
     await wait(600);
     $in(f, '#askOk').click();
     await wait(900);
-    check((stored('sets') || []).map(st => st.name).join() === DISHES && !$in(f, '#sh-set').classList.contains('open'), 'セットを けせる');
+    check((stored('sets') || []).map(st => st.name).join() === DISHES && !$in(f, '#sh-set').classList.contains('open') && !$in(f, '#sh-setlist').hidden, 'セットを けせる（一覧に もどる）');
+    $in(f, '#sh-setlist .sheet-foot [data-close]').click();
+    await wait(600);
     // an item in many sets: its question names three of them, and how many
     const tamaRow = $in(f, `#sItems [data-id="${idOf('たまねぎ')}"]`);
     if (tamaRow) tamaRow.querySelector('.sedit').click();
@@ -259,6 +268,35 @@
     await wait(600);
     check(askT === '親の 画面から この ボタンが なくなります。「カレーライス」「肉じゃが」「豚の生姜焼き」など 7つの セットからも はずれます。' && !!idOf('たまねぎ') && !!(stored('items') || []).find(it => it.name === 'たまねぎ'),
       `いくつもの セットに ある 品物を けす ときは 3つと 数を 言う（${askT}）`);
+    // 1.23: a set can have an item the list doesn't have yet: typed in the search, it is made right there (its group and
+    // unit picked in the item sheet), and is in the set and on the list
+    $in(f, '#addSet').click();
+    await wait(600);
+    $in(f, '#setName').value = 'おでん';
+    $in(f, '#setPick').click();
+    await wait(600);
+    findIn('はんぺん');
+    const offered = $in(f, '#pickNew').hidden ? '' : $in(f, '#pickNew').textContent;
+    $in(f, '#pickNew').click();
+    await wait(700);
+    const formName = $in(f, '#fName').value, formOpen = !$in(f, '#sh-edit').hidden;
+    $in(f, '#fGroup [data-g="fish"]').click();
+    await wait(100);
+    $in(f, '#fSave').click();
+    await wait(900);
+    const hanpen = (stored('items') || []).find(it => it.name === 'はんぺん') || {};
+    const pickedNow = [...f.contentDocument.querySelectorAll('#pickList .pick[aria-pressed="true"] b')].map(b => b.textContent).join();
+    check(offered === '「はんぺん」を 品物に ふやす' && formOpen && formName === 'はんぺん' && hanpen.group === 'fish' && !$in(f, '#sh-setpick').hidden && $in(f, '#sh-edit').hidden
+      && pickedNow === 'はんぺん' && $in(f, '#pickNew').hidden && /セットに 入れました/.test($in(f, '#toast').textContent), `リストに ない 品物も その場で ふやして 入れられる（${offered}）`);
+    findIn('ちくわ');
+    const exact = $in(f, '#pickNew').hidden;
+    $in(f, '#sh-setpick .sheet-foot [data-close]').click();
+    await wait(600);
+    $in(f, '#setSave').click();
+    await wait(900);
+    const oden = (stored('sets') || []).find(st => st.name === 'おでん') || { lines: [] };
+    check(exact && oden.lines.length === 1 && oden.lines[0].id === hanpen.id && (stored('items') || []).filter(it => it.name === 'はんぺん').length === 1,
+      'できた セットに その 品物が 入り、リストに ある 名前では ふやす ボタンが 出ない');
     // the sheet that asked for backups' passwords too asks for the PIN only
     $in(f, '#pinSet').click();
     await wait(600);
