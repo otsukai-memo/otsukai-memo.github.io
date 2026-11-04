@@ -43,8 +43,10 @@
   // 1.10: an item with two sizes or more is shown as one item for each size
   const splitN = list => list.reduce((n, it) => n + ((it.sizes || []).length >= 2 ? it.sizes.length : 1), 0);
   // the starting items added to a list kept from before: 23 by 1.14 (none of them is in the fixtures), a hundred
-  // by 1.15 (おにぎり is in the 1.3 fixture), ten drinks by 1.16, two by 1.20 and two by 1.21
-  const ADDED = 23, ADDED3 = 100, ADDED4 = 10, ADDED5 = 2, ADDED6 = 2;
+  // by 1.15 (おにぎり is in the 1.3 fixture), ten drinks by 1.16, two by 1.20, two by 1.21 and six by 1.22
+  const ADDED = 23, ADDED3 = 100, ADDED4 = 10, ADDED5 = 2, ADDED6 = 2, ADDED7 = 6;
+  // 1.22: the starting sets, in the order the family asked for them
+  const DISHES = 'カレーライス,肉じゃが,豚の生姜焼き,鶏の唐揚げ,ハンバーグ,餃子,麻婆豆腐,野菜炒め,焼き鮭,さばの味噌煮,親子丼,筑前煮,きんぴらごぼう,卵焼き,ほうれん草のおひたし,味噌汁,豚汁,クリームシチュー,オムライス,チャーハン';
   const namesIn = (f, key) => [...f.contentDocument.querySelectorAll(`#g-${key} .row .nm`)].map(n => n.textContent);
   const groupOf = id => ((stored('items') || []).find(it => it.id === id) || {}).group;
   const named = (f, name) => [...f.contentDocument.querySelectorAll('#groups .row')].find(r => r.querySelector('.nm').textContent === name);
@@ -93,40 +95,67 @@
     check(!!named(f, 'お米 2kg') && !!named(f, 'お米 5kg') && (stored('items') || []).every(it => !it.sizes.length), 'はじめの 品物は 大きさごとに 分かれて いる');
     check($in(f, '.ver').textContent === 'かいものメモ ' + appVer, `表示の 版が ${appVer}`);
     check(stored('ver') === appVer, 'ver が 保存される');
-    // 1.21: ごぼう after 大根, カレールー before レトルトカレー, and the two starting sets at the top of the parent's screen
-    const veg = namesIn(f, 'veg'), dry = namesIn(f, 'dry');
-    check(veg.indexOf('ごぼう') > 0 && veg.indexOf('ごぼう') === veg.indexOf('大根') + 1 && dry.indexOf('カレールー') >= 0 && dry.indexOf('カレールー') + 1 === dry.indexOf('レトルトカレー'),
-      'はじめの 品物に ごぼう（大根の 次）と カレールー（レトルトカレーの 前）');
+    // 1.21–1.22: the items the sets needed, each beside its kind
+    const veg = namesIn(f, 'veg'), dry = namesIn(f, 'dry'), chill = namesIn(f, 'chilled');
+    const next = (list, a, b) => list.indexOf(a) >= 0 && list.indexOf(b) === list.indexOf(a) + 1;
+    check(next(veg, '大根', 'ごぼう') && next(veg, 'ごぼう', 'れんこん') && next(veg, 'ねぎ', 'にら') && next(chill, 'こんにゃく', 'しらたき') && next(chill, 'しらたき', 'ぎょうざの皮')
+      && next(dry, 'カレールー', 'シチュールー') && next(dry, 'シチュールー', '麻婆豆腐の素') && next(dry, '麻婆豆腐の素', 'レトルトカレー'),
+      'はじめの 品物に ごぼう・れんこん（大根の 次）、にら（ねぎの 次）、しらたき・ぎょうざの皮（こんにゃくの 次）、シチュールー・麻婆豆腐の素（カレールーの 次）');
     const its = stored('items') || [], idOf = n => (its.find(it => it.name === n) || {}).id;
     const lineText = st => st.lines.map(l => (its.find(it => it.id === l.id) || {}).name + l.qty).join();
-    const sets0 = stored('sets') || [];
-    check(sets0.map(st => st.name).join() === 'カレーセット,豚汁セット' && lineText(sets0[0]) === 'じゃがいも1,にんじん1,たまねぎ2,ぶた肉300,カレールー1'
-      && lineText(sets0[1]) === 'ぶた肉200,大根1,にんじん1,ごぼう1,こんにゃく1,ねぎ1', `はじめの セット（${sets0.map(st => st.name + '：' + lineText(st)).join(' ')}）`);
-    const setRows = [...f.contentDocument.querySelectorAll('#setList .setrow')];
-    check(!$in(f, '#g-set').hidden && setRows.map(r => r.querySelector('.nm').textContent).join() === 'カレーセット,豚汁セット'
-      && $in(f, '#g-set').getBoundingClientRect().bottom <= $in(f, '#groups').getBoundingClientRect().top, '親の 画面の 上に セットが 出る');
-    setRows[0].querySelector('.put').click();
+    // 1.22: twenty dishes, made of the starting items, with no seasoning (it is at home already)
+    const sets0 = stored('sets') || [], setBy = n => sets0.find(st => st.name === n) || { lines: [] };
+    check(sets0.map(st => st.name).join() === DISHES && lineText(setBy('カレーライス')) === 'じゃがいも1,にんじん1,たまねぎ2,ぶた肉300,カレールー1'
+      && lineText(setBy('豚汁')) === 'ぶた肉200,大根1,にんじん1,ごぼう1,こんにゃく1,ねぎ1' && lineText(setBy('餃子')) === 'ひき肉200,キャベツ1,にら1,ぎょうざの皮1'
+      && lineText(setBy('筑前煮')) === 'とり肉200,ごぼう1,れんこん1,にんじん1,こんにゃく1,しいたけ1' && lineText(setBy('卵焼き')) === 'たまご1'
+      && lineText(setBy('クリームシチュー')) === 'とり肉300,じゃがいも1,にんじん1,たまねぎ1,ブロッコリー1,牛乳 1L1,シチュールー1', `はじめの セットは 20の 料理（${sets0.length}こ）`);
+    check(sets0.length === 20 && sets0.every(st => st.lines.length && st.lines.every(l => its.some(it => it.id === l.id && it.group !== 'season'))),
+      'どの セットの 品物も リストに あり、ちょうみりょうは 入って いない');
+    // on the parent's screen, one row at the top opens them
+    const openRow = f.contentDocument.querySelectorAll('#setOpen .row');
+    check(!$in(f, '#g-set').hidden && openRow.length === 1 && openRow[0].querySelector('.sub').textContent === 'カレーライス・肉じゃが・豚の生姜焼き など 20こ'
+      && $in(f, '#g-set').getBoundingClientRect().bottom <= $in(f, '#groups').getBoundingClientRect().top && $in(f, '#sh-sets').hidden,
+      `親の 画面の 上は「料理を えらぶ」の 1行だけ（${openRow.length}行）`);
+    openRow[0].querySelector('.open').click();
+    const setRows = [...f.contentDocument.querySelectorAll('#setList .setrow')], putOf = n => setRows.find(r => r.querySelector('.nm').textContent === n).querySelector('.put');
+    // the second tap of a double tap, on a button that has just come up under the finger, puts nothing in
+    putOf('カレーライス').click();
+    await wait(700);
+    check(!$in(f, '#sh-sets').hidden && setRows.map(r => r.querySelector('.nm').textContent).join() === DISHES && !Object.keys((stored('cart') || {}).lines || {}).length,
+      '押すと 20の セットが ひらく（ひらいて すぐの 2度押しでは 入らない）');
+    putOf('カレーライス').click();
     await wait(400);
     const cart1 = (stored('cart') || {}).lines || {}, said1 = $in(f, '#toast .tmsg').textContent;
     check(cart1[idOf('じゃがいも')] === 1 && cart1[idOf('にんじん')] === 1 && cart1[idOf('たまねぎ')] === 2 && cart1[idOf('ぶた肉')] === 300 && cart1[idOf('カレールー')] === 1
       && Object.keys(cart1).length === 5 && named(f, 'たまねぎ').classList.contains('sel') && $in(f, '#sendN').textContent === '5' && setRows[0].classList.contains('sel')
-      && said1 === 'カレーセットの 品物を 5こ 入れました。', `「ぜんぶ 入れる」で カレーセットの 5つが 入る（${said1}）`);
-    setRows[0].querySelector('.put').click();
+      && /入っています/.test(putOf('カレーライス').textContent) && said1 === 'カレーライスの 品物を 5こ 入れました。', `「ぜんぶ 入れる」で カレーライスの 5つが 入る（${said1}）`);
+    putOf('カレーライス').click();
     await wait(400);
     check(JSON.stringify((stored('cart') || {}).lines) === JSON.stringify(cart1) && /もう ぜんぶ 入って います/.test($in(f, '#toast').textContent), 'もう一度 押しても ふえない');
-    setRows[1].querySelector('.put').click();
+    putOf('豚汁').click();
     await wait(400);
     const cart2 = (stored('cart') || {}).lines || {};
     const added2 = Object.keys(cart2).filter(k => !(k in cart1)).map(k => (its.find(it => it.id === k) || {}).name).join();
-    check(added2 === '大根,ごぼう,こんにゃく,ねぎ' && cart2[idOf('ぶた肉')] === 300 && cart2[idOf('にんじん')] === 1, `豚汁セットは 足りない ものだけ 入る（${added2}。ぶた肉 300g は そのまま）`);
+    check(added2 === '大根,ごぼう,こんにゃく,ねぎ' && cart2[idOf('ぶた肉')] === 300 && cart2[idOf('にんじん')] === 1, `豚汁は 足りない ものだけ 入る（${added2}。ぶた肉 300g は そのまま）`);
     $in(f, '#toast .tact').click();
     await wait(300);
-    check(JSON.stringify((stored('cart') || {}).lines) === JSON.stringify(cart1) && !named(f, '大根').classList.contains('sel'), '「もとに もどす」で 豚汁セットの 分が もどる');
+    check(JSON.stringify((stored('cart') || {}).lines) === JSON.stringify(cart1) && !named(f, '大根').classList.contains('sel'), '「もとに もどす」で 豚汁の 分が もどる');
+    $in(f, '#sh-sets .sheet-foot [data-close]').click();
+    await wait(600);
+    check($in(f, '#sh-sets').hidden && named(f, 'たまねぎ').classList.contains('sel'), '「とじる」で 品物の 画面に もどる（入れた 品物は そのまま）');
     // 1.11: the genre menu at the top left lists the genres, and each one takes the list to its place
     $in(f, '#navBtn').click();
     await wait(700);
     const genres = [...f.contentDocument.querySelectorAll('#navList [data-g]')].map(b => b.dataset.g).join(',');
     check(!$in(f, '#sh-nav').hidden && genres === 'set,staple,veg,fruit,meat,fish,chilled,season,snack,deli,dry,drink,daily,other', `左上の メニューに セットと ジャンルが 出る（${genres}）`);
+    // 1.22: its セット opens the sets
+    $in(f, '#navList [data-g="set"]').click();
+    await wait(900);
+    check($in(f, '#sh-nav').hidden && !$in(f, '#sh-sets').hidden, '「ジャンル」の セットを 押すと セットが ひらく');
+    $in(f, '#sh-sets .sheet-foot [data-close]').click();
+    await wait(600);
+    $in(f, '#navBtn').click();
+    await wait(700);
     $in(f, '#navList [data-g="daily"]').click();
     await wait(600);
     const ghTop = Math.round($in(f, '#g-daily .gh').getBoundingClientRect().top), under = $in(f, '#appbar').offsetHeight + 8;
@@ -193,13 +222,14 @@
     await wait(100);
     $in(f, '#setSave').click();
     await wait(900);
-    const made21 = (stored('sets') || [])[2] || { lines: [] };
+    const made21 = (stored('sets') || [])[20] || { lines: [] };
     check(made21.name === 'やさいいため' && lineText(made21) === 'キャベツ1,もやし2,ピーマン1' && /やさいいため/.test($in(f, '#sSets').textContent), `セットを ふやせる（${made21.name}：${lineText(made21)}）`);
     $in(f, '#closeSettings').click();
     await wait(900);
     const homeSets = [...f.contentDocument.querySelectorAll('#setList .setrow')].map(r => r.querySelector('.nm').textContent + '：' + r.querySelector('.sub').textContent);
-    // (a name and its amount are joined by a space that never breaks)
-    check(homeSets.length === 3 && homeSets[2] === 'やさいいため：キャベツ・もやし\u00a02袋・ピーマン', `ふやした セットが 親の 画面に 出る（${homeSets[2]}）`);
+    // (a name and its amount, and the words of 牛乳 1L, are joined by a space that never breaks)
+    check(homeSets.length === 21 && homeSets[20] === 'やさいいため：キャベツ・もやし\u00a02袋・ピーマン' && /・牛乳\u00a01L・/.test(homeSets[17])
+      && /など 21こ$/.test($in(f, '#setOpen .sub').textContent), `ふやした セットが 親の 画面に 出る（${homeSets[20]}）`);
     await openSettings(f);
     const sRow = () => [...f.contentDocument.querySelectorAll('#sSets .srow')].find(r => /やさいいため/.test(r.textContent));
     sRow().querySelector('.sedit').click();
@@ -208,14 +238,27 @@
     await wait(100);
     $in(f, '#setSave').click();
     await wait(900);
-    check(lineText((stored('sets') || [])[2] || { lines: [] }) === 'キャベツ1,もやし2', 'セットを なおせる（ピーマンを はずした）');
+    check(lineText((stored('sets') || [])[20] || { lines: [] }) === 'キャベツ1,もやし2', 'セットを なおせる（ピーマンを はずした）');
     sRow().querySelector('.sedit').click();
     await wait(600);
     $in(f, '#setDelete').click();
     await wait(600);
     $in(f, '#askOk').click();
     await wait(900);
-    check((stored('sets') || []).map(st => st.name).join() === 'カレーセット,豚汁セット' && !$in(f, '#sh-set').classList.contains('open'), 'セットを けせる');
+    check((stored('sets') || []).map(st => st.name).join() === DISHES && !$in(f, '#sh-set').classList.contains('open'), 'セットを けせる');
+    // an item in many sets: its question names three of them, and how many
+    const tamaRow = $in(f, `#sItems [data-id="${idOf('たまねぎ')}"]`);
+    if (tamaRow) tamaRow.querySelector('.sedit').click();
+    await wait(600);
+    $in(f, '#fDelete').click();
+    await wait(600);
+    const askT = $in(f, '#askText').textContent;
+    $in(f, '#askNo').click();
+    await wait(600);
+    $in(f, '#sh-edit .sheet-foot [data-close]').click();
+    await wait(600);
+    check(askT === '親の 画面から この ボタンが なくなります。「カレーライス」「肉じゃが」「豚の生姜焼き」など 7つの セットからも はずれます。' && !!idOf('たまねぎ') && !!(stored('items') || []).find(it => it.name === 'たまねぎ'),
+      `いくつもの セットに ある 品物を けす ときは 3つと 数を 言う（${askT}）`);
     // the sheet that asked for backups' passwords too asks for the PIN only
     $in(f, '#pinSet').click();
     await wait(600);
@@ -246,7 +289,7 @@
     put(f13);
     for (const [i, id] of f13.photos.entries()) localStorage.setItem(KEY + 'photo:' + id, await photoURL(i ? '#36c' : '#c63'));
     f = await openApp();
-    check(rows(f) === splitN(f13.items) + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6 - 1, `1.3 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f13.items) + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6 - 1}）`);
+    check(rows(f) === splitN(f13.items) + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6 + ADDED7 - 1, `1.3 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f13.items) + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6 + ADDED7 - 1}）`);
     check(groupOf('a3') === 'deli' && groupOf('a1~6枚切り') === 'staple', '1.3 の たべものが それぞれの ジャンルに 移る（おにぎり → おそうざい）');
     const moved = await keys('photos');
     check(['a1~6枚切り', 'a1~8枚切り', 'a2'].every(id => moved.includes(id)) && !moved.includes('a1'), '1.3 の 写真が IndexedDB に 移る（分けた 品物には それぞれ）');
@@ -266,7 +309,7 @@
     const f18 = FIXTURES['1.8'];
     put(f18);
     f = await openApp();
-    check(rows(f) === splitN(f18.items) + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6, `1.8 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f18.items) + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6}）`);
+    check(rows(f) === splitN(f18.items) + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6 + ADDED7, `1.8 の 品物が 大きさごとに ぜんぶ 出る（新しい 品物も 足して ${rows(f)}/${splitN(f18.items) + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6 + ADDED7}）`);
     check(groupOf('b1~8枚切り') === 'staple' && groupOf('b2') === 'chilled' && groupOf('b3') === 'veg' && groupOf('b4') === 'drink', '1.8 の たべものが それぞれの ジャンルに 移る（のみものは そのまま）');
     check((stored('history') || []).length === f18.history, '1.8 の 送った 記録が 残る');
     check(f.contentDocument.documentElement.dataset.size === 'l', '文字の 大きさの 設定が 残る');
@@ -293,13 +336,13 @@
     localStorage.setItem(KEY + 'ver', JSON.stringify('1.13'));
     f = await openApp();
     const grown = stored('items') || [];
-    check(grown.length === kept.length + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6 - 1 && grown.filter(it => /りんご|リンゴ/.test(it.name)).length === 1, `1.13 の リストに 新しい 品物が 足される（${grown.length}こ。りんごは 1つの まま）`);
+    check(grown.length === kept.length + ADDED + ADDED3 + ADDED4 + ADDED5 + ADDED6 + ADDED7 - 1 && grown.filter(it => /りんご|リンゴ/.test(it.name)).length === 1, `1.13 の リストに 新しい 品物が 足される（${grown.length}こ。りんごは 1つの まま）`);
     check(groupOf('d1') === 'chilled' && groupOf('d2') === 'fruit' && groupOf('d3') === 'other' && groupOf('d4') === 'food' && /ほかの たべもの/.test($in(f, '#groups').textContent),
       'リンゴは くだものへ、名前の ちがう ものは「ほかの たべもの」に 残る');
     check(kept.every((it, i) => grown[i] && grown[i].id === it.id), 'もとの 品物の ならびは かわらない');
     f.remove();
     f = await openApp();
-    check((stored('items') || []).length === grown.length && stored('catalog') === 6, 'もう一度 ひらいても 足すのは 1回だけ');
+    check((stored('items') || []).length === grown.length && stored('catalog') === 7, 'もう一度 ひらいても 足すのは 1回だけ');
 
     // ---------- 1.16: a list kept by 1.15 gets the ten drinks only, after its own ones ----------
     await clean();
@@ -313,7 +356,7 @@
     localStorage.setItem(KEY + 'ver', JSON.stringify('1.15'));
     f = await openApp();
     const grown16 = stored('items') || [], add16 = grown16.slice(kept15.length);
-    check(grown16.length === kept15.length + ADDED4 + ADDED5 + ADDED6 - 1 && add16.filter(it => it.group === 'drink').length === ADDED4 - 1 && kept15.every((it, i) => grown16[i].id === it.id),
+    check(grown16.length === kept15.length + ADDED4 + ADDED5 + ADDED6 + ADDED7 - 1 && add16.filter(it => it.group === 'drink').length === ADDED4 - 1 && kept15.every((it, i) => grown16[i].id === it.id),
       `1.15 の リストに のみものが 足される（${grown16.length}こ。日本酒は 1つの まま）`);
 
     // ---------- 1.20: a list kept by 1.19 gets 大トロ and パルミジャーノレッジャーノ, each at the end of its genre ----------
@@ -329,16 +372,16 @@
     localStorage.setItem(KEY + 'ver', JSON.stringify('1.19'));
     f = await openApp();
     const grown20 = stored('items') || [];
-    check(grown20.length === kept19.length + ADDED5 + ADDED6 && kept19.every((it, i) => grown20[i].id === it.id) && stored('catalog') === 6
-      && namesIn(f, 'fish').join() === 'さしみ,ちくわ,大トロ' && namesIn(f, 'chilled').join() === 'チーズ,パルミジャーノレッジャーノ' && namesIn(f, 'snack').join() === 'まんじゅう',
-      `1.19 の リストに 大トロ と パルミジャーノレッジャーノ が ジャンルの 終わりに 足される（${grown20.length}こ。まんじゅうは 1つの まま）`);
+    check(grown20.length === kept19.length + ADDED5 + ADDED6 + ADDED7 && kept19.every((it, i) => grown20[i].id === it.id) && stored('catalog') === 7
+      && namesIn(f, 'fish').join() === 'さしみ,ちくわ,大トロ' && namesIn(f, 'chilled').join() === 'チーズ,しらたき,ぎょうざの皮,パルミジャーノレッジャーノ' && namesIn(f, 'snack').join() === 'まんじゅう',
+      `1.19 の リストに 大トロ と パルミジャーノレッジャーノ が ジャンルの 終わりに 足される（1.22 の しらたき・ぎょうざの皮と ${grown20.length}こ。まんじゅうは 1つの まま）`);
     const picOf = name => (named(f, name) || { querySelector: () => null }).querySelector('.pic.ini');
     check((picOf('大トロ') || {}).textContent === '大' && (picOf('パルミジャーノレッジャーノ') || {}).textContent === 'パ', '足した 2つの 絵は 名前の 1文字目');
     f.remove();
     f = await openApp();
     check((stored('items') || []).length === grown20.length, '1.20 も もう一度 ひらいても 足すのは 1回だけ');
 
-    // ---------- 1.21: a list kept by 1.20 gets ごぼう and カレールー at the ends of their genres, and the starting sets once ----------
+    // ---------- 1.21–1.22: a list kept by 1.20 gets ごぼう, カレールー and 1.22's six at the ends of their genres, and the starting sets once ----------
     await clean();
     const kept20 = [
       { id: 'h1', name: 'じゃがいも', icon: '', unit: '袋', group: 'veg', sizes: [], note: '', photo: false, count: 0, lastAt: 0, gset: 2 },
@@ -353,17 +396,59 @@
     f = await openApp();
     const grown21 = stored('items') || [], sets21 = stored('sets') || [];
     const text21 = st => st.lines.map(l => (grown21.find(it => it.id === l.id) || {}).name + l.qty).join();
-    check(grown21.length === kept20.length + ADDED6 && kept20.every((it, i) => grown21[i].id === it.id) && stored('catalog') === 6
-      && namesIn(f, 'veg').join() === 'じゃがいも,にんじん,たまねぎ,ごぼう' && namesIn(f, 'dry').join() === 'ツナ缶,カレールー',
-      `1.20 の リストに ごぼう と カレールー が ジャンルの 終わりに 足される（${grown21.length}こ）`);
-    check(sets21.length === 2 && sets21[0].lines.slice(0, 4).map(l => l.id).join() === 'h1,h2,h3,h4' && text21(sets21[0]) === 'じゃがいも1,にんじん1,たまねぎ2,ぶた肉300,カレールー1'
-      && text21(sets21[1]) === 'ぶた肉200,にんじん1,ごぼう1' && f.contentDocument.querySelectorAll('#setList .setrow').length === 2,
-      `いまの 品物で はじめの セットが できる（${sets21.map(st => st.name + '：' + text21(st)).join(' ')}）`);
+    check(grown21.length === kept20.length + ADDED6 + ADDED7 && kept20.every((it, i) => grown21[i].id === it.id) && stored('catalog') === 7
+      && namesIn(f, 'veg').join() === 'じゃがいも,にんじん,たまねぎ,ごぼう,れんこん,にら' && namesIn(f, 'dry').join() === 'ツナ缶,カレールー,シチュールー,麻婆豆腐の素',
+      `1.20 の リストに ごぼう・カレールー と 1.22 の 6つが ジャンルの 終わりに 足される（${grown21.length}こ）`);
+    // (a dish none of whose items the list has, like 焼き鮭, isn't made)
+    const soup21 = sets21.find(st => st.name === '豚汁') || { lines: [] };
+    check(sets21.length === 13 && sets21[0].name === 'カレーライス' && sets21[0].lines.slice(0, 4).map(l => l.id).join() === 'h1,h2,h3,h4' && text21(sets21[0]) === 'じゃがいも1,にんじん1,たまねぎ2,ぶた肉300,カレールー1'
+      && text21(soup21) === 'ぶた肉200,にんじん1,ごぼう1' && !sets21.some(st => st.name === '焼き鮭') && f.contentDocument.querySelectorAll('#setList .setrow').length === 13,
+      `いまの 品物で はじめの セットが できる（${sets21.length}こ。${sets21.slice(0, 2).map(st => st.name + '：' + text21(st)).join(' ')}）`);
     // sets the family took away don't come back
     f.remove();
     localStorage.setItem(KEY + 'sets', '[]');
     f = await openApp();
     check((stored('sets') || [1]).length === 0 && (stored('items') || []).length === grown21.length && $in(f, '#g-set').hidden, 'セットを ぜんぶ けしたら、もう 作らない');
+
+    // ---------- 1.22: sets kept by 1.21 get the new dishes once, in their order; カレーセット and 豚汁セット take the dishes' names ----------
+    await clean();
+    const it21 = (id, name, unit, group) => ({ id, name, icon: '', unit, group, sizes: [], note: '', photo: false, count: 0, lastAt: 0, gset: 2 });
+    const kept21 = [it21('k1', 'じゃがいも', '袋', 'veg'), it21('k2', 'にんじん', '本', 'veg'), it21('k3', 'たまねぎ', '個', 'veg'), it21('k4', 'ぶた肉', 'g', 'meat'),
+      it21('k5', 'カレールー', '箱', 'dry'), it21('k6', '大根', '本', 'veg'), it21('k7', 'ごぼう', '本', 'veg'), it21('k8', 'こんにゃく', '個', 'chilled'), it21('k9', 'ねぎ', '本', 'veg'),
+      it21('k10', 'たまご', 'パック', 'chilled'), it21('k11', 'とうふ', '丁', 'chilled'), it21('k12', 'さば', 'パック', 'fish'), it21('k13', 'ひき肉', 'g', 'meat'), it21('k14', 'とり肉', 'g', 'meat')];
+    // the family's own set between the two of 1.21, and their カレーセット with more meat
+    const sets121 = [
+      { id: 's1', name: 'カレーセット', lines: [{ id: 'k1', qty: 1 }, { id: 'k2', qty: 1 }, { id: 'k3', qty: 2 }, { id: 'k4', qty: 400 }, { id: 'k5', qty: 1 }] },
+      { id: 's2', name: 'うちの おでん', lines: [{ id: 'k6', qty: 1 }, { id: 'k8', qty: 2 }] },
+      { id: 's3', name: '豚汁セット', lines: [{ id: 'k4', qty: 200 }, { id: 'k6', qty: 1 }, { id: 'k2', qty: 1 }, { id: 'k7', qty: 1 }, { id: 'k8', qty: 1 }, { id: 'k9', qty: 1 }] },
+    ];
+    localStorage.setItem(KEY + 'items', JSON.stringify(kept21));
+    localStorage.setItem(KEY + 'sets', JSON.stringify(sets121));
+    localStorage.setItem(KEY + 'catalog', JSON.stringify(6));
+    localStorage.setItem(KEY + 'ver', JSON.stringify('1.21'));
+    f = await openApp();
+    const grown22 = stored('items') || [], sets22 = stored('sets') || [], names22 = sets22.map(st => st.name).join();
+    check(grown22.length === kept21.length + ADDED7 && stored('catalog') === 7 && namesIn(f, 'veg').join() === 'じゃがいも,にんじん,たまねぎ,大根,ごぼう,ねぎ,れんこん,にら',
+      `1.21 の リストに 6つの 品物が ジャンルの 終わりに 足される（${grown22.length}こ）`);
+    check(names22 === 'カレーライス,肉じゃが,豚の生姜焼き,鶏の唐揚げ,ハンバーグ,餃子,麻婆豆腐,野菜炒め,さばの味噌煮,親子丼,筑前煮,きんぴらごぼう,卵焼き,味噌汁,うちの おでん,豚汁,クリームシチュー,オムライス,チャーハン',
+      `1.21 の セットに 料理が 順に 足される（${names22}）`);
+    const kept22 = id => sets22.find(st => st.id === id) || { lines: [] };
+    check(kept22('s1').name === 'カレーライス' && JSON.stringify(kept22('s1').lines) === JSON.stringify(sets121[0].lines) && kept22('s3').name === '豚汁'
+      && JSON.stringify(kept22('s3').lines) === JSON.stringify(sets121[2].lines) && kept22('s2').name === 'うちの おでん',
+      'カレーセット・豚汁セットは 中身（ぶた肉 400g）の まま 名前だけ かわり、家族の セットは そのまま');
+    const copy22 = (await keys('snaps')).filter(k => k.startsWith('auto:')).sort().pop();
+    check(!!copy22 && JSON.parse((await value('snaps', copy22)).ls.sets).length === 3, '足す 前の セットが 控えに 残る');
+    f.remove();
+    f = await openApp();
+    check(JSON.stringify(stored('sets')) === JSON.stringify(sets22) && (stored('items') || []).length === grown22.length, '1.22 も もう一度 ひらいても 足すのは 1回だけ');
+    // a 1.21 list whose sets were all taken away gets the new dishes only
+    f.remove();
+    localStorage.setItem(KEY + 'items', JSON.stringify(kept21));
+    localStorage.setItem(KEY + 'sets', '[]');
+    localStorage.setItem(KEY + 'catalog', JSON.stringify(6));
+    f = await openApp();
+    const names22b = (stored('sets') || []).map(st => st.name);
+    check(names22b.length === 16 && names22b[0] === '肉じゃが' && !names22b.includes('カレーライス') && !names22b.includes('豚汁'), `セットを ぜんぶ けした 1.21 の リストには 新しい 料理だけ（${names22b.length}こ）`);
 
     // ---------- 1.18: what 1.17 kept for the share menu, the dark screen and backups stays behind ----------
     await clean();

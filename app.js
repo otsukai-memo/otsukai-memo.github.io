@@ -21,6 +21,7 @@ const ICONS = {
   'arrow-up': '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
   'camera': '<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>',
   'check': '<path d="M20 6 9 17l-5-5"/>',
+  'chevron-right': '<path d="m9 18 6-6-6-6"/>',
   'copy-plus': '<line x1="15" x2="15" y1="12" y2="18"/><line x1="12" x2="18" y1="15" y2="15"/><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
   'download': '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
   'history': '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
@@ -47,7 +48,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.21';
+const APP_VER = '1.22';
 const DAY = 864e5;
 
 // 1.15: たべもの is split into the genres of a supermarket's shelves, so the genre menu reaches each of them
@@ -153,8 +154,8 @@ const TO_EMOJI = {};
 for (const [e, n] of Object.entries(FROM_EMOJI)) TO_EMOJI[n] = TO_EMOJI[n] || e;
 // name, picture, unit, genre, and the catalog that brought it (none: the first one; 2: 1.14; 3: 1.15, a hundred
 // everyday things from a supermarket, none of them a maker's product; 4: 1.16, ten more drinks; 5: 1.20, 大トロ and
-// パルミジャーノレッジャーノ, asked for by name; 6: 1.21, ごぼう and カレールー for the starting sets). Each size is an item of
-// its own, so the parent is never asked which one.
+// パルミジャーノレッジャーノ, asked for by name; 6: 1.21, ごぼう and カレールー for the starting sets; 7: 1.22, what the twenty
+// dishes' sets needed that the list didn't have). Each size is an item of its own, so the parent is never asked which one.
 const DEFAULT_ITEMS = [
   ['食パン 6枚切り', 'sandwich', '袋', 'staple'],
   ['食パン 8枚切り', 'sandwich', '袋', 'staple'],
@@ -179,7 +180,9 @@ const DEFAULT_ITEMS = [
   ['レタス', 'salad', '個', 'veg', 3],
   ['大根', '', '本', 'veg', 3],
   ['ごぼう', '', '本', 'veg', 6],
+  ['れんこん', '', 'パック', 'veg', 7],
   ['ねぎ', '', '本', 'veg', 3],
+  ['にら', '', 'たば', 'veg', 7],
   ['きゅうり', '', '本', 'veg', 3],
   ['なす', '', '本', 'veg', 3],
   ['ピーマン', '', '袋', 'veg', 3],
@@ -229,6 +232,8 @@ const DEFAULT_ITEMS = [
   ['あぶらあげ', '', '袋', 'chilled', 3],
   ['厚あげ', '', 'パック', 'chilled', 3],
   ['こんにゃく', '', '個', 'chilled', 3],
+  ['しらたき', '', '袋', 'chilled', 7],
+  ['ぎょうざの皮', '', '袋', 'chilled', 7],
   ['ヨーグルト', '', '個', 'chilled', 2],
   ['チーズ', '', '個', 'chilled', 3],
   ['パルミジャーノレッジャーノ', '', '個', 'chilled', 5],
@@ -272,6 +277,8 @@ const DEFAULT_ITEMS = [
   ['ツナ缶', 'can', '個', 'dry', 3],
   ['さば缶', '', '個', 'dry', 3],
   ['カレールー', '', '箱', 'dry', 6],
+  ['シチュールー', '', '箱', 'dry', 7],
+  ['麻婆豆腐の素', '', '箱', 'dry', 7],
   ['レトルトカレー', '', '箱', 'dry', 3],
   ['インスタントみそしる', '', '袋', 'dry', 3],
   ['のり', '', '袋', 'dry', 3],
@@ -319,11 +326,31 @@ const DEFAULT_ITEMS = [
 ];
 // the newest catalog: a phone keeps which one its list has had (catalog), and a list from before gets the rest
 const CATALOG = Math.max(...DEFAULT_ITEMS.map(d => d[4] || 1));
-// 1.21: the sets made at first, each line a starting item's name, how many, and how many grams when it goes by g;
-// the family changes them, or makes more, in 設定
+// the sets made at first (1.21: two; 1.22: twenty dishes, in the order the family asked for them): each line a starting
+// item's name, how many, and how many grams when it goes by g; then the catalog that brought the set, and the name it
+// had in 1.21. A set holds what goes into the dish: しょうゆ, みそ, oil, flour and the like are at home already, and would
+// be put in each time. The family changes them, or makes more, in 設定.
 const DEFAULT_SETS = [
-  ['カレーセット', [['じゃがいも', 1], ['にんじん', 1], ['たまねぎ', 2], ['ぶた肉', 1, 300], ['カレールー', 1]]],
-  ['豚汁セット', [['ぶた肉', 1, 200], ['大根', 1], ['にんじん', 1], ['ごぼう', 1], ['こんにゃく', 1], ['ねぎ', 1]]],
+  ['カレーライス', [['じゃがいも', 1], ['にんじん', 1], ['たまねぎ', 2], ['ぶた肉', 1, 300], ['カレールー', 1]], 6, 'カレーセット'],
+  ['肉じゃが', [['牛肉', 1, 200], ['じゃがいも', 1], ['にんじん', 1], ['たまねぎ', 1], ['しらたき', 1]], 7],
+  ['豚の生姜焼き', [['ぶた肉', 1, 300], ['たまねぎ', 1], ['しょうが', 1], ['キャベツ', 1]], 7],
+  ['鶏の唐揚げ', [['とり肉', 1, 300], ['しょうが', 1], ['にんにく', 1]], 7],
+  ['ハンバーグ', [['ひき肉', 1, 300], ['たまねぎ', 1], ['たまご', 1]], 7],
+  ['餃子', [['ひき肉', 1, 200], ['キャベツ', 1], ['にら', 1], ['ぎょうざの皮', 1]], 7],
+  ['麻婆豆腐', [['とうふ', 1], ['ひき肉', 1, 100], ['ねぎ', 1], ['麻婆豆腐の素', 1]], 7],
+  ['野菜炒め', [['ぶた肉', 1, 200], ['キャベツ', 1], ['もやし', 1], ['にんじん', 1], ['ピーマン', 1]], 7],
+  ['焼き鮭', [['さけ', 1]], 7],
+  ['さばの味噌煮', [['さば', 1], ['しょうが', 1], ['ねぎ', 1]], 7],
+  ['親子丼', [['とり肉', 1, 200], ['たまねぎ', 1], ['たまご', 1]], 7],
+  ['筑前煮', [['とり肉', 1, 200], ['ごぼう', 1], ['れんこん', 1], ['にんじん', 1], ['こんにゃく', 1], ['しいたけ', 1]], 7],
+  ['きんぴらごぼう', [['ごぼう', 1], ['にんじん', 1]], 7],
+  ['卵焼き', [['たまご', 1]], 7],
+  ['ほうれん草のおひたし', [['ほうれんそう', 1]], 7],
+  ['味噌汁', [['とうふ', 1], ['わかめ', 1], ['ねぎ', 1]], 7],
+  ['豚汁', [['ぶた肉', 1, 200], ['大根', 1], ['にんじん', 1], ['ごぼう', 1], ['こんにゃく', 1], ['ねぎ', 1]], 6, '豚汁セット'],
+  ['クリームシチュー', [['とり肉', 1, 300], ['じゃがいも', 1], ['にんじん', 1], ['たまねぎ', 1], ['ブロッコリー', 1], ['牛乳 1L', 1], ['シチュールー', 1]], 7],
+  ['オムライス', [['とり肉', 1, 200], ['たまねぎ', 1], ['たまご', 1]], 7],
+  ['チャーハン', [['たまご', 1], ['ハム', 1], ['ねぎ', 1]], 7],
 ];
 
 let seq = 0;
@@ -500,7 +527,7 @@ function regroup(list) {
 // a recording never sent is kept a week (how long sent lists stay is the family's choice, settings.keep)
 const VOICE_DAYS = 7;
 // the most stored data (or a damaged one) can bring in, so the list always fits in this phone's room for it
-const MAX_ITEMS = 500, MAX_LINES = 100, MAX_EXTRAS = 30, MAX_SETS = 30, MAX_SET_LINES = 30;
+const MAX_ITEMS = 500, MAX_LINES = 100, MAX_EXTRAS = 30, MAX_SETS = 50, MAX_SET_LINES = 30;
 // to: the family member's name as LINE shows it; keep: how long sent lists stay (one: only the newest);
 // copyDays: how long the automatic copies stay
 const defaultSettings = () => ({ size: 'm', to: '', keep: 'three', copyDays: 60 });
@@ -540,15 +567,36 @@ const loadSets = () => {
   if (ok.length < v.length) broken.add('sets');
   return ok.slice(0, MAX_SETS).map(fixSet);
 };
-// the starting sets, made of the items of those names on the list now: a name the list doesn't have is left out, and
-// a set left with nothing isn't made
-function startSets() {
+// the starting sets (of the catalogs after from), made of the items of those names on the list now: a name the list
+// doesn't have is left out, and a set left with nothing isn't made
+function startSets(from = 0) {
   const byName = new Map();
   for (const it of items) if (!byName.has(nameKey(it.name))) byName.set(nameKey(it.name), it);
-  return DEFAULT_SETS.map(([name, lines]) => fixSet({ name, lines: lines.map(([n, count, grams]) => {
+  return DEFAULT_SETS.filter(d => d[2] > from).map(([name, lines]) => fixSet({ name, lines: lines.map(([n, count, grams]) => {
     const it = byName.get(nameKey(n));
     return it && { id: it.id, qty: it.unit === 'g' ? grams || 100 : count };
   }).filter(Boolean) })).filter(s => s.lines.length);
+}
+// 1.22: sets kept from an earlier catalog get the dishes that came after it, once: each goes after the nearest dish
+// before it that the list has (or before the nearest one after it, or at the end), so the dishes keep the order they
+// were asked for in and the family's own sets stay where they are. カレーセット and 豚汁セット take their dishes' names. A
+// dish the list has a set of by that name already is left out.
+function addNewSets(had) {
+  const key = s => nameKey(s.name), order = DEFAULT_SETS.map(d => nameKey(d[0]));
+  for (const [name, , , old] of DEFAULT_SETS) {
+    const s = old && sets.find(x => key(x) === nameKey(old));
+    if (s && !sets.some(x => key(x) === nameKey(name))) s.name = name;
+  }
+  const where = k => sets.findIndex(x => key(x) === order[k]);
+  for (const s of startSets(had)) {
+    if (sets.length >= MAX_SETS) break;
+    if (sets.some(x => key(x) === key(s))) continue;
+    const k = order.indexOf(key(s));
+    let at = -1;
+    for (let j = k - 1; j >= 0 && at < 0; j--) { const p = where(j); if (p >= 0) at = p + 1; }
+    for (let j = k + 1; j < order.length && at < 0; j++) at = where(j);
+    sets.splice(at < 0 ? sets.length : at, 0, s);
+  }
 }
 // what was stored when this version started, before anything here rewrote it: the copy taken on an update
 const RAW_KEYS = ['items', 'history', 'settings', 'sets'];
@@ -724,6 +772,9 @@ async function addNewItems() {
     // when it can't be saved, the next start tries again
     if (!save('items', items)) return;
   }
+  // 1.22: and the sets that came since, made of the items now on the list (a list with no sets yet gets all of them
+  // at start)
+  if (sets) { addNewSets(had); if (!save('sets', sets)) return; }
   save('catalog', CATALOG);
 }
 // photos saved by 1.3 and before sit in localStorage as data URLs; they move to IndexedDB once, one by one
@@ -1060,12 +1111,18 @@ const setPic = (cls = '') => `<span class="pic lu h-orange ${cls}" aria-hidden="
 const setQty = (it, q) => { const s = stepOf(it); return Math.min(Math.max(Math.round(q / s) * s, s), 99 * s); };
 // a set's items still on the list, with their amounts
 const setItems = s => s.lines.map(l => ({ it: byId(l.id), qty: l.qty })).filter(x => x.it).map(x => ({ it: x.it, qty: setQty(x.it, x.qty) }));
-// (a name and its amount never part at the end of a line)
-const setLabel = ({ it, qty }) => it.name + (it.unit === 'g' || qty > 1 ? `\u00a0${qty}${it.unit}` : '');
+// (a name and its amount, or the two words of a name like 牛乳 1L, never part at the end of a line)
+const setLabel = ({ it, qty }) => it.name.replace(/ /g, '\u00a0') + (it.unit === 'g' || qty > 1 ? `\u00a0${qty}${it.unit}` : '');
 const setIn = s => { const xs = setItems(s); return xs.length > 0 && xs.every(x => qtyIn(x.it) >= x.qty); };
+// 1.22: the parent's screen has one row for them, which opens the sets (twenty rows would push the items far down,
+// a screen's height for each at 特大)
 function renderSets() {
   const list = (sets || []).filter(s => setItems(s).length);
   $('#g-set').hidden = !list.length;
+  const names = list.slice(0, 3).map(s => s.name).join('・') + (list.length > 3 ? ` など ${list.length}こ` : '');
+  $('#setOpen').innerHTML = `<li class="row setrow setopen"><button type="button" class="hit sl" tabindex="-1" aria-hidden="true"></button>`
+    + `<span class="picbox">${setPic()}</span><span class="txt"><span class="nm">料理を えらぶ</span></span><span class="sub">${esc(names)}</span>`
+    + `<span class="step"><button type="button" class="open btn tonal sl" aria-haspopup="dialog" aria-controls="sh-sets" aria-label="料理を えらぶ（${esc(names)}）">ひらく${ic('chevron-right')}</button></span></li>`;
   $('#setList').innerHTML = list.map(s => `<li class="row setrow" data-set="${esc(s.id)}"><button type="button" class="hit sl" tabindex="-1" aria-hidden="true"></button>`
     + `<span class="picbox">${setPic()}<span class="selmark">${ic('check')}</span></span>`
     + `<span class="txt"><span class="nm">${esc(s.name)}</span></span><span class="sub">${esc(setItems(s).map(setLabel).join('・'))}</span>`
@@ -1098,15 +1155,19 @@ function putSet(s) {
     saveCart(); renderHome();
   });
 }
+// a touch anywhere on the row opens them: nothing goes in until a set's own button is pressed
+const openSets = () => { paintSets(); openSheet('sh-sets'); };
+$('#setOpen').addEventListener('click', e => { if (e.target.closest('button')) openSets(); });
 $('#setList').addEventListener('click', e => {
   const b = e.target.closest('button');
   const li = b && b.closest('[data-set]');
   const s = li && (sets || []).find(x => x.id === li.dataset.set);
-  if (!s || tooFast(b)) return;
+  // the second tap of a trembling double tap on the row that opened them may land on a set's button
+  if (!s || tooFast(b) || justOpened()) return;
   if (b.classList.contains('hit')) {
     const p = $('.put', li);
     p.classList.remove('nudge'); void p.offsetWidth; p.classList.add('nudge');
-    toast(li.classList.contains('sel') ? '数を かえるときは、下の 品物の −・＋ を 押してください。' : '入れるときは「＋ ぜんぶ 入れる」を 押してください。', '', null, 1000);
+    toast(li.classList.contains('sel') ? '数を かえるときは、とじてから 品物の −・＋ を 押してください。' : '入れるときは「＋ ぜんぶ 入れる」を 押してください。', '', null, 1000);
     return;
   }
   putSet(s);
@@ -1157,6 +1218,8 @@ $('#navList').addEventListener('click', async e => {
   if (!b || justOpened()) return;
   await closeSheet();
   jumpTo(b.dataset.g);
+  // セット opens the sets too, over the top of the list where their row is
+  if (b.dataset.g === 'set') openSets();
 });
 // the genre's heading comes up at once just under the top bar (no gliding past rows on the way), and takes the focus
 // (for a screen reader)
@@ -2126,7 +2189,9 @@ $('#fDelete').addEventListener('click', async () => {
   const it = editing;
   if (!it) return;
   // (it stays in its sets, out of sight, so it is back in them if it comes back from けした 品物)
-  const inSets = (sets || []).filter(s => s.lines.some(l => l.id === it.id)).map(s => `「${s.name}」`).join('');
+  // (たまねぎ is in seven of the starting sets: past three, how many)
+  const named = (sets || []).filter(s => s.lines.some(l => l.id === it.id)).map(s => `「${s.name}」`);
+  const inSets = named.length > 3 ? `${named.slice(0, 3).join('')}など ${named.length}つの セット` : named.join('');
   if (!(await ask(`「${it.name}」を けしますか？`, '親の 画面から この ボタンが なくなります。' + (inSets ? `${inSets}からも はずれます。` : ''), 'けす', 'やめる', { danger: true }))) return;
   await closeSheet();
   const idx = items.indexOf(it), photo = it.photo ? await itemPhoto(it) : null;
