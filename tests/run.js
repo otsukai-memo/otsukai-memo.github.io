@@ -507,6 +507,33 @@
       `「共有メニュー」に して いても LINE を ひらいて 送る（${$in(f, '#stepsT').textContent}）`);
     check(localStorage.getItem(KEY + 'backup') === null && localStorage.getItem(KEY + 'welcome') === null && !(await keys('snaps')).includes('beforeImport'),
       'バックアップの 記録と、ファイルを 読みこむ 前の 状態は 消える');
+    // 1.24: 「LINEで 送る」 sends the list at once: into the sent lists, and the screen is empty again, with no question
+    // and no message after (the link itself isn't followed here)
+    f.contentDocument.addEventListener('click', e => { if (e.target.closest('#lineSend')) e.preventDefault(); }, true);
+    const eggId = named(f, 'たまご').dataset.id;
+    $in(f, '#lineSend').click();
+    const cartNow = Object.keys((stored('cart') || {}).lines || {}).length, histNow = (stored('history') || []).length;
+    await wait(1200);
+    const sent24 = (stored('history') || [])[0] || { lines: [] };
+    check(cartNow === 0 && histNow === 1 && sent24.lines.map(l => l.name + l.qty).join() === 'たまご1' && /たまご/.test(decodeURIComponent($in(f, '#lineSend').getAttribute('href') || ''))
+      && $in(f, '#sh-confirm').hidden && $in(f, '#toast').hidden && !$in(f, '#sh-sent') && $in(f, '#sendN').hidden && !named(f, 'たまご').classList.contains('sel')
+      && ((stored('items') || []).find(it => it.id === eggId) || {}).count === 1 && localStorage.getItem(KEY + 'pending') === null,
+      '「LINEで 送る」を 押すと すぐ 空に なり、送った 記録に 入る（聞かない。文も もどす ボタンも 出ない）');
+
+    // ---------- 1.24: a list 1.23 was still asking about (送れましたか？) stays on the screen, and nothing asks ----------
+    await clean();
+    f = await openApp();
+    const egg24 = ((stored('items') || []).find(it => it.name === 'たまご') || {}).id;
+    f.remove();
+    const left24 = { lines: { [egg24]: 2 }, extras: [], when: '' };
+    localStorage.setItem(KEY + 'cart', JSON.stringify(left24));
+    localStorage.setItem(KEY + 'pending', JSON.stringify({ at: Date.now() - 60000, cart: left24 }));
+    localStorage.setItem(KEY + 'ver', JSON.stringify('1.23'));
+    f = await openApp();
+    await wait(800);
+    check(localStorage.getItem(KEY + 'pending') === null && ((stored('cart') || {}).lines || {})[egg24] === 2 && named(f, 'たまご').classList.contains('sel')
+      && ![...f.contentDocument.querySelectorAll('.layer')].some(l => !l.hidden) && !(stored('history') || []).length,
+      '1.23 が 聞く ところだった リストは そのまま 残り、何も 聞かない');
 
     // ---------- data that can't be read is kept, not written over ----------
     await clean();

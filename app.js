@@ -48,7 +48,7 @@ const ic = (name, cls = '') => svgOf(ICONS[name], 'ic' + (FILLED.has(name) ? ' f
 $$('[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic); });
 
 const KEY = 'kaimono:v1:';
-const APP_VER = '1.23';
+const APP_VER = '1.24';
 const DAY = 864e5;
 
 // 1.15: たべもの is split into the genres of a supermarket's shelves, so the genre menu reaches each of them
@@ -621,8 +621,9 @@ const loadSettings = () => {
 let settings = loadSettings();
 // what this window last read or wrote, for the check in save()
 for (const n of ['items', 'history']) seen[n] = RAW[n];
-let pending = load('pending', null);
-if (pending && !(Date.now() - (+pending.at || 0) < 3 * DAY)) { pending = null; drop('pending'); }
+// 1.23 and before asked, once the parent came back from LINE, whether the list had gone out (pending); since 1.24 a
+// list counts as sent when 「LINEで 送る」 is pressed. One still waiting for that answer stays on the screen, as いいえ left it.
+drop('pending');
 // 1.17 and before kept a note of the last backup, and an offer to read one in after a first start
 drop('backup'); drop('welcome');
 const saveCart = () => save('cart', cart);
@@ -809,7 +810,6 @@ window.addEventListener('storage', e => {
   else if (name === 'history') { hist = loadHist(); seen.history = localStorage.getItem(e.key); }
   else if (name === 'settings') { settings = loadSettings(); applySize(); }
   else if (name === 'sets') sets = loadSets();
-  else if (name === 'pending') pending = load('pending', null);
   else return;
   // what this window could not save is now what the other window saved
   if (unsaved.delete(name)) paintSaveBar();
@@ -1251,7 +1251,7 @@ async function clipDel(id) { try { await idbDel('clips', id); } catch (e) {} }
 // recordings that no list refers to any more (sent, or taken out and not brought back) are thrown away
 async function pruneClips() {
   try {
-    const keep = new Set([...cart.extras, ...(pending ? fixCart(pending.cart).extras : [])].filter(x => x.voice).map(x => x.id));
+    const keep = new Set(cart.extras.filter(x => x.voice).map(x => x.id));
     for (const k of await idbKeys('clips')) if (!keep.has(k)) await clipDel(k);
   } catch (e) {}
 }
@@ -1525,72 +1525,13 @@ $('#whenChips').addEventListener('click', e => {
   saveCart(); renderWhen(); buzz();
 });
 
-// whether the message really went out is only known to the parent, so the app asks once they come back
-let wentAway = false, askTimer = 0;
-function markPending(text) {
-  // the list is kept (the message text says the same in more words, so it isn't)
-  pending = { at: Date.now(), cart: clone(cart) };
-  save('pending', pending);
-  wentAway = false;
-  clearTimeout(askTimer);
-  // if LINE never opened, the question still comes
-  askTimer = setTimeout(() => { if (pending && !wentAway && document.visibilityState === 'visible') askSent(); }, 4000);
-}
-function clearPending() { pending = null; drop('pending'); clearTimeout(askTimer); }
-function shareNow(data, text) {
-  markPending(text);
-  navigator.share(data).then(() => {
-    setTimeout(() => { if (pending && document.visibilityState === 'visible') askSent(); }, 500);
-  }).catch(err => {
-    clearPending();
-    toast(err && err.name === 'AbortError' ? '送るのを やめました。' : '送れませんでした。もういちど 押してください。');
-  });
-}
-$('#lineSend').addEventListener('click', e => {
-  const text = buildText();
-  if (hasVoice()) {
-    e.preventDefault();
-    if (!voiceFile) { toast('声を 用意しています。もういちど 押して ください。'); prepareVoice(); return; }
-    const data = { files: [voiceFile], text };
-    if (!navigator.canShare || !navigator.canShare(data)) { toast('この スマホでは 声を いっしょに 送れません。声を けして、文字で 送って ください。'); return; }
-    shareNow(data, text);
-    return;
-  }
-  e.currentTarget.href = lineURL(text);
-  markPending(text);
-});
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); if (pending) wentAway = true; return; }
-  if (isOpen('settings')) {
-    if (hiddenAt && Date.now() - hiddenAt > SET_AWAY && hiddenAt - outsideAt > 5000) leaveSettings();
-    else setTouch = Date.now();
-  }
-  dropOldVoices();
-  maybeWeekCopy();
-  if (pending && wentAway) { wentAway = false; setTimeout(askSent, 300); }
-  else if (new Date().toDateString() !== shownDay && $('#settings').hidden && !sheetsOpen()) renderHome();
-});
-async function askSent() {
-  if (!pending || isOpen('sh-sent')) return;
-  clearTimeout(askTimer);
-  while (layers.length && layers[layers.length - 1].name !== 'settings') await popLayer();
-  if (!pending || isOpen('sh-sent')) return;
-  openSheet('sh-sent');
-}
-let sentAnswered = false;
-$('#sh-sent').addEventListener('closed', () => {
-  // closed with the back button: treated as not sent, the list stays
-  if (!sentAnswered) { clearPending(); toast('リストは そのまま 残っています。'); }
-  sentAnswered = false;
-});
-$('#sentYes').addEventListener('click', async () => { sentAnswered = true; await closeSheet(); markSent(); });
-$('#sentNo').addEventListener('click', async () => { sentAnswered = true; await closeSheet(); clearPending(); toast('リストは そのまま 残っています。'); });
-function markSent() {
-  const c = pending ? fixCart(pending.cart) : cart;
+// 1.24: the list counts as sent the moment 「LINEで 送る」 is pressed (or the share menu has handed it on, with a
+// voice): it goes into the sent lists and the screen is empty again. No question follows when the parent comes back,
+// and no message (the family asked for it this way).
+function markSent(c) {
   const now = Date.now();
   const lines = [];
   for (const g of GROUPS) for (const it of inGroup(g.key)) { const q = qtyIn(it, c); if (q) lines.push({ id: it.id, name: it.name, size: '', unit: it.unit, qty: q }); }
-  const before = { cart: clone(cart), hist: hist.slice(), stats: items.map(it => [it.id, it.count, it.lastAt]) };
   // a recording is never kept in the history
   hist.unshift({ at: now, lines, extras: c.extras.filter(x => !x.voice).map(x => x.text), when: c.when });
   trimHist();
@@ -1601,23 +1542,50 @@ function markSent() {
   save('items', items);
   cart = fixCart(null);
   saveCart();
-  clearPending();
+  setTimeout(pruneClips, 16000);
+}
+// the screen follows: the sheet goes, and the list shows from its top, empty
+async function afterSent() {
+  if (isOpen('sh-confirm')) await closeSheet();
   renderHome();
   window.scrollTo(0, 0);
-  setTimeout(pruneClips, 16000);
-  toast('送りました。おつかれさまでした。', 'もとに もどす', () => {
-    cart = fixCart(before.cart); saveCart();
-    hist = before.hist; save('history', hist);
-    before.stats.forEach(([id, count, lastAt]) => { const it = byId(id); if (it) { it.count = count; it.lastAt = lastAt; } });
-    save('items', items);
-    renderHome();
+}
+function shareNow(data, c) {
+  navigator.share(data).then(() => { markSent(c); afterSent(); }).catch(err => {
+    toast(err && err.name === 'AbortError' ? '送るのを やめました。' : '送れませんでした。もういちど 押してください。');
   });
 }
+$('#lineSend').addEventListener('click', e => {
+  const text = buildText(), c = fixCart(clone(cart));
+  if (hasVoice()) {
+    e.preventDefault();
+    if (!voiceFile) { toast('声を 用意しています。もういちど 押して ください。'); prepareVoice(); return; }
+    const data = { files: [voiceFile], text };
+    if (!navigator.canShare || !navigator.canShare(data)) { toast('この スマホでは 声を いっしょに 送れません。声を けして、文字で 送って ください。'); return; }
+    shareNow(data, c);
+    return;
+  }
+  e.currentTarget.href = lineURL(text);
+  // saved at once (the phone may put this page to sleep as LINE opens); the screen changes a moment later, so nothing
+  // touches the link while it opens
+  markSent(c);
+  setTimeout(afterSent, 300);
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+  if (isOpen('settings')) {
+    if (hiddenAt && Date.now() - hiddenAt > SET_AWAY && hiddenAt - outsideAt > 5000) leaveSettings();
+    else setTouch = Date.now();
+  }
+  dropOldVoices();
+  maybeWeekCopy();
+  if (new Date().toDateString() !== shownDay && $('#settings').hidden && !sheetsOpen()) renderHome();
+});
 $('#clearAll').addEventListener('click', async () => {
   if (!(await ask('ぜんぶ けしますか？', 'えらんだものが 空に なります。', 'ぜんぶ けす', 'やめる', { danger: true }))) return;
   const before = clone(cart);
   cart = fixCart(null);
-  saveCart(); clearPending();
+  saveCart();
   await closeSheet();
   renderHome();
   setTimeout(pruneClips, 16000);
@@ -2600,7 +2568,6 @@ const current = { items: () => items, cart: () => cart, history: () => hist, set
 $('#saveRetry').addEventListener('click', () => {
   for (const n of [...unsaved]) {
     if (n === 'probe') { if (canStore()) unsaved.delete(n); }
-    else if (n === 'pending') { if (pending) save('pending', pending); else drop('pending'); }
     else if (current[n]) save(n, current[n]());
   }
   paintSaveBar();
@@ -2622,7 +2589,6 @@ applySize();
 paintPlace();
 if (!canStore()) { unsaved.add('probe'); paintSaveBar(); }
 renderHome();
-if (pending) setTimeout(askSent, 700);
 (async () => {
   // what could not be read is kept aside before anything is saved over it
   if (broken.size) await keepBroken();

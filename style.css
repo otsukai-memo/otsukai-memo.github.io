@@ -218,9 +218,6 @@ html[data-size="xl"] .drawer-panel{width:min(94vw,26rem);padding-right:.5rem;pad
 .navitem .pic{width:2.75rem;height:2.75rem}
 .navitem .pic.lu svg{width:1.85rem;height:1.85rem}
 .gh:focus{outline:none}
-.hero{display:flex;justify-content:center;margin-bottom:.75rem;color:var(--md-secondary)}
-.hero .ic{width:2rem;height:2rem}
-.hero + h2{text-align:center}
 @media (prefers-reduced-motion:reduce){.sheet,.layer.dialog .sheet,.drawer-panel,.navitem,.appbar,.btn,.icon-btn,.row,.tf > span,.level span{transition:none}.nudge,#toast{animation:none}}
 .acts{display:flex;flex-direction:column;gap:.6rem;margin-top:1.25rem}
 /* a sheet in two parts: the list scrolls, the buttons under it always stay in view */
